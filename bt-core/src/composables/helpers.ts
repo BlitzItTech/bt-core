@@ -1,12 +1,24 @@
+import { firstBy } from 'thenby';
 import { type MaybeRefOrGetter, toValue } from 'vue';
 
 
 export function appendUrl(originalVal?: string, additionalVal?: string) {
     let original = originalVal ?? ''
     let additional = additionalVal ?? ''
-    var returnValue = original.endsWith('/') ? original : original + '/';
-    var newValue = additional.startsWith('/') ? additional.slice(1, additional.length) : additional;
-    return returnValue + newValue;
+
+    if (original.endsWith('/')) {
+        do {
+            original = original.slice(0, original.length - 1)
+        } while (original.endsWith('/'));
+    }
+
+    if (additional.startsWith('/')) {
+        do {
+            additional = additional.slice(1, additional.length)
+        } while (additional.startsWith('/'));
+    }
+
+    return `${original}/${additional}`
 }
 
 export function extensionExists(elementId: string = 'blitzItExtensionExists') {
@@ -27,84 +39,76 @@ interface GeoCoordinate {
     lng: number
 }
 
-/**
- * confirms if area is a certain size
- * @param boundary array of 4 x { lat: number, lng: number }
- * @param size 
- * @returns 
- */
-export function isAreaOfSize(boundary?: GeoCoordinate[], size?: number) {
-    if (boundary == null || size == null || boundary.length != 4) {
-        return false;
-    }
+// /**
+//  * confirms if area is a certain size
+//  * @param boundary array of 4 x { lat: number, lng: number }
+//  * @param size 
+//  * @returns 
+//  */
+// export function isAreaOfSize(boundary?: GeoCoordinate[], size?: number) {
+//     if (boundary == null || size == null || boundary.length != 4) {
+//         return false;
+//     }
 
-    var middleLat = boundary[0].lat + size;
-    var middleLng = boundary[0].lng - size;
+//     var middleLat = boundary[0].lat + size;
+//     var middleLng = boundary[0].lng - size;
 
-    if ((boundary[1].lat + size) != middleLat) {
-        return false;
-    }
-    if ((boundary[1].lng + size) != middleLng) {
-        return false;
-    }
+//     if ((boundary[1].lat + size) != middleLat) {
+//         return false;
+//     }
+//     if ((boundary[1].lng + size) != middleLng) {
+//         return false;
+//     }
 
-    if ((boundary[2].lat - size) != middleLat) {
-        return false;
-    }
-    if ((boundary[2].lng + size) != middleLng) {
-        return false;
-    }
+//     if ((boundary[2].lat - size) != middleLat) {
+//         return false;
+//     }
+//     if ((boundary[2].lng + size) != middleLng) {
+//         return false;
+//     }
 
-    if ((boundary[3].lat - size) != middleLat) {
-        return false;
-    }
-    if ((boundary[3].lng - size) != middleLng) {
-        return false;
-    }
+//     if ((boundary[3].lat - size) != middleLat) {
+//         return false;
+//     }
+//     if ((boundary[3].lng - size) != middleLng) {
+//         return false;
+//     }
 
-    return true;
-}
+//     return true;
+// }
 
 /**
  * get area around a certain location with a space of the given size
  * @param location 
- * @param size 
+ * @param radius
  * @returns 
  */
-export function getAreaAround(location: GeoCoordinate, size?: number) {
-    size ??= 1
-    
+export function getAreaAround(location: GeoCoordinate, radius: number) {
     return [
-        { lat: location.lat - size, lng: location.lng + size },
-        { lat: location.lat - size, lng: location.lng - size },
-        { lat: location.lat + size, lng: location.lng - size },
-        { lat: location.lat + size, lng: location.lng + size }
+        { lat: location.lat - radius, lng: location.lng + radius },
+        { lat: location.lat - radius, lng: location.lng - radius },
+        { lat: location.lat + radius, lng: location.lng - radius },
+        { lat: location.lat + radius, lng: location.lng + radius }
     ];
 }
 
-export function getAreaToLeft(location: GeoCoordinate, size?: number) {
-    if (size == null) {
-        size = 1;
-    }
-
+/**get square area using the location as the far right line */
+export function getAreaToLeft(location: GeoCoordinate, radius: number) {
     return [
-        { lat: location.lat - size, lng: location.lng },
-        { lat: location.lat - size, lng: location.lng - (size * 2) },
-        { lat: location.lat + size, lng: location.lng - (size * 2) },
-        { lat: location.lat + size, lng: location.lng }
+        { lat: location.lat - (radius * 2), lng: location.lng + radius },
+        { lat: location.lat - (radius * 2), lng: location.lng - radius },
+        { lat: location.lat, lng: location.lng - radius },
+        { lat: location.lat, lng: location.lng + radius }
     ];
 }
 
-export function getAreaToRight(location: GeoCoordinate, size?: number) {
-    if (size == null) {
-        size = 1;
-    }
-
+/**get square area using the location as the far left line */
+export function getAreaToRight(location: GeoCoordinate, radius: number) {
     return [
-        { lat: location.lat - size, lng: location.lng + (size * 2) },
-        { lat: location.lat - size, lng: location.lng },
-        { lat: location.lat + size, lng: location.lng },
-        { lat: location.lat + size, lng: location.lng + (size * 2) }
+        { lat: location.lat, lng: location.lng + radius },
+        { lat: location.lat, lng: location.lng - radius },
+        { lat: location.lat + (radius * 2), lng: location.lng - radius },
+        { lat: location.lat + (radius * 2), lng: location.lng + radius }
     ];
 }
 
@@ -237,7 +241,7 @@ export async function getImageData(url?: string, throwErrorOnFail: boolean = tru
 
 /**
  * 
- * @param val Converts string from camel case to pascal casing
+ * @param val Converts string from camel case to every word being capitalized and spaces between
  * @returns 
  */
 export function fromCamelCase(val?: string) {
@@ -280,106 +284,102 @@ export function capitalizeWords(val?: string) {
 
 //#region weekday
 
-export function weekdaysValue(wkDay?: string) {
-    if (wkDay == null || containsWeekday(wkDay, 'Always')) {
-        return 0;
-    }
-    else if (containsWeekday(wkDay, 'Sun')) {
-        return 1;
-    }
-    else if (containsWeekday(wkDay, 'Mon')) {
-        return 2;
-    }
-    else if (containsWeekday(wkDay, 'Tue')) {
-        return 3;
-    }
-    else if (containsWeekday(wkDay, 'Wed')) {
-        return 4;
-    }
-    else if (containsWeekday(wkDay, 'Thu')) {
-        return 5;
-    }
-    else if (containsWeekday(wkDay, 'Fri')) {
-        return 6;
-    }
-    else if (containsWeekday(wkDay, 'Sat')) {
-        return 7;
-    }
+export const weekdayPairs = [
+    { value: 1, short: 'sun', values: ['sun', 'sunday'] },
+    { value: 2, short: 'mon', values: ['mon', 'monday'] },
+    { value: 3, short: 'tue', values: ['tue', 'tues', 'tuesday'] },
+    { value: 4, short: 'wed', values: ['wed', 'wednesday'] },
+    { value: 5, short: 'thu', values: ['thu', 'thur', 'thurs', 'thursday'] },
+    { value: 6, short: 'fri', values: ['fri', 'friday'] },
+    { value: 7, short: 'sat', values: ['sat', 'saturday'] },
+    { value: 0, short: 'always', values: ['always', null, undefined] }
+]
 
-    return 8;
-}
-
+/**returns the sort value of the weekday csv string
+ * returns minimum if csv list
+ */
 export function weekdayValue(wkDay?: string) {
-    if (wkDay == null || wkDay == 'Always') {
-        return 0;
-    }
-    else if (wkDay == 'Sun') {
-        return 1;
-    }
-    else if (wkDay == 'Mon') {
-        return 2;
-    }
-    else if (wkDay == 'Tue') {
-        return 3;
-    }
-    else if (wkDay == 'Wed') {
-        return 4;
-    }
-    else if (wkDay == 'Thu') {
-        return 5;
-    }
-    else if (wkDay == 'Fri') {
-        return 6;
-    }
-    else if (wkDay == 'Sat') {
-        return 7;
+    if (wkDay == null) {
+        return 0
     }
 
-    return 8;
+    const wkDaySplit = wkDay.replaceAll(' ', '').split(',').map(z => z.toLowerCase())
+    const valList = weekdayPairs.filter(x => x.values.some(v => wkDaySplit.some(s => v == s))).map(z => z.value)
+    if (valList.length == 0)
+        return 8
+
+    return Math.min(...valList)
 }
 
+/**returns the sort value of the weekday csv string
+ * returns minimum if csv list
+ */
+export function weekdayShortName(wkDay?: string) {
+    if (wkDay == null) {
+        return wkDay
+    }
+
+    return wkDay.toLowerCase().replaceAll(' ', '').split(',').map(day => {
+        let pair = weekdayPairs.find(x => x.values.some(v => v == day))
+        return pair != null ? pair.short : ''
+    }).filter(z => z != null && z.length > 0).toString()
+
+    // const valList = weekdayPairs.filter(x => x.values.some(v => wkDaySplit.some(s => v == s))).map(z => z.short)
+    // if (valList.length == 0)
+    //     return 8
+
+    // return Math.min(...valList)
+}
+
+/**whether the csv string contains the weekday
+ * returns true if either prop is undefined
+ */
 export function containsWeekday(weekdays?: string, wkDay?: string) {
     if (weekdays == null || wkDay == null) {
         return true;
     }
 
-    var weekdayList = weekdays.split(',');
-    return weekdayList.some(z => z == 'Always' || z == wkDay);
+    const wkDaySplit = weekdays.replaceAll(' ', '').split(',').map(z => z.toLowerCase())
+    const weekday = wkDay.replaceAll(' ', '').toLowerCase()
+    const pair = weekdayPairs.find(pair => pair.values.some(v => v == weekday))
+    return pair != null && wkDaySplit.some(s => s == pair.short || pair.values.some(v => v == s))
 }
 
-export function addWeekday(value?: string, day?: string) {
-    var fullList = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-    var potList = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-    
+/**adds and sorts the weekday string */
+export function addWeekday(weekdays?: string, day?: string) {
     if (day == null) {
-        return value;
+        return weekdays;
     }
 
-    var abbWeekday = day.substring(0, 3);
-    var ind = potList.indexOf(abbWeekday);
-    var fullWeekday = fullList[ind];
+    let wDays = weekdays ?? ''
+    wDays = `${wDays},${day}`
 
-    if (value == null) {
-        return fullWeekday;
-    }
-    else {
-        var wList = value.split(',');
-        wList.push(fullWeekday);
-        var list = [];
-        for (let i = 0; i < fullList.length; i++) {
-            const fDay = fullList[i];
-            if (wList.some(y => y == fDay)) {
-                list.push(fDay);
-            }
-        }
-        return list.toString();
-    }
+    let res = [...new Set(wDays.replaceAll(' ', '').toLowerCase().split(',').map(z => {
+        return weekdayPairs.find(x => x.values.some(v => v == z))
+    })
+    .filter(z => z != null)
+    .sort(firstBy(z => z?.value ?? 0))
+    .map(z => z?.short))].toString()
+
+    return res.length > 0 ? res : undefined
 }
 
-export function removeWeekday(value?: string, day?: string) {
-    let rVal = value ?? ''
-    rVal = rVal.split(',').filter(y => y != day && y.substring(0, 3) != day).toString()
-    return rVal != null && rVal.length > 0 ? rVal : null
+export function removeWeekday(weekdays?: string, day?: string) {
+    if (day == null || weekdays == null) {
+        return weekdays;
+    }
+
+    let wDays = weekdays ?? ''
+    let wDay = day.replaceAll(' ', '').toLowerCase()
+    
+    let res = [...new Set(wDays.replaceAll(' ', '').toLowerCase().split(',').map(z => {
+        return weekdayPairs.find(x => x.values.some(v => v == z && v != wDay))
+    })
+    .filter(z => z != null)
+    .sort(firstBy(z => z?.value ?? 0))
+    .map(z => z?.short))].toString()
+
+    return res.length > 0 ? res : undefined
 }
 
 //#endregion
@@ -390,8 +390,8 @@ export function isArrayOfLength(val: any, l: number) {
     return val != null && Array.isArray(val) && val.length == l;
 }
 
-export function isLengthyArray(val: any, minLength: number = 0) {
-    return val != null && Array.isArray(val) && val.length > minLength
+export function isLengthyArray(val: any, greaterThan: number = 0) {
+    return val != null && Array.isArray(val) && val.length > greaterThan
 }
 
 //#endregion
@@ -404,6 +404,10 @@ export function isMinDate(d?: string) {
 
 export function getMinDate() {
     return new Date('0001-01-01T00:00:00Z').getTime();
+}
+
+export function getMinDateString() {
+    return '0001-01-01T00:00:00Z'
 }
 
 //#end region
@@ -419,8 +423,8 @@ export function getMinDate() {
 export function roundTo(v: MaybeRefOrGetter<number>, dPlaces: number) {
     const val = toValue(v)
 
-    var m = '1';
-    var i = 0;
+    let m = '1';
+    let i = 0;
 
     if (i < dPlaces) {
         do {
@@ -429,7 +433,7 @@ export function roundTo(v: MaybeRefOrGetter<number>, dPlaces: number) {
         } while (i < dPlaces);
     }
 
-    var d = Number.parseInt(m);
+    let d = Number.parseInt(m);
     
     return Math.round(val * d) / d;
 }
@@ -476,6 +480,7 @@ export function csvContains(value?: string, tag?: string) {
 
 //#end region
 
+/**copies object and all descendant properties */
 export function copyDeep(aObject: any) {
     if (!aObject) {
         return aObject;
@@ -490,8 +495,8 @@ export function copyDeep(aObject: any) {
     return bObject;
 }
 
+/**copies object and returns copied object with descendant properties placed in alphabetical order */
 export function copyItemByAlphabet(aObject: any) {
-    //copy jsObject and reorder properties by alphabet name
     if (!aObject) {
         return aObject;
     }    
@@ -499,11 +504,12 @@ export function copyItemByAlphabet(aObject: any) {
     .sort()
     .reduce(function (acc: any, key) {
         let v = aObject[key];
-        acc[key] = (typeof v === 'object' && !v === null) ? copyItemByAlphabet(v) : v;
+        acc[key] = (typeof v === 'object' && v !== null) ? copyItemByAlphabet(v) : v;
         return acc;
     }, Array.isArray(aObject) ? [] : {});
 }
 
+/**whether string is contained somewhere in this value */
 export function containsSearch(value?: string, str?: string) {
     if (str == null) {
         return true;
@@ -511,23 +517,61 @@ export function containsSearch(value?: string, str?: string) {
     if (value == null) {
         return false;
     }
-    var valOne = value.toLowerCase(); //.replaceAll(' ', '');
-    var valTwo = str.toLowerCase(); //.replaceAll(' ', '');
-    return valOne.includes(valTwo);
+    
+    return value.toLowerCase().includes(str.toLowerCase());
 }
 
+// export function deepSelect(obj: any, propSelector: Function = (obj: any) => obj) {
+//     if (obj == null) {
+//         return []
+//     }
+
+//     if (Array.isArray(obj)) {
+//         let rr: any[] = []
+//         obj.forEach(e => {
+//             rr.push(e)
+//             const d = deepSelect(e, propSelector)
+//             if (isLengthyArray(d))
+//                 rr.push(...d)
+//         })
+//         return rr
+//     }
+//     else {
+//         let arr = propSelector(obj)
+//         if (isLengthyArray(arr)) {
+//             let r = [...arr.reduce((a: any, b: any) => {
+//                 a.push(b)
+//                 const v = deepSelect(b, propSelector)
+//                 if (isLengthyArray(v)) {
+//                     a.push(...v)
+//                 }
+//                 return a
+//             }, [])]
+        
+//             if (!Array.isArray(obj)) {
+//                 r.unshift(obj)
+//             }
+        
+//             return r
+//         }
+        
+//         return []
+//     }
+// }
+
+/**must be an object.  Returns a flat map of all items in the prop selector */
 export function deepSelect(obj: any, propSelector: Function = (obj: any) => obj) {
     if (obj == null) {
         return []
     }
 
-    const arr = propSelector(obj)
+    const arr = Array.isArray(obj) ? obj : propSelector(obj)
 
     if (!isLengthyArray(arr)) {
         return []
     }
   
-    return [...arr, ...arr.reduce((a: any, b: any) => {
+    return [...arr.reduce((a: any, b: any) => {
         a.push(b)
         const v = deepSelect(b, propSelector)
         if (isLengthyArray(v)) {
@@ -585,10 +629,12 @@ export function getRandomColor() {
     }
 }
 
+/**tests for whether string is contains in any of the given props of the given value */
 export function hasSearch(value: any, str?: string, props?: string[]) {
     if (str == null) {
         return true;
     }
+    
     if (value == null || props == null) {
         return false;
     }

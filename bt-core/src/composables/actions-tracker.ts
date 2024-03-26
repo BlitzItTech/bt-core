@@ -9,17 +9,11 @@ interface LoadingMsg {
     msg: string
 }
 
-type OnFinalAction = () => void
-
 export interface DoActionOptions {
     completionMsg?: string
     confirmationMsg?: string
     errorMsg?: string
-    // finalAction?: OnFinalAction
     loadingMsg?: string
-    /**
-     * Will open a dialog box requesting user confirmation for save action
-     */
     requireConfirmation?: boolean,
     throwError?: boolean
 }
@@ -89,7 +83,7 @@ export function useActionsTracker(useOptions?: DoActionOptions) {
         }
     }
 
-    watchArray(loadingMsgs, (newList) => {
+    watchArray(loadingMsgs, (newList: LoadingMsg[]) => {
         mLoadingMsg.value = newList.length > 0 ? newList[0].msg : undefined
     }, { deep: true })
 
