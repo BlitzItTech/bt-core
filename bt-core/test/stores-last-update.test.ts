@@ -1,6 +1,6 @@
 import { setActivePinia, createPinia } from 'pinia'
-import { useSessionStore, useWholeLastUpdateStore } from '../src/composables/stores'
-import { useApi } from '../src/composables/api'
+import { createSessionStore, createWholeLastUpdateStore } from '../src/composables/stores'
+import { createApi } from '../src/composables/api'
 import { describe, test, expect, beforeEach, afterAll, afterEach, beforeAll } from 'vitest'
 import { setupServer } from 'msw/node'
 import { http, HttpResponse } from 'msw'
@@ -21,7 +21,7 @@ const handlers = [
         })
     }),
     http.post('https://api/post', () => {
-        return HttpResponse.json({ data: { test: 'd' } })
+        return HttpResponse.json({ data: { test: 'd', id: '11' } })
     }),
     http.patch('https://api/patch', () => {
         return HttpResponse.json({ data: { test: 'e', rowVersion: 2 } })
@@ -39,7 +39,7 @@ afterEach(() => {
 })
 
 describe('use last update store no api no caching', () => {
-    const [api, app] = withSetup(() => useApi({
+    const [api, app] = withSetup(() => createApi({
         findPath: () => 'https://api/',
         defaultThrowError: false
     }))
@@ -49,7 +49,7 @@ describe('use last update store no api no caching', () => {
 
     setActivePinia(pinia)
 
-    const store = useWholeLastUpdateStore({
+    const store = createWholeLastUpdateStore({
         api: null,
         storageMode: 'session',
         storeName: 'whole'
@@ -86,7 +86,7 @@ describe('use last update store no api no caching', () => {
 
 
 describe('use last update store with api no caching', () => {
-    const [api, app] = withSetup(() => useApi({
+    const [api, app] = withSetup(() => createApi({
         findPath: () => 'https://api/',
         defaultThrowError: false
     }))
@@ -95,11 +95,12 @@ describe('use last update store with api no caching', () => {
         app.use(pinia)
         setActivePinia(pinia)
 
-    const store = useWholeLastUpdateStore({
+    const store = createWholeLastUpdateStore({
         storageMode: 'session',
         api: api,
         storeName: 'whole-api'
     })()
+
 
     test('get', async () => {
         const res = await store.get<any>({ id: '1' })
@@ -109,15 +110,15 @@ describe('use last update store with api no caching', () => {
         expect(getAll.count).toEqual(2)
     })
 
+
     test('get all', async () => {
         const res = await store.getAll<any>({})
         expect(res).toEqual({
-            data: [{test: 'a' },{test: 'b'}],
+            data: [{test: 'a', id: '1' },{test: 'b', id: '2' }],
             count: 2,
-            filters: ['test', 'test two']
+            filters: []
         })
     })
-
     
     test('post', async () => {
         const res = await store.post<any>({ data: { test: 'a', id: '11' }})
@@ -125,7 +126,7 @@ describe('use last update store with api no caching', () => {
         
         //gets api post return
         let getRes = await store.get<any>({ id: '11' })
-        expect(getRes.data).toEqual({ test: 'b' })
+        expect(getRes.data).toEqual({ test: 'd', id: '11' })
     })
 
     test('patch', async () => {

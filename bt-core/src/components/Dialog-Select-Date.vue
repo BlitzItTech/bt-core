@@ -16,7 +16,7 @@
                         :model-auto="range"
                         :range="range"
                         :time-picker-inline="!range && useTime"
-                        :timezone="timeZone"
+                        :timezone="credentials.timeZone"
                         utc
                         v-bind="$attrs"
                         v-model="date" />
@@ -40,10 +40,8 @@
     import { computed, onMounted, ref } from 'vue'
     import VueDatePicker from '@vuepic/vue-datepicker'
     import '@vuepic/vue-datepicker/dist/main.css'
-    import { useAuthData } from '@/composables/auth'
-    import { type SelectDateProps } from '@/composables/dialogs'
-    
-    
+    import { useAuth } from '../useApi'
+    import { type SelectDateProps } from '../composables/dialogs'
 
     const props = withDefaults(defineProps<SelectDateProps>(), {
         cancelValue: false,
@@ -52,7 +50,7 @@
 
     const emit = defineEmits(['confirm', 'cancel'])
     const date = ref()
-    const { timeZone } = useAuthData()
+    const { credentials } = useAuth()
 
     const canAccept = computed(() => {
         return !props.required || date.value
@@ -70,14 +68,14 @@
         emit('confirm', date.value)
     }
 
-    function maybeAccept(items: any) {
-        // if (!props.multiple) {
-        //     if (isArrayOfLength(items, 1) || (props.canUnselect && !isLengthyArray(items))) {
-        //         show = false
-        //         emit('confirm', getSelectedValues(items))
-        //     }
-        // }
-    }
+    // function maybeAccept(items: any) {
+    //     if (!props.multiple) {
+    //         if (isArrayOfLength(items, 1) || (props.canUnselect && !isLengthyArray(items))) {
+    //             show = false
+    //             emit('confirm', getSelectedValues(items))
+    //         }
+    //     }
+    // }
 
     function cancel() {
         show = false

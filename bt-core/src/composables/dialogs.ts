@@ -1,9 +1,9 @@
 // import { openDialog } from 'vue3-promise-dialog'
 import { createConfirmDialog } from 'vuejs-confirm-dialog'
-import BTConfirmDialog from '@/components/dialogs/BT-Confirm-Dialog.vue'
-import BTSelectDateDialog from '@/components/dialogs/BT-Select-Date-Dialog.vue'
-import BTSelectDialog from '@/components/dialogs/BT-Select-Dialog.vue'
-import BTTextDialog from '@/components/dialogs/BT-Text-Dialog.vue'
+import BTConfirmDialog from '@/components/Dialog-Confirm.vue'
+import BTSelectDateDialog from '@/components/Dialog-Select-Date.vue'
+import BTSelectDialog from '@/components/Dialog-Select.vue'
+import BTTextDialog from '@/components/Dialog-Text.vue'
 import { type ListProps } from '@/composables/list'
 
 export interface ConfirmDialogProps {
@@ -89,7 +89,7 @@ export function useRequireConfirmation(action: any, props: ConfirmDialogProps, r
 }
 
 export async function useConfirmAsync(text: string) {
-    const { data, isCanceled } = await confirmDialog.reveal({ msg: text })
+    const { isCanceled } = await confirmDialog.reveal({ msg: text })
     return !isCanceled
 }
 

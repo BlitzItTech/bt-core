@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest'
 import { withSetup } from './utils'
-import { useLocalDb, useLocalCache } from '../src/composables/forage'
+import { useLocalDb } from '../src/composables/forage'
 
 describe('foraging', () => {
     const [db] = withSetup(() => useLocalDb())

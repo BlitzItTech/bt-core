@@ -1,11 +1,11 @@
 import { isLengthyArray } from '@/composables/helpers';
 import { DateTime } from 'luxon'
 import { type RemovableRef, useStorage } from '@vueuse/core'
-import { useDemo } from '@/composables/demo'
+import { type BTDemo } from '@/composables/demo'
 import { useRouter } from 'vue-router'
 import { toValue } from 'vue'
 
-interface AuthItem {
+export interface AuthItem {
     children?: AuthItem[]
     ignoreSuspension?: boolean
     permissions?: string[]
@@ -13,7 +13,7 @@ interface AuthItem {
     subscriptions?: string[]
 }
 
-interface AuthSubscription {
+export interface AuthSubscription {
     code: string
     value: number
 }
@@ -31,47 +31,66 @@ export interface BaseAuthCredentials {
     userPermissions?: string[]
 }
 
-const state = useStorage<BaseAuthCredentials>('auth-credentials', {})
-let defaultsSet = false
+// const state = useStorage<BaseAuthCredentials>('auth-credentials', {})
+// let defaultsSet = false
 let defaultTimeZone = 'Australia/Melbourne'
 
-export type FindAuthItem = (navName?: string | AuthItem) => AuthItem | undefined
+// export type FindAuthItem = (navName?: string | AuthItem) => AuthItem | undefined
 export type GetAuthUrl = (redirectPath?: string, state?: string) => string
 
-export interface UseAuthOptions<T extends BaseAuthCredentials>{
+export interface CreateAuthOptions {
     defaultTimeZone?: string,
+    demo?: BTDemo,
     /**expiry token date format.  Defaults to 'd/MM/yyyy h:mm:ss a' */
     expiryTokenFormat?: string
     /**retrieve the auth item */
-    getAuthItem: FindAuthItem
+    getAuthItem: (navName?: string | AuthItem) => AuthItem | null
     /**retrieve the url to navigate to for the OAuth 2.0 process */
     getAuthUrl: GetAuthUrl
     /**sets current credentials on top of default function*/
-    setCredentials: (state: RemovableRef<T>, payload: any) => void
+    setCredentials?: (state: RemovableRef<any>, payload: any) => void
     /**suboptions */
     subscriptionOptions?: AuthSubscription[]
 }
 
-/**returns current timezone */
-export function useTimeZone() {
-    return state.value.timeZone ?? defaultTimeZone
+export interface BTAuth {
+    authState: string
+    canEdit: (navName?: string) => boolean
+    canEditPermit: (permit: string) => boolean
+    canView: (navName?: string) => boolean
+    canViewPermit: (permit: string) => boolean
+    credentials: any
+    doShow: (subcodes?: string[], permissions?: string[], action?: 'view' | 'edit') => boolean
+    doShowByNav: (navName?: string | AuthItem, includeChildren?: boolean) => boolean
+    getAuthUrl: (redirectPath?: string) => string
+    getTimeZone: () => string
+    login: (redirectPath?: string) => void
+    logout: (navNameRedirect?: string) => void
+    setAuth: (jwtToken?: string) => void
+    tryLogin: () => boolean | undefined
 }
 
-export function useAuthData() {
-    return state.value
-}
+// /**returns current timezone */
+// export function useTimeZone() {
+//     return state.value.timeZone ?? defaultTimeZone
+// }
 
-export function useAuth<T extends BaseAuthCredentials>(options: UseAuthOptions<T>) {
+// export function useAuthData() {
+//     return state.value
+// }
+
+export function createAuth(options: CreateAuthOptions): BTAuth {
     const router = useRouter()
     const expiryFormat = options.expiryTokenFormat ?? 'd/MM/yyyy h:mm:ss a'
     const authState = useStorage<string>('auth-credentials-state', (Math.random().toString(36).substring(4, 19) + Math.random().toString(12).substring(1, 11)))
+    const state = useStorage<BaseAuthCredentials>('auth-credentials', {})
+    
+    // if (!defaultsSet) {
+    //     setDefaults()
+    //     defaultsSet = true
+    // }
 
-    if (!defaultsSet) {
-        setDefaults()
-        defaultsSet = true
-    }
-
-    const { endDemo, isDemoing } = useDemo()
+    // const { endDemo, isDemoing } = useDemo()
     
     /**can edit if navName is undefined, isGlobalAdmin, not suspended, or user permissions allow editing of this navItem */
     function canEdit(navName?: string): boolean {
@@ -220,9 +239,6 @@ export function useAuth<T extends BaseAuthCredentials>(options: UseAuthOptions<T
         return options.getAuthUrl(redirectPath, authState.value)
     }
 
-    // var path = appendUrl(useUrl('Authentication'), `authorize?response_type=code&client_id=appClient1&redirect_uri=${window.location.origin}/authentication&state=${getAuthState()}`);
-    // return redirectPath ? `${path}&redirect_path=${redirectPath}` : path
-
     /**undefined or unfound is worth 0 */
     function getSubscriptionCodeValue(subCode?: string) {
         if (subCode == null) return 0
@@ -281,7 +297,7 @@ export function useAuth<T extends BaseAuthCredentials>(options: UseAuthOptions<T
         const mState = toValue(state)
 
         if (!mState.isLoggedIn) {
-            endDemo()
+            options.demo?.endDemo()
             if (tokenExpired()) {
                 logout()
                 window.location.href = getAuthUrl(redirectPath) //}response_type=code&client_id=appClient1&redirect_path=${redirectPath}` : getAuthUrl()
@@ -293,13 +309,13 @@ export function useAuth<T extends BaseAuthCredentials>(options: UseAuthOptions<T
     function setAuth(jwtToken?: string) {
         if (jwtToken == null) return
 
-        if (!isDemoing.value) {
+        if (options.demo == null || !options.demo.isDemoing.value) {
             const d = jwtDecrypt(jwtToken)
             
             setDefaultAuth(d)
             
             if (options.setCredentials != null) {
-                options.setCredentials(state as RemovableRef<T>, d)
+                options.setCredentials(state as RemovableRef<any>, d)
             }
         }
     }
@@ -319,6 +335,10 @@ export function useAuth<T extends BaseAuthCredentials>(options: UseAuthOptions<T
 
     function setDefaults() {
         state.value.timeZone ??= (options.defaultTimeZone ?? defaultTimeZone)
+    }
+
+    function getTimeZone() {
+        return state.value.timeZone ?? options.defaultTimeZone ?? defaultTimeZone
     }
 
     /**returns whether or not logged in.  Potentially redirects to OAauth 2.0 process if logged in and expired */
@@ -353,6 +373,7 @@ export function useAuth<T extends BaseAuthCredentials>(options: UseAuthOptions<T
         doShow,
         doShowByNav,
         getAuthUrl,
+        getTimeZone,
         login,
         logout,
         setAuth,

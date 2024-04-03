@@ -69,7 +69,7 @@ export function useResizable(
     const startingPointerPosition: Ref<Position> = ref<Position>({ x: 0, y: 0 })
     let startingElementPosition: ElementPosition = { left: 0, top: 0, height: 0, width: 0, position: 'absolute' }
     let currentElementPosition: ElementPosition = { }
-    let variantMemory: any = {}
+    // let variantMemory: any = {}
 
     function handleEvent(e: PointerOrTouchEvent) {
         if (toValue(preventDefault))

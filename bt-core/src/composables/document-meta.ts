@@ -1,10 +1,13 @@
 import { type RouteLocationNormalized } from 'vue-router'
-import { useDemo } from '@/composables/demo'
+import { BTDemo } from '@/composables/demo'
 import { type Environment } from '@/composables/urls'
 
+export interface UseDocumentMetaOptions {
+    demo?: BTDemo
+}
+
 /**routes with meta object */
-export function useDocumentMeta() {
-    const { isDemoing } = useDemo()
+export function useDocumentMeta(options?: UseDocumentMetaOptions) {
 
     function updateMeta(to: RouteLocationNormalized) {
         const nearestWithTitle = to.matched.slice().reverse().find(r => r.meta && r.meta.title);
@@ -24,7 +27,7 @@ export function useDocumentMeta() {
                 title = 'BlitzIt Web | Cloud-Based Wholesale Logistics Platform'
             }
 
-            if (isDemoing.value)
+            if (options?.demo?.isDemoing.value == true)
                 title = `Training: ${title}`
 
             document.title = title

@@ -19,7 +19,7 @@
   
 <script setup lang="ts">
     import { computed, onMounted, ref } from 'vue';
-    import { type TextDialogProps } from '@/composables/dialogs'
+    import { type TextDialogProps } from '../composables/dialogs'
     
 
     const props = withDefaults(defineProps<TextDialogProps>(), {

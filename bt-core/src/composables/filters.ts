@@ -1,8 +1,16 @@
-import { useDates } from './dates';
 import { getLocationLine, isMinDate } from '@/composables/helpers';
+import { BTDates } from './dates';
 
-export function useFilters() {
-    const { tzString, tzDate, utcString } = useDates()
+export interface BTFilters {
+    findFilter: (mFilter: string | undefined) => Function
+}
+
+export interface UseFiltersOptions {
+    dates: BTDates
+}
+
+export function createFilters(options: UseFiltersOptions): BTFilters {
+    // const { tzString, tzDate, utcString } = useDates()
 
     function toTimeZoneFormat(value?: string, format?: string, placeholder?: string): string {
         if (!value)
@@ -11,7 +19,7 @@ export function useFilters() {
         if (isMinDate(value))
             return placeholder ?? '';
 
-        return tzString(value, format)
+        return options.dates.tzString(value, format)
     }
 
     function toCompanyNameAndLocationLine(value: object | null | any): string {
@@ -113,7 +121,7 @@ export function useFilters() {
     }
 
     function toFormat(val?: string, format?: string) {
-        return utcString(val, format);
+        return options.dates.utcString(val, format);
     }
 
     function toLocationLine(val: any): string {
@@ -194,10 +202,10 @@ export function useFilters() {
         }
 
         if (typeof val == 'number') {
-            return tzDate().startOf('day').plus({ minutes: val }).toFormat('T')
+            return options.dates.tzDate().startOf('day').plus({ minutes: val }).toFormat('T')
         }
         else if (typeof val == 'string') {
-            return tzString(val, 't')
+            return options.dates.tzString(val, 't')
         }
         else {
             return 'unknown';

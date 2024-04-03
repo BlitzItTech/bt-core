@@ -1,6 +1,6 @@
 import { toValue } from 'vue'
 import { appendUrl } from '@/composables/helpers'
-import { useAuthData } from '@/composables/auth'
+import { type BTAuth } from './auth'
 
 export interface QueryParams {
     filterBy?: string,
@@ -53,12 +53,13 @@ export interface PathOptions {
     useLocalCache?: boolean
 }
 
-type FindPath = (navName: string) => string
+type FindPath = (navName?: string) => string | undefined
 // type BuildHeaders = (path: PathOptions) => HeadersInit
 // type BuildQuery = (params: any) => string
 // type BuildUrl = (path: PathOptions) => string
 
 interface UseApiOptions {
+    auth?: BTAuth
     /**overrides the default */
     buildHeaders?: (path: PathOptions) => HeadersInit
     /**build a query.  Overrides the default */
@@ -79,7 +80,8 @@ interface UseApiOptions {
     useBearerToken?: boolean
 }
 
-export interface UseApiReturn {
+export interface BTApi {
+    buildHeaders: (options: PathOptions) => HeadersInit
     buildQuery: (params: any) => string
     buildUrl: (path: PathOptions) => string
     deleteItem: (pathOptions: PathOptions) => Promise<string | undefined>
@@ -89,7 +91,7 @@ export interface UseApiReturn {
     patch: <T>(pathOptions: PathOptions) => Promise<T | undefined>
 }
 
-export function useApi(options?: UseApiOptions) {
+export function createApi(options?: UseApiOptions): BTApi {
     const buildHeaders = options?.buildHeaders ?? defaultBuildHeaders
     const buildQuery = options?.buildQuery ?? defaultBuildQuery
     const buildUrl = options?.buildUrl ?? defaultBuildUrl
@@ -180,12 +182,12 @@ export function useApi(options?: UseApiOptions) {
 
     function defaultBuildHeaders(path: PathOptions): HeadersInit {
         let fetchOptions:any = { ...path.headers }
-        const auth = useAuthData()
+        const auth = options?.auth?.credentials
 
         if (path.proxyID)
             fetchOptions.ManagedCompanyAccountID ??= path.proxyID
 
-        if (options?.useBearerToken != false && auth.isLoggedIn == true)
+        if (options?.useBearerToken != false && auth?.isLoggedIn == true)
             fetchOptions.authorization ??= `bearer ${auth.token}`
         
         fetchOptions['Content-Type'] ??= (path.contentType ?? options?.defaultContentType ?? 'application/json')

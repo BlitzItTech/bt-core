@@ -121,7 +121,7 @@ export interface UseDraggableOptions {
 
         const t = toValue(target)
         if (!t) return
-        const el = t.$el
+        // const el = t.$el
         const isTouch = e.type === 'touchmove' && e.touches.length > 0
         const evtData = isTouch ? e.touches[0] : e
         let dx = evtData.clientX - startingPointerPosition.x

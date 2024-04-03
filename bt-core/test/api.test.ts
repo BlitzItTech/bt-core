@@ -1,5 +1,5 @@
 import { describe, test, expect, afterAll, afterEach, beforeAll } from 'vitest'
-import { useApi } from '../src/composables/api'
+import { createApi } from '../src/composables/api'
 import { setupServer } from 'msw/node'
 import { http, HttpResponse } from 'msw'
 
@@ -40,7 +40,7 @@ afterAll(() => server.close())
 afterEach(() => server.resetHandlers())
 
 describe('default api', () => {
-    const api = useApi({
+    const api = createApi({
         findPath: () => 'https://test-api/',
         defaultThrowError: false
     })

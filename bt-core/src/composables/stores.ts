@@ -1,17 +1,16 @@
-import { defineStore } from 'pinia'
+import { defineStore, StoreDefinition } from 'pinia'
 import { ref, type Ref } from 'vue'
-import { type PathOptions, type UseApiReturn } from '@/composables/api'
+import { type PathOptions, type BTApi } from '@/composables/api'
 import { DateTime } from 'luxon'
 import { toValue } from 'vue'
-import { useAuthData} from '@/composables/auth'
 import { appendUrl, getMinDateString } from '@/composables/helpers'
 import { firstBy } from 'thenby'
 import { useLocalDb } from '@/composables/forage'
 import { BaseModel } from '@/types'
-import { useDates } from '@/composables/dates'
+import { BTAuth } from './auth'
 
-
-export type StoreMode = 'whole-last-updated' | 'partial-last-updated' | 'session' | 'local-cache'
+export type StoreMode = 'whole-last-updated' | 'partial-last-updated' | 'session'
+export type StorageMode = 'session' | 'local-cache'
 
 export interface LocalMeta {
     storedOn: string //days
@@ -37,14 +36,15 @@ export interface StoreGetReturn<T> {
     data: T
 }
 
-export interface UseStoreReturn {
-    getAll: <T>(dOptions: PathOptions) => Promise<StoreGetAllReturn<T>>
-    get: <T>(dOptions: PathOptions) => Promise<StoreGetReturn<T>>
-    patch: <T>(dOptions: PathOptions) => Promise<T | undefined>
-    post: <T>(dOptions: PathOptions) => Promise<T | undefined>
-    deleteItem: <T>(dOPtions: PathOptions) => Promise<T | undefined>
-    restore: <T>(dOptions: PathOptions) => Promise<T | undefined>
-}
+export interface BTStore extends StoreDefinition<any, {}, {},
+{
+    deleteItem: (dOptions: PathOptions) => Promise<string | undefined>
+    get: <T extends BaseModel>(dOptions: PathOptions) => Promise<StoreGetReturn<T>>
+    getAll: <T extends BaseModel>(dOptions: PathOptions) => Promise<StoreGetAllReturn<T>>
+    patch: <T extends BaseModel>(dOptions: PathOptions) => Promise<T | undefined>
+    post: <T extends BaseModel>(dOptions: PathOptions) => Promise<T | undefined>
+    restore: <T extends BaseModel>(dOptions: PathOptions) => Promise<T | undefined>
+}> {}
 
 export interface ApiError {
     message: string
@@ -52,43 +52,63 @@ export interface ApiError {
 
 interface UseStoreOptions {
     /**ideally required. Otherwise will struggle to find url path */
-    api?: UseApiReturn
+    api?: BTApi
+    /**ideally required. For setting unique local storage keys */
+    auth?: BTAuth
     /**build a query.  Overrides the default */
     builderQuery?: (params: any) => string
     /**overrides the default */
     buildUrl?: (path: PathOptions) => string
-    /**particularly what store to use */
-    storeMode: 'whole-last-updated' | 'partial-last-updated' | 'session'
-    storageMode: 'session' | 'local-cache'
+    /**particularly what store syle to use */
+    storeMode: StoreMode
+    /**whether to store data locally or only for the duration of the session */
+    storageMode: StorageMode
     /**the name of this store */
     storeName: string
 }
 
-export function useStore(options: UseStoreOptions) {
+export interface CreateStoreBuilderOptions {
+    /**ideally required. Otherwise will struggle to find url path */
+    api?: BTApi
+    /**ideally required. For setting unique local storage keys */
+    auth?: BTAuth
+    /**build a query.  Overrides the default */
+    builderQuery?: (params: any) => string
+    /**overrides the default */
+    buildUrl?: (path: PathOptions) => string
+}
+
+export interface CreateStoreOptions {
+    /**particularly what store syle to use */
+    storeMode: StoreMode
+    /**whether to store data locally or only for the duration of the session */
+    storageMode: StorageMode
+    /**the name of this store */
+    storeName: string
+}
+
+export function createStoreBuilder(options: CreateStoreBuilderOptions): (opt: CreateStoreOptions) => BTStore {
+    return (opt: CreateStoreOptions) => {
+        return createStore({
+            ...options,
+            ...opt
+        })
+    }
+}
+
+export function createStore(options: UseStoreOptions): BTStore {
     if (options.storeMode == 'whole-last-updated') {
         if (options.api == null) throw new Error('Must supply an api object to use store')
 
-        return useWholeLastUpdateStore({
-            api: options.api,
-            storageMode: options.storageMode,
-            storeName: options.storeName
-        })
+        return createWholeLastUpdateStore(options)
     }
     else if (options.storeMode == 'partial-last-updated') {
         if (options.api == null) throw new Error('Must supply an api object to use store')
 
-        return useWholeLastUpdateStore({
-            api: options.api,
-            storageMode: options.storageMode,
-            storeName: options.storeName
-        })
+        return createWholeLastUpdateStore(options)
     }
     else { //if (options.storeMode == 'session') {
-        return useSessionStore({
-            api: options.api,
-            storageMode: options.storageMode,
-            storeName: options.storeName
-        })
+        return createSessionStore(options)
     }
 }
 
@@ -128,7 +148,10 @@ const defaultPathBuilder = (path: PathOptions) => {
 
 interface UseSessionStoreOptions {
     /**ideally required. Otherwise will struggle to find url path */
-    api?: UseApiReturn
+    api?: BTApi
+    /**ideally required. For setting unique local storage keys */
+    auth?: BTAuth
+    /**whether to store data locally or only for the duration of the session */
     storageMode: 'session' | 'local-cache'
     /**build a query.  Overrides the default */
     buildQuery?: (params: any) => string
@@ -138,7 +161,7 @@ interface UseSessionStoreOptions {
     storeName: string
 }
 
-export function useSessionStore(options: UseSessionStoreOptions) {
+export function createSessionStore(options: UseSessionStoreOptions): BTStore {
     return defineStore(options.storeName, () => {
         const currentTimeStampDays = DateTime.utc().toSeconds() / 86400
         const searchMemory: Ref<any> = ref({})
@@ -146,17 +169,17 @@ export function useSessionStore(options: UseSessionStoreOptions) {
         const cacheLocally = options.storageMode == 'local-cache'
         
         const buildPath = options.buildUrl ?? options.api?.buildUrl ?? defaultPathBuilder
-        const authData = useAuthData()
+        // const authData = useAuthData()
         
         function getKey(dOptions: PathOptions) {
-            return `${options.storeName}_${authData.userID ?? 'no-user-id'}_${dOptions.id ?? dOptions.data?.id ?? 'no-item-id'}`
+            return `${options.storeName}_${options.auth?.credentials.userID ?? 'no-user-id'}_${dOptions.id ?? dOptions.data?.id ?? 'no-item-id'}`
         }
 
-        async function getAll<T>(dOptions: PathOptions): Promise<StoreGetAllReturn<T>> {
+        async function getAll<T extends BaseModel>(dOptions: PathOptions): Promise<StoreGetAllReturn<T>> {
             dOptions.additionalUrl ??= '/getAll'
             
             const path = buildPath(dOptions)
-            const key = `${options.storeName}_${authData.userID ?? 'no-user-id'}_${path}`
+            const key = `${options.storeName}_${options.auth?.credentials.userID ?? 'no-user-id'}_${path}`
             const refresh = dOptions.refresh
 
             if (!refresh && searchMemory.value[key] !== undefined)
@@ -218,7 +241,7 @@ export function useSessionStore(options: UseSessionStoreOptions) {
             }
         }
 
-        async function get<T>(dOptions: PathOptions): Promise<StoreGetReturn<T>> {
+        async function get<T extends BaseModel>(dOptions: PathOptions): Promise<StoreGetReturn<T>> {
             dOptions.additionalUrl ??= '/get'
             
             const key = getKey(dOptions)
@@ -282,7 +305,7 @@ export function useSessionStore(options: UseSessionStoreOptions) {
             }
         }
 
-        async function patch<T>(dOptions: PathOptions): Promise<T | undefined> {
+        async function patch<T extends BaseModel>(dOptions: PathOptions): Promise<T | undefined> {
             dOptions.additionalUrl ??= '/patch'
             
             const key = getKey(dOptions)
@@ -348,7 +371,7 @@ export function useSessionStore(options: UseSessionStoreOptions) {
             return patchedObject
         }
 
-        async function post<T>(dOptions: PathOptions): Promise<T | undefined> {
+        async function post<T extends BaseModel>(dOptions: PathOptions): Promise<T | undefined> {
             dOptions.additionalUrl ??= '/post'
             
             const key = getKey(dOptions)
@@ -411,7 +434,7 @@ export function useSessionStore(options: UseSessionStoreOptions) {
             return undefined
         }
 
-        async function restore<T>(dOptions: PathOptions): Promise<T | undefined> {
+        async function restore<T extends BaseModel>(dOptions: PathOptions): Promise<T | undefined> {
             dOptions.additionalUrl ??= `/patch/restore?id=${dOptions.data.id}`
             
             buildPath(dOptions)
@@ -446,12 +469,14 @@ export function useSessionStore(options: UseSessionStoreOptions) {
 
 interface UseWholeLastUpdateStoreOptions {
     /**ideally required. Otherwise will struggle to find url path */
-    api: UseApiReturn
+    api?: BTApi
+    /**ideally required. For setting unique local storage keys */
+    auth?: BTAuth
     storageMode: 'session' | 'local-cache'
     storeName: string
 }
 
-export function useWholeLastUpdateStore(options: UseWholeLastUpdateStoreOptions) {
+export function createWholeLastUpdateStore(options: UseWholeLastUpdateStoreOptions): BTStore {
     return defineStore(options.storeName, () => {
         const dataItems: Ref<any[] | undefined> = ref()
         const count = ref(0)
@@ -459,12 +484,10 @@ export function useWholeLastUpdateStore(options: UseWholeLastUpdateStoreOptions)
         const filters: Ref<string[] | undefined> = ref()
         const meta: Ref<LocalMeta | undefined> = ref()
         const promiseMemory: Ref<any> = ref({})
-        const { utcString } = useDates()
-        const authData = useAuthData()
         const cacheLocally = options.storageMode == 'local-cache'
         
         function getKey() {
-            return `${options.storeName}_${authData.userID ?? 'no-user-id'}`
+            return `${options.storeName}_${options.auth?.credentials.userID ?? 'no-user-id'}`
         }
 
         async function trySaveToLocalCache() {
@@ -495,25 +518,30 @@ export function useWholeLastUpdateStore(options: UseWholeLastUpdateStoreOptions)
                         }
                     })
 
-                    //update
-                    dataItems.value ??= []
-                    res.data.forEach(serverItem => {
-                        const existingInd = dataItems.value!.findIndex(x => x.id == serverItem.id)
-                        if (existingInd >= 0)
-                            dataItems.value?.splice(existingInd, 1, serverItem)
-                        else
-                            dataItems.value?.push(serverItem)
-                    })
-
-                    count.value = dataItems.value.length
-                    meta.value = {
-                        lastUpdate: utcString(),
-                        storedOn: currentTimeStampHours.toString()
+                    if (res == null) {
+                        reject(res)
                     }
-                    
-                    await trySaveToLocalCache()
-                    
-                    resolve(res)
+                    else {
+                        //update
+                        dataItems.value ??= []
+                        res.data.forEach(serverItem => {
+                            const existingInd = dataItems.value!.findIndex(x => x.id == serverItem.id)
+                            if (existingInd >= 0)
+                                dataItems.value?.splice(existingInd, 1, serverItem)
+                            else
+                                dataItems.value?.push(serverItem)
+                        })
+
+                        count.value = dataItems.value.length
+                        meta.value = {
+                            lastUpdate: DateTime.utc().toString(),
+                            storedOn: currentTimeStampHours.toString()
+                        }
+
+                        await trySaveToLocalCache()
+
+                        resolve(res)
+                    }
                 }
                 catch (err) {
                     reject(err)
@@ -530,12 +558,13 @@ export function useWholeLastUpdateStore(options: UseWholeLastUpdateStoreOptions)
         async function getAll<T extends BaseModel>(dOptions: PathOptions): Promise<StoreGetAllReturn<T>> {
             const key = getKey()
             const refresh = dOptions.refresh
+            dOptions.nav ??= options.storeName
 
             if (!refresh && dataItems.value != null) {
                 return {
                     count: dataItems.value?.length,
                     data: dataItems.value,
-                    filters: filters.value
+                    filters: []
                 }
             }
 
@@ -553,7 +582,7 @@ export function useWholeLastUpdateStore(options: UseWholeLastUpdateStoreOptions)
                     return {
                         count: dataItems.value?.length,
                         data: dataItems.value,
-                        filters: filters.value
+                        filters: []
                     }
                 }
             }
@@ -582,6 +611,7 @@ export function useWholeLastUpdateStore(options: UseWholeLastUpdateStoreOptions)
         async function get<T extends BaseModel>(dOptions: PathOptions): Promise<StoreGetReturn<T>> {
             const key = getKey()
             const refresh = dOptions.refresh
+            dOptions.nav ??= options.storeName
 
             if (!refresh && dataItems.value != null) {
                 return {
@@ -629,6 +659,7 @@ export function useWholeLastUpdateStore(options: UseWholeLastUpdateStoreOptions)
 
         async function patch<T extends BaseModel>(dOptions: PathOptions): Promise<T | undefined> {
             dOptions.additionalUrl ??= '/patch'
+            dOptions.nav ??= options.storeName
             
             let patchedObject: any
 
@@ -662,6 +693,7 @@ export function useWholeLastUpdateStore(options: UseWholeLastUpdateStoreOptions)
 
         async function post<T extends BaseModel>(dOptions: PathOptions): Promise<T | undefined> {
             dOptions.additionalUrl ??= '/post'
+            dOptions.nav ??= options.storeName
             
             let postedObject: any
 
@@ -693,6 +725,7 @@ export function useWholeLastUpdateStore(options: UseWholeLastUpdateStoreOptions)
 
         async function deleteItem(dOptions: PathOptions): Promise<string | undefined> {
             dOptions.additionalUrl ??= '/delete'
+            dOptions.nav ??= options.storeName
 
             //delete api
             if (options.api != null) {
@@ -723,6 +756,7 @@ export function useWholeLastUpdateStore(options: UseWholeLastUpdateStoreOptions)
 
         async function restore<T extends BaseModel>(dOptions: PathOptions): Promise<T | undefined> {
             dOptions.additionalUrl ??= `/patch/restore?id=${dOptions.data.id}`
+            dOptions.nav ??= options.storeName
             
             //patch api
             if (options.api != null) {

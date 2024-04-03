@@ -1,8 +1,13 @@
-import { ref } from 'vue'
+import { ref, type Ref } from 'vue'
 
-const isDemoing = ref(false)
+export interface BTDemo {
+    endDemo: () => void
+    isDemoing: Ref<boolean>
+    startDemo: () => void
+}
 
-export function useDemo() {
+export function createDemo(): BTDemo {
+    const isDemoing = ref(false)
 
     function startDemo() {
 

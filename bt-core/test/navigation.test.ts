@@ -1,8 +1,8 @@
-import { useNavigation } from '../src/composables/navigation'
+import { createNavigation } from '../src/composables/navigation'
 import { describe, expect, test } from 'vitest'
 
 describe("navigation", () => {
-    const nav = useNavigation({
+    const nav = createNavigation({
         defaultCacheExpiryHours: 3,
         navItems: [
             {

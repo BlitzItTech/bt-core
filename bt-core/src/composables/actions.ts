@@ -1,8 +1,8 @@
 import type { BladeMode } from '@/types'
-import { useStore } from '@/composables/stores'
-import { type PathOptions } from '@/composables/api'
-import { useApi } from '@/composables/api'
+import { BTStore } from '@/composables/stores'
+import { BTApi, type PathOptions } from '@/composables/api'
 import { useActionsTracker, type DoActionOptions } from '@/composables/actions-tracker'
+import { ShallowRef, ComputedRef } from 'vue'
 
 export type OnCanDoAsync = (item: any) => Promise<string | undefined>
 export type OnDoAsync = (item: any) => Promise<string | undefined>
@@ -10,12 +10,12 @@ export type OnDoSuccessAsync = (item: any) => Promise<any>
 export type OnGetAsync = (opt?: GetOptions) => Promise<any>
 export type OnGetSuccessAsync = (item: any, opt?: GetOptions) => Promise<any>
 
-
 export interface GetOptions extends PathOptions, DoActionOptions {
     /**returns an error msg if failed */
     onGetAsync?: OnGetAsync
     /**called after get occurs successfully */
     onGetSuccessAsync?: OnGetSuccessAsync
+    store?: BTStore
 }
 
 export interface DeleteOptions extends PathOptions, DoActionOptions {
@@ -25,6 +25,7 @@ export interface DeleteOptions extends PathOptions, DoActionOptions {
     onDeleteAsync?: OnDoAsync
     /**Will open a dialog box requesting user confirmation for delete action */
     onDeleteSuccessAsync?: OnDoAsync
+    store?: BTStore
 }
 
 export interface RestoreOptions extends PathOptions, DoActionOptions {
@@ -34,6 +35,7 @@ export interface RestoreOptions extends PathOptions, DoActionOptions {
     onRestoreAsync?: OnDoSuccessAsync
     /**Called after restore succeeds */
     onRestoreSuccessAsync?: OnDoSuccessAsync
+    store?: BTStore
 }
 
 export interface SaveOptions extends PathOptions, DoActionOptions {
@@ -50,19 +52,39 @@ export interface SaveOptions extends PathOptions, DoActionOptions {
     onSaveAsync?: OnDoSuccessAsync
     /**Called after save succeeds */
     onSaveSuccessAsync?: OnDoSuccessAsync
+    store?: BTStore
 }
 
-export interface ApiActionOptions extends PathOptions, DoActionOptions {}
+export interface ApiActionOptions extends PathOptions, DoActionOptions {
+    api: BTApi
+}
 
 export interface UseActionsOptions extends DoActionOptions {
     nav?: string
     proxyID?: string
     refresh?: boolean
+    store?: BTStore
     throwError?: boolean
     url?: string
 }
 
-export function useActions(options?: UseActionsOptions) {
+export interface BTActions {
+    apiGet: (doOptions: ApiActionOptions) => Promise<any>
+    apiPost: (doOptions: ApiActionOptions) => Promise<any>
+    actionLoadingMsg: ShallowRef<string | undefined>
+    actionErrorMsg: ShallowRef<string | undefined>
+    clearErrors: () => void
+    deleteItem: (doOptions: DeleteOptions) => Promise<any>
+    doAction: (action: any, options?: DoActionOptions) => Promise<any>
+    getAllItems: (doOptions: GetOptions) => Promise<any>
+    getItem: (doOptions: GetOptions) => Promise<any>
+    isLoading: ComputedRef<boolean>
+    logError: (err?: string | Error) => void
+    restoreItem: (doOptions: RestoreOptions) => Promise<any>
+    saveItem: (doOptions: SaveOptions) => Promise<any>
+}
+
+export function useActions(options?: UseActionsOptions): BTActions {
     const { actionErrorMsg, actionLoadingMsg, clearErrors, isLoading, doAction, logError } = useActionsTracker(options)
 
     function deleteItem(doOptions: DeleteOptions) {
@@ -72,11 +94,12 @@ export function useActions(options?: UseActionsOptions) {
         doOptions.throwError ??= options?.throwError
         doOptions.url ??= options?.url
         doOptions.confirmationMsg ??= doOptions.requireConfirmation === true ? 'Are you sure you want to delete this item?' : undefined
+        doOptions.store ??= options?.store
+        const store = doOptions?.store ?? options?.store
 
-        if (doOptions.nav != null) {
+        if (doOptions.nav != null && store != null) {
             doOptions.onDeleteAsync ??= () => {
-                const store = useStore(doOptions.nav)()
-                return store.deleteItem(doOptions)
+                return store().deleteItem(doOptions)
             }
         }
 
@@ -111,11 +134,11 @@ export function useActions(options?: UseActionsOptions) {
         doOptions.throwError ??= options?.throwError
         doOptions.url ??= options?.url
         doOptions.confirmationMsg ??= doOptions.requireConfirmation === true ? 'Are you sure you want to get this item?' : undefined
+        const store = doOptions?.store ?? options?.store
 
-        if (doOptions.nav != null) {
+        if (doOptions.nav != null && store != null) {
             doOptions.onGetAsync ??= () => {
-                const store = useStore(doOptions.nav)()
-                return store.get(doOptions)
+                return store().get(doOptions)
             }
         }
 
@@ -148,11 +171,11 @@ export function useActions(options?: UseActionsOptions) {
         doOptions.throwError ??= options?.throwError
         doOptions.url ??= options?.url
         doOptions.confirmationMsg ??= doOptions.requireConfirmation === true ? 'Are you sure you want to get these items?' : undefined
+        const store = doOptions?.store ?? options?.store
 
-        if (doOptions.nav != null) {
+        if (doOptions.nav != null && store != null) {
             doOptions.onGetAsync ??= () => {
-                const store = useStore(doOptions.nav)()
-                return store.getAll(doOptions)
+                return store().getAll(doOptions)
             }
         }
 
@@ -184,11 +207,11 @@ export function useActions(options?: UseActionsOptions) {
         doOptions.throwError ??= options?.throwError
         doOptions.url ??= options?.url
         doOptions.confirmationMsg ??= doOptions.requireConfirmation === true ? 'Are you sure you want to restore this item?' : undefined
+        const store = doOptions?.store ?? options?.store
 
-        if (doOptions.nav != null) {
+        if (doOptions.nav != null && store != null) {
             doOptions.onRestoreAsync ??= () => {
-                const store = useStore(doOptions.nav!)()
-                return store.restore(doOptions)
+                return store().restore(doOptions)
             }
         }
         
@@ -225,19 +248,18 @@ export function useActions(options?: UseActionsOptions) {
         doOptions.throwError ??= options?.throwError
         doOptions.url ??= options?.url
         doOptions.confirmationMsg ??= doOptions.requireConfirmation === true ? 'Are you sure you want to save this item?' : undefined
+        const store = doOptions?.store ?? options?.store
 
         doOptions.onGetSaveAsync ??= (item: any) => item
         doOptions.onCanSaveAsync ??= () => Promise.resolve(undefined)
 
-        if (doOptions.nav != null) {
-            doOptions.onSaveAsync ??= async (item: any) => {
-                const store = useStore(doOptions.nav)()
-
+        if (doOptions.nav != null && store != null) {
+            doOptions.onSaveAsync ??= async () => { //item: any
                 if (doOptions.mode == 'new') {
-                    return await store.post(doOptions)
+                    return await store().post(doOptions)
                 }
                 else {
-                    return await store.patch(doOptions)
+                    return await store().patch(doOptions)
                 }
             }
         }
@@ -290,10 +312,9 @@ export function useActions(options?: UseActionsOptions) {
         doOptions.refresh ??= options?.refresh
         doOptions.throwError ??= options?.throwError
         doOptions.url ??= options?.url
-
-        const api = useApi()
+        
         return doAction(async () => {
-            return await api.post(doOptions)
+            return await doOptions.api.post(doOptions)
         }, options)
     }
 
@@ -307,9 +328,8 @@ export function useActions(options?: UseActionsOptions) {
         doOptions.throwError ??= options?.throwError
         doOptions.url ??= options?.url
 
-        const api = useApi()
         return doAction(async () => {
-            return await api.get(doOptions)
+            return await doOptions.api.get(doOptions)
         }, options)
     }
 

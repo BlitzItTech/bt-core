@@ -2,6 +2,7 @@
 import { useUrl } from '@/composables/urls'
 import { appendUrl, deepSelect } from '@/composables/helpers'
 import { ref, type Ref } from 'vue'
+import { type AuthItem } from './auth'
 
 export interface ExternalParty {
     party?: string
@@ -21,7 +22,7 @@ export interface ExternalNavigation {
     syncIDPath?: string
 }
 
-export interface NavigationItem {
+export interface NavigationItem extends AuthItem {
     /**aliases are other names that could use this navigation item's set of permissions, etc.*/
     aliases?: string[]
     /**potentially the nav that leads to the archive */
@@ -76,12 +77,29 @@ const backgroundName: Ref<string | undefined> = ref()
 const hesitate = ref(false)
 let removeHesitateListener: any = null
 
+export interface BTNavigation {
+    showAppBar: Ref<boolean>
+    showAppNavigation: Ref<boolean>
+    backgroundName: Ref<string | undefined>
+    hesitate: Ref<boolean>
+    navigationItems: NavigationItem[],
+    findArchiveName: (navName?: string) => string | undefined
+    findCacheHours: (navName?: string) => number
+    findDisplay: (navName?: string) => string | undefined
+    findIcon: (navName?: string) => string | undefined
+    findItem: (navName?: string | NavigationItem) => NavigationItem | null
+    findStoreName: (navName?: string) => string
+    findPath: (navName?: string) => string | undefined
+    findSingleDisplay: (navName?: string) => string | undefined
+    updateNavigationProperties: (navName?: string | NavigationItem) => void
+}
+
 interface UseNavigationOptions {
     defaultCacheExpiryHours?: number
     navItems?: NavigationItem[]
 }
 
-export function useNavigation(options: UseNavigationOptions) {
+export function createNavigation(options: UseNavigationOptions): BTNavigation {
     const cacheExpiryHours = options.defaultCacheExpiryHours ?? 7
     const navigationList = options.navItems ?? []
 

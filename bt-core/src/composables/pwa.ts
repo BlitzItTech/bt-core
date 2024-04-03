@@ -15,7 +15,15 @@ const canUpdateApp = ref(false)
 const prompt: Ref<any> = ref()
 const sWorker: Ref<any> = ref()
 
-export function usePWA() {
+export interface BTPWA {
+    canInstallApp: Ref<boolean>
+    canUpdateApp: Ref<boolean>
+    installApp: () => void
+    isInstalled: () => boolean
+    updateApp: () => void
+}
+
+export function createPWA(): BTPWA {
 
     function notifyUpdateAvailable(e: any) {
         sWorker.value = e.detail

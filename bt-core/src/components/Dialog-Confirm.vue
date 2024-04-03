@@ -15,10 +15,9 @@
 </template>
   
 <script setup lang="ts">
-import { onMounted } from 'vue';
-    import { type ConfirmDialogProps } from '@/composables/dialogs'
+    import { onMounted } from 'vue';
+    import { type ConfirmDialogProps } from '../composables/dialogs'
     
-
     const props = withDefaults(defineProps<ConfirmDialogProps>(), {
         cancelValue: false,
         confirmValue: true,

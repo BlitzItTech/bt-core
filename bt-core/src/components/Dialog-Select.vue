@@ -24,7 +24,7 @@
                         :height="height"
                         :select-strategy="multiple ? 'independent' : 'single-independent'"
                         @update:selected="maybeAccept">
-                        <template v-for="(fItem, index) in ui.filteredItems.value" :key="index">
+                        <template v-for="(fItem) in ui.filteredItems.value" :key="index">
                             <v-list-item :value="fItem">
                                 <slot v-bind:item="fItem">
                                     <v-list-item-title v-if="itemText != null || textFilter != null || textFunction != null">
@@ -64,12 +64,11 @@
   
 <script setup lang="ts">
     import { computed, onMounted, ref } from 'vue';
-    import { isLengthyArray, isArrayOfLength, nestedValue } from '@/composables/helpers'
-    import { useFilters } from '@/composables/filters'
-    import { useListProps } from '@/composables/list';
-    import { type SelectDialogProps } from '@/composables/dialogs'
+    import { isLengthyArray, isArrayOfLength, nestedValue } from '../composables/helpers'
+    import { useFilters } from '../index'
+    import { useList } from '../composables/list';
+    import { type SelectDialogProps } from '../composables/dialogs'
     
-
     const props = withDefaults(defineProps<SelectDialogProps>(), {
         cancelValue: false,
         height: '400',
@@ -78,7 +77,7 @@
 
     const emit = defineEmits(['confirm', 'cancel'])
 
-    const ui = useListProps(props)
+    const ui = useList(props)
     const filters = useFilters()
     const selection = ref([])
 
