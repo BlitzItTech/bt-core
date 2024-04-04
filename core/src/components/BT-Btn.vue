@@ -9,7 +9,7 @@
 
 <script setup lang="ts">
     import { computed, inject, ref } from 'vue'
-    import { usePresets } from '../useApi'
+    import { usePresets } from '../composables/presets'
     
     interface BtnProps {
         icon?: string

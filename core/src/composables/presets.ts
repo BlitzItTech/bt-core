@@ -6,6 +6,12 @@ export interface CreatePresetsOptions {
     presets: any
 }
 
+let current: BTPresets
+
+export function usePresets(preset?: string): any {
+    return current.usePresets(preset)
+}
+
 export function createPresets(options: CreatePresetsOptions): BTPresets {
     
     function usePresets(preset?: string): any {
@@ -14,7 +20,9 @@ export function createPresets(options: CreatePresetsOptions): BTPresets {
         return options.presets[mPreset] ?? {}
     }
 
-    return {
+    current = {
         usePresets
     }
+
+    return current
 }

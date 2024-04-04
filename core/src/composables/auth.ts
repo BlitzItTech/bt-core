@@ -31,11 +31,8 @@ export interface BaseAuthCredentials {
     userPermissions?: string[]
 }
 
-// const state = useStorage<BaseAuthCredentials>('auth-credentials', {})
-// let defaultsSet = false
 let defaultTimeZone = 'Australia/Melbourne'
 
-// export type FindAuthItem = (navName?: string | AuthItem) => AuthItem | undefined
 export type GetAuthUrl = (redirectPath?: string, state?: string) => string
 
 export interface CreateAuthOptions {
@@ -70,28 +67,17 @@ export interface BTAuth {
     tryLogin: () => boolean | undefined
 }
 
-// /**returns current timezone */
-// export function useTimeZone() {
-//     return state.value.timeZone ?? defaultTimeZone
-// }
+let current: BTAuth
 
-// export function useAuthData() {
-//     return state.value
-// }
+export function useAuth(): BTAuth {
+    return current
+}
 
 export function createAuth(options: CreateAuthOptions): BTAuth {
-    const router = useRouter()
     const expiryFormat = options.expiryTokenFormat ?? 'd/MM/yyyy h:mm:ss a'
     const authState = useStorage<string>('auth-credentials-state', (Math.random().toString(36).substring(4, 19) + Math.random().toString(12).substring(1, 11)))
     const state = useStorage<BaseAuthCredentials>('auth-credentials', {})
-    
-    // if (!defaultsSet) {
-    //     setDefaults()
-    //     defaultsSet = true
-    // }
 
-    // const { endDemo, isDemoing } = useDemo()
-    
     /**can edit if navName is undefined, isGlobalAdmin, not suspended, or user permissions allow editing of this navItem */
     function canEdit(navName?: string): boolean {
         if (navName == null) return true
@@ -286,6 +272,7 @@ export function createAuth(options: CreateAuthOptions): BTAuth {
 
         //maybe redirect
         if (navNameRedirect != null) {
+            const router = useRouter()
             if (router.currentRoute.value.name != navNameRedirect) {
                 router.push({ name: navNameRedirect })
             }
@@ -363,7 +350,7 @@ export function createAuth(options: CreateAuthOptions): BTAuth {
         return e1 <= e2
     }
 
-    return {
+    current = {
         authState: authState.value,
         canEdit,
         canEditPermit,
@@ -379,4 +366,6 @@ export function createAuth(options: CreateAuthOptions): BTAuth {
         setAuth,
         tryLogin
     }
+
+    return current
 }

@@ -7,7 +7,7 @@ import { computed, ref, onMounted, toValue, shallowRef, MaybeRefOrGetter, watch 
 import { useRoute, useRouter } from 'vue-router'
 import { useArrayDifference, useArrayUnique, watchArray, watchDebounced } from '@vueuse/core'
 import { useActions } from '../composables/actions'
-import { StorageMode, StoreMode, useStore } from '../index'
+import { StorageMode, StoreMode, useStoreDefinition } from '../index'
 
 export interface RefreshOptions {
     deepRefresh?: boolean,
@@ -16,6 +16,7 @@ export interface RefreshOptions {
 
 export interface TableColumn {
     align?: 'start' | 'end' | 'center'
+    bool?: number
     csv?: boolean,
     csvArray?: boolean,
     csvFilter?: string,
@@ -25,8 +26,10 @@ export interface TableColumn {
     level?: number
     maxWidth?: string
     minWidth?: string
+    nav?: string
     prefix?: string
     searchable?: boolean
+    single?: boolean
     sublevel?: number,
     suffix?: string
     textFilter?: string
@@ -205,7 +208,7 @@ export function useList(props: ListProps, emit?: ListEvents, options?: UseListOp
     const { actionErrorMsg, actionLoadingMsg, deleteItem, doAction, getItem, getAllItems, restoreItem } = useActions({
         nav: props.nav ?? props.bladeName ?? props.itemBladeName,
         proxyID: proxyID.value,
-        store: useStore()({
+        store: useStoreDefinition({
             storeMode: storeMode,
             storageMode: storageMode,
             storeName: nav

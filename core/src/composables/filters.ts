@@ -9,6 +9,12 @@ export interface UseFiltersOptions {
     dates: BTDates
 }
 
+let current: BTFilters
+
+export function useFilters(): BTFilters {
+    return current
+}
+
 export function createFilters(options: UseFiltersOptions): BTFilters {
     // const { tzString, tzDate, utcString } = useDates()
 
@@ -247,10 +253,12 @@ export function createFilters(options: UseFiltersOptions): BTFilters {
         return (v: any) => v
     }
 
-    return {
+    current = {
         findFilter,
         ...e
     }
+
+    return current
 }
 
 export type Textfilter = 'toLocationLine' | 'toLocationLineNoCommas' | 'toLongDate' | 'toLongDateAndTime' | 'toPercent' | 'toPrettyCSV' | 'toShortDate' | 'toShortDateAndTime' | 'toTime' | 'toTimeOfDay' | 'toCompanyNameAndLocationLine' | 'toCurrency' | 'toDayDate' | 'toDayMonth' | 'toDayOfWeek' | 'toDayShortDate' | 'toDayShortDateAndTime' | 'toDisplayNumber' | 'toDisplayNumberOver' | 'toDisplayNumberSigned' | 'toFormat'

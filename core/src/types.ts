@@ -6,7 +6,11 @@
  */
 export type BladeVariant = 'page' | 'blade' | 'freestyle' | 'inline' | 'pane'
 
+export type BladeDensity = 'default' | 'comfortable' | 'compact'
+
 export type BladeMode = 'new' | 'view' | 'edit'
+
+export type FieldVariant = 'underlined' | 'outlined' | 'filled' | 'solo' | 'solo-inverted' | 'solo-filled' | 'plain'
 
 export interface BaseModel {
     id?: string

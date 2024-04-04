@@ -1,4 +1,4 @@
-import { defineStore, StoreDefinition } from 'pinia'
+import { defineStore, Store, StoreDefinition } from 'pinia'
 import { ref, type Ref } from 'vue'
 import { type PathOptions, type BTApi } from '../composables/api'
 import { DateTime } from 'luxon'
@@ -36,8 +36,17 @@ export interface StoreGetReturn<T> {
     data: T
 }
 
-export interface BTStore extends StoreDefinition<any, {}, {},
+export interface BTStoreDefinition extends StoreDefinition<any, {}, {},
 {
+    deleteItem: (dOptions: PathOptions) => Promise<string | undefined>
+    get: <T extends BaseModel>(dOptions: PathOptions) => Promise<StoreGetReturn<T>>
+    getAll: <T extends BaseModel>(dOptions: PathOptions) => Promise<StoreGetAllReturn<T>>
+    patch: <T extends BaseModel>(dOptions: PathOptions) => Promise<T | undefined>
+    post: <T extends BaseModel>(dOptions: PathOptions) => Promise<T | undefined>
+    restore: <T extends BaseModel>(dOptions: PathOptions) => Promise<T | undefined>
+}> {}
+
+export interface BTStore extends Store<any, {}, {}, {
     deleteItem: (dOptions: PathOptions) => Promise<string | undefined>
     get: <T extends BaseModel>(dOptions: PathOptions) => Promise<StoreGetReturn<T>>
     getAll: <T extends BaseModel>(dOptions: PathOptions) => Promise<StoreGetAllReturn<T>>
@@ -87,28 +96,40 @@ export interface CreateStoreOptions {
     storeName: string
 }
 
-export function createStoreBuilder(options: CreateStoreBuilderOptions): (opt: CreateStoreOptions) => BTStore {
-    return (opt: CreateStoreOptions) => {
-        return createStore({
+let currentBuilder: (opt: CreateStoreOptions) => BTStoreDefinition
+
+export function useStore(options: CreateStoreOptions): BTStore {
+    return currentBuilder(options)()
+}
+
+export function useStoreDefinition(options: CreateStoreOptions): BTStoreDefinition {
+    return currentBuilder(options)
+}
+
+export function createStoreBuilder(options: CreateStoreBuilderOptions): (opt: CreateStoreOptions) => BTStoreDefinition {
+    currentBuilder = (opt: CreateStoreOptions) => {
+        return createStoreDefinition({
             ...options,
             ...opt
         })
     }
+
+    return currentBuilder
 }
 
-export function createStore(options: UseStoreOptions): BTStore {
+export function createStoreDefinition(options: UseStoreOptions): BTStoreDefinition {
     if (options.storeMode == 'whole-last-updated') {
         if (options.api == null) throw new Error('Must supply an api object to use store')
 
-        return createWholeLastUpdateStore(options)
+        return createWholeLastUpdateStoreDefinition(options)
     }
     else if (options.storeMode == 'partial-last-updated') {
         if (options.api == null) throw new Error('Must supply an api object to use store')
 
-        return createWholeLastUpdateStore(options)
+        return createWholeLastUpdateStoreDefinition(options)
     }
     else { //if (options.storeMode == 'session') {
-        return createSessionStore(options)
+        return createSessionStoreDefinition(options)
     }
 }
 
@@ -161,7 +182,7 @@ interface UseSessionStoreOptions {
     storeName: string
 }
 
-export function createSessionStore(options: UseSessionStoreOptions): BTStore {
+export function createSessionStoreDefinition(options: UseSessionStoreOptions): BTStoreDefinition {
     return defineStore(options.storeName, () => {
         const currentTimeStampDays = DateTime.utc().toSeconds() / 86400
         const searchMemory: Ref<any> = ref({})
@@ -476,7 +497,7 @@ interface UseWholeLastUpdateStoreOptions {
     storeName: string
 }
 
-export function createWholeLastUpdateStore(options: UseWholeLastUpdateStoreOptions): BTStore {
+export function createWholeLastUpdateStoreDefinition(options: UseWholeLastUpdateStoreOptions): BTStoreDefinition {
     return defineStore(options.storeName, () => {
         const dataItems: Ref<any[] | undefined> = ref()
         const count = ref(0)

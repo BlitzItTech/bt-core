@@ -91,6 +91,12 @@ export interface BTApi {
     patch: <T>(pathOptions: PathOptions) => Promise<T | undefined>
 }
 
+let current: BTApi
+
+export function useApi(): BTApi {
+    return current
+}
+
 export function createApi(options?: UseApiOptions): BTApi {
     const buildHeaders = options?.buildHeaders ?? defaultBuildHeaders
     const buildQuery = options?.buildQuery ?? defaultBuildQuery
@@ -458,7 +464,7 @@ export function createApi(options?: UseApiOptions): BTApi {
         }
     }
 
-    return {
+    current = {
         buildHeaders,
         buildQuery,
         buildUrl,
@@ -468,4 +474,6 @@ export function createApi(options?: UseApiOptions): BTApi {
         patch,
         post
     }
+
+    return current
 }

@@ -23,6 +23,12 @@ export interface BTPWA {
     updateApp: () => void
 }
 
+let current: BTPWA
+
+export function usePWA(): BTPWA {
+    return current
+}
+
 export function createPWA(): BTPWA {
 
     function notifyUpdateAvailable(e: any) {
@@ -79,11 +85,13 @@ export function createPWA(): BTPWA {
             promptListener = window.addEventListener('beforeinstallprompt', storePrompt)
     })
 
-    return {
+    current = {
         canInstallApp,
         canUpdateApp,
         installApp,
         isInstalled,
         updateApp
     }
+
+    return current
 }

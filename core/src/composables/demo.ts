@@ -6,6 +6,12 @@ export interface BTDemo {
     startDemo: () => void
 }
 
+let current: BTDemo
+
+export function useDemo(): BTDemo {
+    return current
+}
+
 export function createDemo(): BTDemo {
     const isDemoing = ref(false)
 
@@ -17,9 +23,11 @@ export function createDemo(): BTDemo {
 
     }
 
-    return {
+    current = {
         endDemo,
         isDemoing,
         startDemo
     }
+
+    return current
 }

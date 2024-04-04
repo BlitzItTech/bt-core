@@ -1,5 +1,5 @@
 import type { BladeMode } from '../types'
-import { BTStore } from '../composables/stores'
+import { BTStoreDefinition } from '../composables/stores'
 import { BTApi, type PathOptions } from '../composables/api'
 import { useActionsTracker, type DoActionOptions } from '../composables/actions-tracker'
 import { ShallowRef, ComputedRef } from 'vue'
@@ -15,7 +15,7 @@ export interface GetOptions extends PathOptions, DoActionOptions {
     onGetAsync?: OnGetAsync
     /**called after get occurs successfully */
     onGetSuccessAsync?: OnGetSuccessAsync
-    store?: BTStore
+    store?: BTStoreDefinition
 }
 
 export interface DeleteOptions extends PathOptions, DoActionOptions {
@@ -25,7 +25,7 @@ export interface DeleteOptions extends PathOptions, DoActionOptions {
     onDeleteAsync?: OnDoAsync
     /**Will open a dialog box requesting user confirmation for delete action */
     onDeleteSuccessAsync?: OnDoAsync
-    store?: BTStore
+    store?: BTStoreDefinition
 }
 
 export interface RestoreOptions extends PathOptions, DoActionOptions {
@@ -35,7 +35,7 @@ export interface RestoreOptions extends PathOptions, DoActionOptions {
     onRestoreAsync?: OnDoSuccessAsync
     /**Called after restore succeeds */
     onRestoreSuccessAsync?: OnDoSuccessAsync
-    store?: BTStore
+    store?: BTStoreDefinition
 }
 
 export interface SaveOptions extends PathOptions, DoActionOptions {
@@ -52,7 +52,7 @@ export interface SaveOptions extends PathOptions, DoActionOptions {
     onSaveAsync?: OnDoSuccessAsync
     /**Called after save succeeds */
     onSaveSuccessAsync?: OnDoSuccessAsync
-    store?: BTStore
+    store?: BTStoreDefinition
 }
 
 export interface ApiActionOptions extends PathOptions, DoActionOptions {
@@ -63,7 +63,7 @@ export interface UseActionsOptions extends DoActionOptions {
     nav?: string
     proxyID?: string
     refresh?: boolean
-    store?: BTStore
+    store?: BTStoreDefinition
     throwError?: boolean
     url?: string
 }

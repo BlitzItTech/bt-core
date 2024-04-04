@@ -99,6 +99,12 @@ export interface UseNavigationOptions {
     navItems?: NavigationItem[]
 }
 
+let current: BTNavigation
+
+export function useNavigation(): BTNavigation {
+    return current
+}
+
 export function createNavigation(options: UseNavigationOptions): BTNavigation {
     const cacheExpiryHours = options.defaultCacheExpiryHours ?? 7
     const navigationList = options.navItems ?? []
@@ -195,7 +201,7 @@ export function createNavigation(options: UseNavigationOptions): BTNavigation {
             })
     }
 
-    return {
+    current = {
         showAppBar: appBar,
         showAppNavigation: appNavigation,
         backgroundName,
@@ -211,4 +217,6 @@ export function createNavigation(options: UseNavigationOptions): BTNavigation {
         findSingleDisplay,
         updateNavigationProperties
     }
+
+    return current
 }

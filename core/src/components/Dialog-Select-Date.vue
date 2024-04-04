@@ -40,7 +40,7 @@
     import { computed, onMounted, ref } from 'vue'
     import VueDatePicker from '@vuepic/vue-datepicker'
     import '@vuepic/vue-datepicker/dist/main.css'
-    import { useAuth } from '../useApi'
+    import { useAuth } from '../composables/auth'
     import { type SelectDateProps } from '../composables/dialogs'
 
     const props = withDefaults(defineProps<SelectDateProps>(), {

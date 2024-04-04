@@ -1,6 +1,6 @@
 {
   "name": "bt-core-app",
-  "version": "1.1.9",
+  "version": "1.2.0",
   "description": "Core app tools for some basic features like navigation, authentication, server apis, and cosmetics",
   "homepage": "https://github.com/BlitzItTech/bt-core",
   "bugs": {
@@ -41,6 +41,7 @@
     "typescript": "^5.2.2",
     "vite": "^5.1.6",
     "vite-plugin-dts": "^3.8.1",
+    "vite-plugin-vuetify": "^2.0.3",
     "vitest": "^1.4.0",
     "vue": "^3.4.21",
     "vue-tsc": "^1.8.27"

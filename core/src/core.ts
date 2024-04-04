@@ -11,6 +11,23 @@ import { createPWA } from './composables/pwa'
 import { createStoreBuilder } from './composables/stores'
 import { RemovableRef } from '@vueuse/core'
 
+
+import BTBtn from './components/BT-Btn.vue'
+import BTCol from './components/BT-Col.vue'
+import BTFieldCheckbox from './components/BT-Field-Checkbox.vue'
+import BTFieldDate from './components/BT-Field-Date.vue'
+import BTFieldEntity from './components/BT-Field-Entity.vue'
+import BTFieldSelect from './components/BT-Field-Select.vue'
+import BTFieldString from './components/BT-Field-String.vue'
+import BTFieldSwitch from './components/BT-Field-Switch.vue'
+import BTFieldTags from './components/BT-Field-Tags.vue'
+import BTFieldTextarea from './components/BT-Field-Textarea.vue'
+import BTFieldTrigger from './components/BT-Field-Trigger.vue'
+import BTHeaderOption from './components/BT-Header-Option.vue'
+import BTJson from './components/BT-Json.vue'
+import BTSelectListBox from './components/BT-Select-List-Box.vue'
+import BTSelect from './components/BT-Select.vue'
+import BTSnack from './components/BT-Snack.vue'
 import BTSpan from './components/BT-Span.vue'
 
 export interface CoreApp {
@@ -34,18 +51,34 @@ export function createCore(options: CreateCoreOptions): CoreApp {
             // const core = this
 
             //register components
+            app.component('bt-btn', BTBtn)
+            app.component('bt-col', BTCol)
+            app.component('bt-field-checkbox', BTFieldCheckbox)
+            app.component('bt-field-date', BTFieldDate)
+            app.component('bt-field-entity', BTFieldEntity)
+            app.component('bt-field-select', BTFieldSelect)
+            app.component('bt-field-string', BTFieldString)
+            app.component('bt-field-switch', BTFieldSwitch)
+            app.component('bt-field-tags', BTFieldTags)
+            app.component('bt-field-text-area', BTFieldTextarea)
+            app.component('bt-field-trigger', BTFieldTrigger)
+            app.component('bt-header-option', BTHeaderOption)
+            app.component('bt-json', BTJson)
+            app.component('bt-select-list-box', BTSelectListBox)
+            app.component('bt-select', BTSelect)
+            app.component('bt-snack', BTSnack)
             app.component('bt-span', BTSpan)
 
             //define globals
             // app.config.globalProperties.$btcore = core
 
-            const cosmetics = createCosmetics(options)
+            createCosmetics(options)
             
             const demo = createDemo()
             
             const navigation = createNavigation(options)
 
-            const presets = createPresets(options)
+            createPresets(options)
 
             const auth = createAuth({ 
                 demo: demo,
@@ -65,28 +98,28 @@ export function createCore(options: CreateCoreOptions): CoreApp {
                 getTimeZone: auth.getTimeZone
             })
 
-            const filters = createFilters({
+            createFilters({
                 dates: dates
             })
 
-            const pwa = createPWA()
+            createPWA()
 
-            const storeBuilder = createStoreBuilder({
+            createStoreBuilder({
                 api,
                 auth
             })
 
-            //provide
-            app.provide('bt-api', api)
-            app.provide('bt-auth', auth)
-            app.provide('bt-cosmetics', cosmetics)
-            app.provide('bt-dates', dates)
-            app.provide('bt-demo', demo)
-            app.provide('bt-filters', filters)
-            app.provide('bt-navigation', navigation)
-            app.provide('bt-presets', presets)
-            app.provide('bt-pwa', pwa)
-            app.provide('bt-store', storeBuilder)
+            // //provide
+            // app.provide('bt-api', api)
+            // app.provide('bt-auth', auth)
+            // // app.provide('bt-cosmetics', cosmetics)
+            // app.provide('bt-dates', dates)
+            // app.provide('bt-demo', demo)
+            // app.provide('bt-filters', filters)
+            // app.provide('bt-navigation', navigation)
+            // app.provide('bt-presets', presets)
+            // app.provide('bt-pwa', pwa)
+            // app.provide('bt-store', storeBuilder)
         }
     }
 }

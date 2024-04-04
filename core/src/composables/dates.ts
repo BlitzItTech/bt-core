@@ -12,7 +12,13 @@ export interface BTDates {
 export interface CreateDatesOptions {
   getTimeZone: () => string
 }
+
+let current: BTDates
  
+export function useDates(): BTDates {
+    return current
+}
+
 export function createDates(options: CreateDatesOptions): BTDates {
 
     function getToday(): string {
@@ -67,7 +73,7 @@ export function createDates(options: CreateDatesOptions): BTDates {
         }
     }
 
-    return {
+    current = {
         getToday,
         getTomorrow,
         tzDate,
@@ -75,4 +81,6 @@ export function createDates(options: CreateDatesOptions): BTDates {
         utcDate,
         utcString
     }
+
+    return current
 }
