@@ -1,7 +1,7 @@
-import { isLengthyArray } from '@/composables/helpers';
+import { isLengthyArray } from '../composables/helpers';
 import { DateTime } from 'luxon'
 import { type RemovableRef, useStorage } from '@vueuse/core'
-import { type BTDemo } from '@/composables/demo'
+import { type BTDemo } from '../composables/demo'
 import { useRouter } from 'vue-router'
 import { toValue } from 'vue'
 

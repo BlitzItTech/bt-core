@@ -1,7 +1,7 @@
-import type { BladeMode } from '@/types'
-import { BTStore } from '@/composables/stores'
-import { BTApi, type PathOptions } from '@/composables/api'
-import { useActionsTracker, type DoActionOptions } from '@/composables/actions-tracker'
+import type { BladeMode } from '../types'
+import { BTStore } from '../composables/stores'
+import { BTApi, type PathOptions } from '../composables/api'
+import { useActionsTracker, type DoActionOptions } from '../composables/actions-tracker'
 import { ShallowRef, ComputedRef } from 'vue'
 
 export type OnCanDoAsync = (item: any) => Promise<string | undefined>

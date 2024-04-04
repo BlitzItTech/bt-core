@@ -1,13 +1,18 @@
 import type { GetOptions, OnCanDoAsync, OnDoAsync, OnDoSuccessAsync, OnGetAsync, OnGetSuccessAsync } from './actions'
-import type { BladeVariant } from '@/types'
-import { useCSV } from '@/composables/csv'
+import type { BladeVariant } from '../types'
+import { useCSV } from '../composables/csv'
 import { isLengthyArray, hasSearch } from '../index'
 import { firstBy } from 'thenby'
 import { computed, ref, onMounted, toValue, shallowRef, MaybeRefOrGetter, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useArrayDifference, useArrayUnique, watchArray, watchDebounced } from '@vueuse/core'
-import { useActions } from '@/composables/actions'
+import { useActions } from '../composables/actions'
 import { StorageMode, StoreMode, useStore } from '../index'
+
+export interface RefreshOptions {
+    deepRefresh?: boolean,
+    resetSearch?: boolean
+}
 
 export interface TableColumn {
     align?: 'start' | 'end' | 'center'
@@ -412,11 +417,6 @@ export function useList(props: ListProps, emit?: ListEvents, options?: UseListOp
         }
     }
 
-    interface RefreshOptions {
-        deepRefresh?: boolean,
-        resetSearch?: boolean
-    }
-    
     async function refresh(options?: RefreshOptions) {
         showError.value = false
 
@@ -563,7 +563,7 @@ export function useList(props: ListProps, emit?: ListEvents, options?: UseListOp
 
     onMounted(async () => {
         if (props.eager == true)
-            await refresh({ deepRefresh: route.params?.refresh == 'true' ?? false })
+            await refresh({ deepRefresh: route.params?.refresh == 'true' })
     })
 
     return {

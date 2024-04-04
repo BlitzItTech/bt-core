@@ -1,12 +1,12 @@
 import { defineStore, StoreDefinition } from 'pinia'
 import { ref, type Ref } from 'vue'
-import { type PathOptions, type BTApi } from '@/composables/api'
+import { type PathOptions, type BTApi } from '../composables/api'
 import { DateTime } from 'luxon'
 import { toValue } from 'vue'
-import { appendUrl, getMinDateString } from '@/composables/helpers'
+import { appendUrl, getMinDateString } from '../composables/helpers'
 import { firstBy } from 'thenby'
-import { useLocalDb } from '@/composables/forage'
-import { BaseModel } from '@/types'
+import { useLocalDb } from '../composables/forage'
+import { BaseModel } from '../types'
 import { BTAuth } from './auth'
 
 export type StoreMode = 'whole-last-updated' | 'partial-last-updated' | 'session'
@@ -50,7 +50,7 @@ export interface ApiError {
     message: string
 }
 
-interface UseStoreOptions {
+export interface UseStoreOptions {
     /**ideally required. Otherwise will struggle to find url path */
     api?: BTApi
     /**ideally required. For setting unique local storage keys */

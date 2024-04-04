@@ -1,10 +1,10 @@
 // import { openDialog } from 'vue3-promise-dialog'
 import { createConfirmDialog } from 'vuejs-confirm-dialog'
-import BTConfirmDialog from '@/components/Dialog-Confirm.vue'
-import BTSelectDateDialog from '@/components/Dialog-Select-Date.vue'
-import BTSelectDialog from '@/components/Dialog-Select.vue'
-import BTTextDialog from '@/components/Dialog-Text.vue'
-import { type ListProps } from '@/composables/list'
+import BTConfirmDialog from '../components/Dialog-Confirm.vue'
+import BTSelectDateDialog from '../components/Dialog-Select-Date.vue'
+import BTSelectDialog from '../components/Dialog-Select.vue'
+import BTTextDialog from '../components/Dialog-Text.vue'
+import { type ListProps } from '../composables/list'
 
 export interface ConfirmDialogProps {
     cancelText?: string

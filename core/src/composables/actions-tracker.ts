@@ -1,8 +1,8 @@
 import { computed, ref, shallowRef } from 'vue'
 import type { ShallowRef, Ref } from 'vue'
-import { useConfirmAsync } from '@/composables/dialogs'
+import { useConfirmAsync } from '../composables/dialogs'
 import { watchArray } from '@vueuse/core'
-import { useId } from '@/composables/id'
+import { useId } from '../composables/id'
 
 interface LoadingMsg {
     id: string,

@@ -1,7 +1,15 @@
 {
   "name": "bt-core-app",
-  "version": "1.0.0",
+  "version": "1.1.9",
+  "description": "Core app tools for some basic features like navigation, authentication, server apis, and cosmetics",
+  "homepage": "https://github.com/BlitzItTech/bt-core",
+  "bugs": {
+    "url": "https://github.com/BlitzItTech/bt-core/issues"
+  },
   "type": "module",
+  "types": "./dist/index.d.ts",
+  "main": "./dist/bt-core-app.js",
+  "exports": "./dist/bt-core-app.js",
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc && vite build",
@@ -32,6 +40,7 @@
     "msw": "^2.2.10",
     "typescript": "^5.2.2",
     "vite": "^5.1.6",
+    "vite-plugin-dts": "^3.8.1",
     "vitest": "^1.4.0",
     "vue": "^3.4.21",
     "vue-tsc": "^1.8.27"

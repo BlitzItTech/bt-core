@@ -1,5 +1,5 @@
 import localforage from 'localforage';
-import { useUrl } from '@/composables/urls';
+import { useUrl } from '../composables/urls';
 
 let localDb: LocalForage | null = null;
 

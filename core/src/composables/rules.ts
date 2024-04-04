@@ -1,6 +1,6 @@
-import { validEmail } from '@/composables/helpers'
+import { validEmail } from '../composables/helpers'
 
-interface UseRulesOptions {
+export interface UseRulesOptions {
     forEmail?: boolean
     forPassword?: boolean
     otherRules?: any

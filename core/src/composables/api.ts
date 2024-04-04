@@ -1,5 +1,5 @@
 import { toValue } from 'vue'
-import { appendUrl } from '@/composables/helpers'
+import { appendUrl } from '../composables/helpers'
 import { type BTAuth } from './auth'
 
 export interface QueryParams {
@@ -58,7 +58,7 @@ type FindPath = (navName?: string) => string | undefined
 // type BuildQuery = (params: any) => string
 // type BuildUrl = (path: PathOptions) => string
 
-interface UseApiOptions {
+export interface UseApiOptions {
     auth?: BTAuth
     /**overrides the default */
     buildHeaders?: (path: PathOptions) => HeadersInit

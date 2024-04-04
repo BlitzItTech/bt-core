@@ -1,13 +1,17 @@
 import { type RouteLocationNormalized } from 'vue-router'
-import { BTDemo } from '@/composables/demo'
-import { type Environment } from '@/composables/urls'
+import { BTDemo } from '../composables/demo'
+import { type Environment } from '../composables/urls'
 
 export interface UseDocumentMetaOptions {
     demo?: BTDemo
 }
 
+export interface BTDocumentMeta {
+    updateMeta: (to: RouteLocationNormalized) => void
+}
+
 /**routes with meta object */
-export function useDocumentMeta(options?: UseDocumentMetaOptions) {
+export function useDocumentMeta(options?: UseDocumentMetaOptions): BTDocumentMeta {
 
     function updateMeta(to: RouteLocationNormalized) {
         const nearestWithTitle = to.matched.slice().reverse().find(r => r.meta && r.meta.title);

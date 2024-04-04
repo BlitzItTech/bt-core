@@ -1,6 +1,6 @@
 //nav item needs to have a 'ignore Suspension' prop
-import { useUrl } from '@/composables/urls'
-import { appendUrl, deepSelect } from '@/composables/helpers'
+import { useUrl } from '../composables/urls'
+import { appendUrl, deepSelect } from '../composables/helpers'
 import { ref, type Ref } from 'vue'
 import { type AuthItem } from './auth'
 
@@ -94,7 +94,7 @@ export interface BTNavigation {
     updateNavigationProperties: (navName?: string | NavigationItem) => void
 }
 
-interface UseNavigationOptions {
+export interface UseNavigationOptions {
     defaultCacheExpiryHours?: number
     navItems?: NavigationItem[]
 }
