@@ -1,9 +1,12 @@
-import { isLengthyArray } from '../composables/helpers';
+import { appendUrl, isLengthyArray } from '../composables/helpers.ts'
 import { DateTime } from 'luxon'
 import { type RemovableRef, useStorage } from '@vueuse/core'
-import { type BTDemo } from '../composables/demo'
-import { useRouter } from 'vue-router'
-import { toValue } from 'vue'
+import { type BTDemo } from '../composables/demo.ts'
+import { Router } from 'vue-router'
+import { computed, ref, toValue } from 'vue'
+import type { Ref, ComputedRef } from 'vue'
+import { useAuthUrl } from './urls.ts'
+import { useApi } from './api.ts'
 
 export interface AuthItem {
     children?: AuthItem[]
@@ -33,41 +36,55 @@ export interface BaseAuthCredentials {
 
 let defaultTimeZone = 'Australia/Melbourne'
 
-export type GetAuthUrl = (redirectPath?: string, state?: string) => string
+// export type GetAuthUrl = (redirectPath?: string, state?: string) => string
 
 export interface CreateAuthOptions {
     defaultTimeZone?: string,
     demo?: BTDemo,
     /**expiry token date format.  Defaults to 'd/MM/yyyy h:mm:ss a' */
     expiryTokenFormat?: string
-    /**retrieve the auth item */
-    getAuthItem: (navName?: string | AuthItem) => AuthItem | null
-    /**retrieve the url to navigate to for the OAuth 2.0 process */
-    getAuthUrl: GetAuthUrl
-    /**sets current credentials on top of default function*/
-    setCredentials?: (state: RemovableRef<any>, payload: any) => void
+    /**OVERRIDES CORE DEFAULT. retrieve the auth item */
+    getAuthItem?: (navName?: string | AuthItem) => AuthItem | null
+    /**OVERRIDES DEFAULT. the url to start the OAuth 2.0 process */
+    getAuthorizeUrl?: (redirectPath?: string, state?: string) => string
+    /**OVERRIDES DEFAULT. use the given code and generate the url to convert to an access token */
+    getTokenUrl?: (code: string, redirect_uri: string, grant_type: string, client_id: string) => string
+    /**OVERRIDES DEFAULT.  */
+    getToken?: (code?: string, state?: string) => Promise<void>
+    oauthGrantType?: string
+    oauthClientID?: string
+    /**sets current credentials on top of default function
+     * for processing the token payload and applying to state
+    */
+    processTokenPayload?: (state: RemovableRef<any>, payload: any) => void
     /**suboptions */
     subscriptionOptions?: AuthSubscription[]
 }
 
 export interface BTAuth {
-    authState: string
+    authState: Ref<string>
+    /**Global Admin, everything.edit, *.edit */
     canEdit: (navName?: string) => boolean
     canEditPermit: (permit: string) => boolean
+    /**Global Admin, everything.view, *.view */
     canView: (navName?: string) => boolean
     canViewPermit: (permit: string) => boolean
-    credentials: any
+    credentials: RemovableRef<any>
     doShow: (subcodes?: string[], permissions?: string[], action?: 'view' | 'edit') => boolean
     doShowByNav: (navName?: string | AuthItem, includeChildren?: boolean) => boolean
-    getAuthUrl: (redirectPath?: string) => string
-    getTimeZone: () => string
+    getAuthorizeUrl: (redirectPath?: string) => string
+    getToken: (code?: string, state?: string) => Promise<void>
+    isLoggedIn: ComputedRef<boolean>
     login: (redirectPath?: string) => void
-    logout: (navNameRedirect?: string) => void
+    logout: (navNameRedirect?: string, router?: Router) => void
+    resetAuthState: () => void
     setAuth: (jwtToken?: string) => void
+    timeZone: ComputedRef<string>
     tryLogin: () => boolean | undefined
 }
 
 let current: BTAuth
+const authStateKey = 'auth-credentials-state'
 
 export function useAuth(): BTAuth {
     return current
@@ -75,14 +92,25 @@ export function useAuth(): BTAuth {
 
 export function createAuth(options: CreateAuthOptions): BTAuth {
     const expiryFormat = options.expiryTokenFormat ?? 'd/MM/yyyy h:mm:ss a'
-    const authState = useStorage<string>('auth-credentials-state', (Math.random().toString(36).substring(4, 19) + Math.random().toString(12).substring(1, 11)))
+    let authState = ref(localStorage.getItem(authStateKey) ?? '')
+    
+    if (authState.value.length == 0) {
+        resetAuthState()
+    }
+
+    function resetAuthState() {
+        authState.value = Math.random().toString(36).substring(4, 19) + Math.random().toString(12).substring(1, 11)
+        localStorage.setItem(authStateKey, authState.value)
+    }
+
+    // const authState = useStorage<string>('auth-credentials-state', (Math.random().toString(36).substring(4, 19) + Math.random().toString(12).substring(1, 11)))
     const state = useStorage<BaseAuthCredentials>('auth-credentials', {})
 
     /**can edit if navName is undefined, isGlobalAdmin, not suspended, or user permissions allow editing of this navItem */
     function canEdit(navName?: string): boolean {
         if (navName == null) return true
 
-        var navItem = options.getAuthItem(navName);
+        var navItem = options.getAuthItem != null ? options.getAuthItem(navName) : null;
         if (navItem == null) return false
         if (navItem.requiresAuth === false) return true
 
@@ -124,7 +152,7 @@ export function createAuth(options: CreateAuthOptions): BTAuth {
     function canView(navName: string | undefined): boolean {
         if (navName == null) return true
         
-        var navItem = options.getAuthItem(navName);
+        var navItem = options.getAuthItem != null ? options.getAuthItem(navName) : null;
         if (navItem == null) return false
         if (navItem.requiresAuth === false) return true
 
@@ -198,7 +226,7 @@ export function createAuth(options: CreateAuthOptions): BTAuth {
     }
 
     function doShowByNav(navName?: string | AuthItem, includeChildren: boolean = false) {
-        var navItem = options.getAuthItem(navName);
+        var navItem = options.getAuthItem != null ? options.getAuthItem(navName) : null;
         let doShowRes = false;
 
         if (navItem == null) return false
@@ -221,8 +249,16 @@ export function createAuth(options: CreateAuthOptions): BTAuth {
         return doShowRes;
     }
 
-    function getAuthUrl(redirectPath?: string) {
-        return options.getAuthUrl(redirectPath, authState.value)
+    function getAuthorizeUrl(redirectPath?: string) {
+        options.getAuthorizeUrl ??= (redirectPath?: string, state?: string) => {
+            const path = appendUrl(useAuthUrl(), `authorize?response_type=code&client_id=${options.oauthClientID}&redirect_uri=${window.location.origin}/authentication&state=${state}`)
+            return redirectPath ? `${path}&redirect_path=${redirectPath}` : path
+        }
+
+        if (options.getAuthorizeUrl != null)
+            return options.getAuthorizeUrl(redirectPath, authState.value) ?? ''
+
+        return ''
     }
 
     /**undefined or unfound is worth 0 */
@@ -262,19 +298,18 @@ export function createAuth(options: CreateAuthOptions): BTAuth {
     }
 
     /**clears credentials and potentially redirects */
-    function logout(navNameRedirect?: string) {
+    function logout(navPathRedirect?: string, router?: Router) {
         state.value = undefined
         
         //ensure time zone still exists
-        setDefaults()
+        reinstateDefaults()
         
         //clear stores
 
         //maybe redirect
-        if (navNameRedirect != null) {
-            const router = useRouter()
-            if (router.currentRoute.value.name != navNameRedirect) {
-                router.push({ name: navNameRedirect })
+        if (navPathRedirect != null && router != null) {
+            if (router.currentRoute.value.path != navPathRedirect) {
+                router.push({ path: navPathRedirect })
             }
         }
     }
@@ -287,9 +322,59 @@ export function createAuth(options: CreateAuthOptions): BTAuth {
             options.demo?.endDemo()
             if (tokenExpired()) {
                 logout()
-                window.location.href = getAuthUrl(redirectPath) //}response_type=code&client_id=appClient1&redirect_path=${redirectPath}` : getAuthUrl()
+                window.location.href = getAuthorizeUrl(redirectPath) //}response_type=code&client_id=appClient1&redirect_path=${redirectPath}` : getAuthUrl()
             }
         }
+    }
+
+    /**defaults to find parameters from route query */
+    async function getToken(code?: string, state?: string) {
+        options.getToken ??= async () => {
+            let mCode = code
+            let mState = state
+            let mGrantType = options.oauthGrantType ?? 'authorization_token'
+            let mClientID = options.oauthClientID ?? ''
+            
+            if (mCode == null || mState == null) {
+                throw new Error('Code and State required in OAuth token process')
+            }
+    
+            if (mState != authState.value)
+                throw new Error('state does not match')
+    
+            let url = ''
+    
+            options.getTokenUrl ??= () => {
+                return appendUrl(useAuthUrl(), 'token')
+            }
+    
+            url = options.getTokenUrl(mCode, `${window.location.origin}/authentication`, mGrantType, mClientID)
+    
+            const formData: any = {}
+            formData['grant_type'] = mGrantType
+            formData['code'] = mCode
+            formData['redirect_uri'] = `${window.location.origin}/authentication`
+            formData['client_id'] = mClientID
+    
+            const api = useApi()
+            const res = await api.post<any>({
+                additionalUrl: url,
+                data: formData
+            })
+
+            // const res = await fetch(url, {
+            //     method: 'POST',
+            //     mode: 'cors',
+            //     cache: 'no-cache',
+            //     body: JSON.stringify(formData)
+            // })
+
+            // const data = await res.json()
+    
+            setAuth(res.access_token)
+        }
+
+        return await options.getToken(code, state)
     }
 
     /**if not demoing, then will decrypt the jwtToken and attempt to set credentials */
@@ -299,33 +384,32 @@ export function createAuth(options: CreateAuthOptions): BTAuth {
         if (options.demo == null || !options.demo.isDemoing.value) {
             const d = jwtDecrypt(jwtToken)
             
-            setDefaultAuth(d)
+            setDefaultAuth(d, jwtToken)
             
-            if (options.setCredentials != null) {
-                options.setCredentials(state as RemovableRef<any>, d)
-            }
+            if (options.processTokenPayload != null)
+                options.processTokenPayload(state, d)
         }
     }
 
-    function setDefaultAuth(d: any) {
+    function setDefaultAuth(d: any, token: string) {
         const v = state.value
         v.expiresOn = d.ExpiresOn
         v.isGlobalAdmin = d.IsGlobalAdmin == 'True'
         v.isLoggedIn = true
         v.permissions = d.Permissions
         v.subscriptionCode = d.Subscription
+        
         // v.subscriptionsInUse = d.SubscriptionsInUse
-        v.token = d
+        v.timeZone ??= (options.defaultTimeZone ?? defaultTimeZone)
+        
+        v.token = token
         v.userID = d.UserLoginID
         v.userPermissions = d.Permissions?.split(',') ?? []
     }
 
-    function setDefaults() {
+    function reinstateDefaults() {
+        state.value ??= {}
         state.value.timeZone ??= (options.defaultTimeZone ?? defaultTimeZone)
-    }
-
-    function getTimeZone() {
-        return state.value.timeZone ?? options.defaultTimeZone ?? defaultTimeZone
     }
 
     /**returns whether or not logged in.  Potentially redirects to OAauth 2.0 process if logged in and expired */
@@ -335,7 +419,7 @@ export function createAuth(options: CreateAuthOptions): BTAuth {
         //what if no internet?
         if (mState.isLoggedIn && tokenExpired()) {
             logout()
-            window.location.href = getAuthUrl()
+            window.location.href = getAuthorizeUrl()
         }
 
         return mState.isLoggedIn
@@ -350,20 +434,27 @@ export function createAuth(options: CreateAuthOptions): BTAuth {
         return e1 <= e2
     }
 
+    reinstateDefaults()
+
     current = {
-        authState: authState.value,
+        authState,
         canEdit,
         canEditPermit,
         canView,
         canViewPermit,
-        credentials: state.value,
+        credentials: state,
         doShow,
         doShowByNav,
-        getAuthUrl,
-        getTimeZone,
+        getAuthorizeUrl,
+        getToken,
+        isLoggedIn: computed(() => state.value.isLoggedIn === true),
         login,
         logout,
+        resetAuthState,
         setAuth,
+        timeZone: computed(() => {
+            return state.value.timeZone ?? options.defaultTimeZone ?? defaultTimeZone
+        }),
         tryLogin
     }
 

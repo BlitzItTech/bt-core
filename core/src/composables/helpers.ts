@@ -1,6 +1,4 @@
-import { firstBy } from 'thenby';
-import { type MaybeRefOrGetter, toValue } from 'vue';
-
+import { firstBy } from 'thenby'
 
 export function appendUrl(originalVal?: string, additionalVal?: string) {
     let original = originalVal ?? ''
@@ -19,6 +17,17 @@ export function appendUrl(originalVal?: string, additionalVal?: string) {
     }
 
     return `${original}/${additional}`
+}
+
+export function distinct(list: any) {
+    if (list == null || !Array.isArray(list)) {
+        return list
+    }
+
+    return [...new Set(list.map(item => item))]
+    // return list.filter((v, ind, arr) => {
+    //     return arr.indexOf(v === ind)
+    // })
 }
 
 export function extensionExists(elementId: string = 'blitzItExtensionExists') {
@@ -410,19 +419,13 @@ export function getMinDateString() {
     return '0001-01-01T00:00:00Z'
 }
 
-//#end region
-
-//#region math
-
 /**
  * rounds the given value to a certain number of decimal places
  * @param v
  * @param dPlaces 
  * @returns 
  */
-export function roundTo(v: MaybeRefOrGetter<number>, dPlaces: number) {
-    const val = toValue(v)
-
+export function roundTo(val: number, dPlaces: number) {
     let m = '1';
     let i = 0;
 
@@ -521,44 +524,6 @@ export function containsSearch(value?: string, str?: string) {
     return value.toLowerCase().includes(str.toLowerCase());
 }
 
-// export function deepSelect(obj: any, propSelector: Function = (obj: any) => obj) {
-//     if (obj == null) {
-//         return []
-//     }
-
-//     if (Array.isArray(obj)) {
-//         let rr: any[] = []
-//         obj.forEach(e => {
-//             rr.push(e)
-//             const d = deepSelect(e, propSelector)
-//             if (isLengthyArray(d))
-//                 rr.push(...d)
-//         })
-//         return rr
-//     }
-//     else {
-//         let arr = propSelector(obj)
-//         if (isLengthyArray(arr)) {
-//             let r = [...arr.reduce((a: any, b: any) => {
-//                 a.push(b)
-//                 const v = deepSelect(b, propSelector)
-//                 if (isLengthyArray(v)) {
-//                     a.push(...v)
-//                 }
-//                 return a
-//             }, [])]
-        
-//             if (!Array.isArray(obj)) {
-//                 r.unshift(obj)
-//             }
-        
-//             return r
-//         }
-        
-//         return []
-//     }
-// }
-
 /**must be an object.  Returns a flat map of all items in the prop selector */
 export function deepSelect(obj: any, propSelector: Function = (obj: any) => obj) {
     if (obj == null) {
@@ -597,9 +562,8 @@ export function DataURIToBlob(dataURI: any) {
 export function extractErrorDescription(error: any) {
     var msg = '';
     if (error) {
-        if (error.message) {
-            msg = error.message;
-        }
+        if (error.message)
+            msg = error.message
 
         if (error.response && error.response.data) {
             if (error.response.data.errors) {
@@ -691,4 +655,17 @@ export function nestedValue(obj: any, path?: string) {
 export function validEmail(email?: string) {
     if (!email) return false
     return /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*$/.test(email);
+}
+
+export function singularize(str: string) {
+    if (str.endsWith('ies'))
+        return str.slice(0, str.length - 3)
+
+    // if (str.endsWith('es'))
+    //     return str.slice(0, str.length - 2)
+
+    if (str.endsWith('s'))
+        return str.slice(0, str.length - 1)
+
+    return str
 }

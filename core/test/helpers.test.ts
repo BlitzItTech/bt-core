@@ -1,4 +1,4 @@
-import { nestedValue, toCompareString, hasSearch, deepSelect, containsSearch, copyItemByAlphabet, copyDeep, csvContains, toggleCSV, roundTo, isArrayOfLength, isLengthyArray, addWeekday, removeWeekday, appendUrl, getAreaAround, getAreaToLeft, getAreaToRight, getLocationLine, capitalizeWords, fromCamelCase, toCamelCase, weekdayValue, weekdayShortName, containsWeekday, validEmail } from '../src/composables/helpers'
+import { nestedValue, toCompareString, hasSearch, deepSelect, containsSearch, copyItemByAlphabet, copyDeep, csvContains, toggleCSV, roundTo, isArrayOfLength, isLengthyArray, addWeekday, removeWeekday, appendUrl, distinct, getAreaAround, getAreaToLeft, getAreaToRight, getLocationLine, capitalizeWords, fromCamelCase, toCamelCase, weekdayValue, weekdayShortName, containsWeekday, validEmail } from '../src/composables/helpers'
 import { describe, expect, test } from 'vitest'
 
 describe("helpers", () => {
@@ -9,6 +9,11 @@ describe("helpers", () => {
         expect(appendUrl('https://test.com/', 'test')).toEqual('https://test.com/test')
         expect(appendUrl('https://test.com', '/test')).toEqual('https://test.com/test')
         expect(appendUrl('https://test.com///', '///test')).toEqual('https://test.com/test')
+    })
+
+    test('distinct', () => {
+        expect(distinct(['list', 'list'])).toEqual(['list'])
+        expect(distinct(['one', 'one', 'two'])).toEqual(['one','two'])
     })
 
     test('get area around', () => {

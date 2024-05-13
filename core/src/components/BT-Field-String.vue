@@ -16,9 +16,9 @@
 </template>
 
 <script setup lang="ts">
-// import { type BladeDensity } from '../types'
 import { computed, inject, ref } from 'vue'
-// import { useFilters } from '@/composables/filters'
+import { VCol, VTextField } from 'vuetify/components'
+
 
     defineOptions({
         inheritAttrs: false

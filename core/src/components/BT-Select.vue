@@ -11,8 +11,8 @@
 </template>
 
 <script setup lang="ts">
-    import { type ListProps, type ListEvents, useList } from '../composables/list';
-    import { type FieldVariant } from '../types'
+    import { type ListProps, type ListEvents, useList } from '../composables/list.ts'
+    import { type FieldVariant } from '../types.ts'
 
     interface SelectEvents extends ListEvents {
 
@@ -35,12 +35,9 @@
     const emit = defineEmits<SelectEvents>()
 
     const props = withDefaults(defineProps<SelectProps>(), {
-        sortOrder: 'Ascending'
+        
     })
 
-    const ui = useList(props, emit, {
-        useBladeSrc: false,
-        useRouteSrc: false
-    })
+    const ui = useList(props, emit)
 
 </script>

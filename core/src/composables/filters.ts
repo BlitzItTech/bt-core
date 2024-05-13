@@ -1,5 +1,5 @@
-import { getLocationLine, isMinDate } from '../composables/helpers';
-import { BTDates } from './dates';
+import { getLocationLine, isMinDate } from '../composables/helpers.ts'
+import { BTDates } from './dates.ts'
 
 export interface BTFilters {
     findFilter: (mFilter: string | undefined) => Function

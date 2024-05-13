@@ -1,5 +1,5 @@
 import { setActivePinia, createPinia } from 'pinia'
-import { createSessionStore, createWholeLastUpdateStore } from '../src/composables/stores'
+import { createSessionStoreDefinition, createWholeLastUpdateStoreDefinition } from '../src/composables/stores'
 import { createApi } from '../src/composables/api'
 import { describe, test, expect, beforeEach, afterAll, afterEach, beforeAll } from 'vitest'
 import { setupServer } from 'msw/node'
@@ -49,8 +49,8 @@ describe('use last update store no api no caching', () => {
 
     setActivePinia(pinia)
 
-    const store = createWholeLastUpdateStore({
-        api: null,
+    const store = createWholeLastUpdateStoreDefinition({
+        api: undefined,
         storageMode: 'session',
         storeName: 'whole'
     })()
@@ -95,12 +95,11 @@ describe('use last update store with api no caching', () => {
         app.use(pinia)
         setActivePinia(pinia)
 
-    const store = createWholeLastUpdateStore({
+    const store = createWholeLastUpdateStoreDefinition({
         storageMode: 'session',
         api: api,
         storeName: 'whole-api'
     })()
-
 
     test('get', async () => {
         const res = await store.get<any>({ id: '1' })
@@ -120,6 +119,7 @@ describe('use last update store with api no caching', () => {
         })
     })
     
+
     test('post', async () => {
         const res = await store.post<any>({ data: { test: 'a', id: '11' }})
         expect(res).not.toBeNull()

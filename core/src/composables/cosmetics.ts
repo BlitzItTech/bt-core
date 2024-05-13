@@ -1,5 +1,6 @@
-import { RemovableRef, useStorage } from '@vueuse/core'
-import { useTheme } from 'vuetify';
+import type { ThemeInstance } from 'vuetify'
+import { ref, watch } from 'vue'
+import type { Ref } from 'vue'
 
 interface CosmeticData {
     dark?: BaseCosmeticTheme,
@@ -11,12 +12,12 @@ interface CosmeticData {
 
 export interface BaseCosmeticTheme {
     primary: string,
-    secondary: string,
-    accent: string,
-    error: string,
-    info: string,
-    success: string,
-    warning: string,
+    secondary?: string,
+    accent?: string,
+    error?: string,
+    info?: string,
+    success?: string,
+    warning?: string,
 }
 
 const defaultLight: BaseCosmeticTheme = {
@@ -45,11 +46,11 @@ export interface UseCosmeticsOptions<T extends BaseCosmeticTheme> {
     defaultDrawer?: boolean
     defaultDrawerStick?: boolean
     defaultTheme?: string
+    vuetifyInstance?: ThemeInstance
 }
 
 export interface BTCosmetics {
-    state: CosmeticData
-    initiate: () => void
+    state: Ref<CosmeticData>
     resetCosmetics: (toDefault: boolean) => void
     setTemporaryColor: (color: string) => void
     toggleDrawer: () => void
@@ -58,61 +59,122 @@ export interface BTCosmetics {
     undoTemporaryColor: () => void
 }
 
-let defaults: any = {}
-let state: RemovableRef<CosmeticData>
+// let defaults: any = {}
+// let state: RemovableRef<CosmeticData>
+let current: BTCosmetics
 
 export function useCosmetics(): BTCosmetics {
-    const themeManager = useTheme()
+    return current
+}
 
-    /**used for initiating the themes and colors from storage when the web app is loaded */
-    function loadCosmetics() {
-        themeManager.global.name.value = state.value.theme!
-        
-        //load dark colors
-        let darkColors = themeManager.themes.value.dark.colors
-        let storedDarkTheme = state.value.dark!
-        const darkThemeKeys = Object.keys(storedDarkTheme)
-        darkThemeKeys.forEach(darkKey => {
-            const k = darkKey as keyof typeof storedDarkTheme
-            darkColors[darkKey] = storedDarkTheme[k]
-        })
-        
-        let lightColors = themeManager.themes.value.light.colors
-        let storedLightTheme = state.value.light!
-        const lightThemeKeys = Object.keys(storedLightTheme)
-        lightThemeKeys.forEach(lightKey => {
-            const lKey = lightKey as keyof typeof storedLightTheme
-            lightColors[lKey] = storedLightTheme[lKey]
-        })
+export interface UseLocalCosmeticsOptions {
+    defaultTheme?: string
+    dark?: any
+    light?: any
+}
+
+/**Returns a theme options object to pass into the create vuetify theme options */
+export function useLocalCosmetics(options?: UseLocalCosmeticsOptions): any {
+    const str = localStorage.getItem('cosmetics')
+    let r: CosmeticData
+    if (str != null && str.length > 0)
+        r = JSON.parse(str)
+
+    r ??= {}
+    r.dark ??= options?.dark
+    r.light ??= options?.light
+    r.theme ??= options?.defaultTheme
+
+    return {
+        defaultTheme: r.theme ?? 'dark',
+        themes: {
+            dark: {
+                colors: r.dark
+            },
+            light: {
+                colors: r.light
+            }
+        }
     }
+}
+
+export function createCosmetics<T extends BaseCosmeticTheme>(options: UseCosmeticsOptions<T>) {
+    const state = ref<CosmeticData>({})
+    let themeManager = options.vuetifyInstance
+
+    function load() {
+        const str = localStorage.getItem('cosmetics')
+        if (str != null && str.length > 0)
+            state.value = JSON.parse(str)
+        else
+            state.value = {
+                theme: options.defaultTheme ?? 'light',
+                light: { ...defaultLight, ...options.defaultLightTheme },
+                dark: { ...defaultDark, ...options.defaultDarkTheme },
+                drawer: options.defaultDrawer ?? true,
+                drawerStick: options.defaultDrawerStick ?? false
+            }
+    }
+
+    function save() {
+        localStorage.setItem('cosmetics', JSON.stringify(state.value))
+    }
+
+    // function setVuetifyInstance(v: ThemeInstance) {
+    //     themeManager = v
+    // }
+    
+    // /**used for initiating the themes and colors from storage when the web app is loaded */
+    // function loadCosmetics() {
+    //     themeManager.global.name.value = state.value.theme!
+        
+    //     //load dark colors
+    //     let darkColors = themeManager.themes.value.dark.colors
+    //     let storedDarkTheme = state.value.dark!
+    //     const darkThemeKeys = Object.keys(storedDarkTheme)
+    //     darkThemeKeys.forEach(darkKey => {
+    //         const k = darkKey as keyof typeof storedDarkTheme
+    //         darkColors[darkKey] = storedDarkTheme[k]
+    //     })
+        
+    //     let lightColors = themeManager.themes.value.light.colors
+    //     let storedLightTheme = state.value.light!
+    //     const lightThemeKeys = Object.keys(storedLightTheme)
+    //     lightThemeKeys.forEach(lightKey => {
+    //         const lKey = lightKey as keyof typeof storedLightTheme
+    //         lightColors[lKey] = storedLightTheme[lKey]
+    //     })
+    // }
     
     /**resets to the default colors or last saved colors of the current theme */
     function resetCosmetics(toDefault: boolean) {
-        themeManager.global.name.value = state.value.theme!
-
-        if (themeManager.global.name.value == 'dark') {
-            //dark
-            if (toDefault)
-                state.value.dark = { ...(defaults.defaultDarkTheme ?? defaultDark) };
-
-            themeManager.themes.value.dark = {
-                ...themeManager.themes.value.dark,
-                colors: {
-                    ...themeManager.themes.value.dark.colors,
-                    ...state.value.dark
+        if (themeManager != null) {
+            themeManager.global.name.value = state.value.theme!
+    
+            if (themeManager.global.name.value == 'dark') {
+                //dark
+                if (toDefault)
+                    state.value.dark = { ...defaultDark, ...options.defaultDarkTheme };
+    
+                themeManager.themes.value.dark = {
+                    ...themeManager.themes.value.dark,
+                    colors: {
+                        ...themeManager.themes.value.dark.colors,
+                        ...state.value.dark
+                    }
                 }
             }
-        }
-        else {
-            //light
-            if (toDefault)
-                state.value.light = { ...(defaults.defaultLightTheme ?? defaultLight) };
-
-            themeManager.themes.value.light = {
-                ...themeManager.themes.value.light,
-                colors: {
-                    ...themeManager.themes.value.light.colors,
-                    ...state.value.light
+            else {
+                //light
+                if (toDefault)
+                    state.value.light = { ...defaultLight, ...options.defaultLightTheme };
+    
+                themeManager.themes.value.light = {
+                    ...themeManager.themes.value.light,
+                    colors: {
+                        ...themeManager.themes.value.light.colors,
+                        ...state.value.light
+                    }
                 }
             }
         }
@@ -120,13 +182,15 @@ export function useCosmetics(): BTCosmetics {
 
     /**sets a temporary primary color that is not saved but is applied to cosmetics */
     function setTemporaryColor(color: string) {
-        const dark = themeManager.themes.value.dark
-        const light = themeManager.themes.value.light
-
-        dark.colors.primary = color
-        light.colors.primary = color
-        
-        document.querySelector('meta[name="theme-color"]')?.setAttribute("content", color)
+        if (themeManager != null) {
+            const dark = themeManager.themes.value.dark
+            const light = themeManager.themes.value.light
+    
+            dark.colors.primary = color
+            light.colors.primary = color
+            
+            document.querySelector('meta[name="theme-color"]')?.setAttribute("content", color)
+        }
     }
 
     function toggleDrawer() {
@@ -139,22 +203,30 @@ export function useCosmetics(): BTCosmetics {
 
     function toggleLightDark() {
         state.value.theme = state.value.theme == 'dark' ? 'light' : 'dark'
-        themeManager.global.name.value = state.value.theme
+        if (themeManager != null)
+            themeManager.global.name.value = state.value.theme
     }
-    
+
     function undoTemporaryColor() {
-        const dark = themeManager.themes.value.dark
-        const light = themeManager.themes.value.light
-
-        dark.colors.primary = (state.value.dark ?? defaults.defaultDarkTheme ?? defaultDark).primary
-        light.colors.primary = (state.value.light ?? defaults.defaultLightTheme ?? defaultLight).primary
-
-        document.querySelector('meta[name="theme-color"]')?.setAttribute("content", '')
+        if (themeManager != null) {
+            const dark = themeManager.themes.value.dark
+            const light = themeManager.themes.value.light
+    
+            dark.colors.primary = (state.value.dark ?? { ...defaultDark, ...options.defaultDarkTheme }).primary
+            light.colors.primary = (state.value.light ?? { ...defaultLight, ...options.defaultLightTheme }).primary
+    
+            document.querySelector('meta[name="theme-color"]')?.setAttribute("content", '')
+        }
     }
 
-    return {
-        state: state.value,
-        initiate: loadCosmetics,
+    load()
+
+    watch(state, () => {
+        save()
+    })
+
+    current = {
+        state: state,
         resetCosmetics,
         setTemporaryColor,
         toggleDrawer,
@@ -162,16 +234,6 @@ export function useCosmetics(): BTCosmetics {
         toggleLightDark,
         undoTemporaryColor
     }
-}
 
-export function createCosmetics<T extends BaseCosmeticTheme>(options: UseCosmeticsOptions<T>) {
-    state = useStorage<CosmeticData>('cosmetics', {
-        theme: options.defaultTheme ?? 'light',
-        light: options.defaultLightTheme ?? defaultLight,
-        dark: options.defaultDarkTheme ?? defaultDark,
-        drawer: options.defaultDrawer ?? true,
-        drawerStick: options.defaultDrawerStick ?? false
-    })
-
-    defaults = options
+    return current
 }

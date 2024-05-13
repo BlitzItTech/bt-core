@@ -7,7 +7,7 @@ describe('foraging', () => {
     
     test('local db exists', () => {
         expect(db).not.toBeNull()
-        expect(db._config.name).toEqual('Db_undefined')
+        expect(db._config.name).toEqual('test')
     })
 
 })

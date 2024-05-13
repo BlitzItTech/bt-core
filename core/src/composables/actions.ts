@@ -1,7 +1,7 @@
-import type { BladeMode } from '../types'
-import { BTStoreDefinition } from '../composables/stores'
-import { BTApi, type PathOptions } from '../composables/api'
-import { useActionsTracker, type DoActionOptions } from '../composables/actions-tracker'
+import type { BladeMode } from '../types.ts'
+import { BTStoreDefinition, useStoreDefinition } from './stores.ts'
+import { type PathOptions, type BTApi, useApi } from '../composables/api.ts'
+import { useActionsTracker, type DoActionOptions } from '../composables/actions-tracker.ts'
 import { ShallowRef, ComputedRef } from 'vue'
 
 export type OnCanDoAsync = (item: any) => Promise<string | undefined>
@@ -55,8 +55,12 @@ export interface SaveOptions extends PathOptions, DoActionOptions {
     store?: BTStoreDefinition
 }
 
+export interface ActionOptions extends PathOptions, DoActionOptions {
+    
+}
+
 export interface ApiActionOptions extends PathOptions, DoActionOptions {
-    api: BTApi
+    api?: BTApi
 }
 
 export interface UseActionsOptions extends DoActionOptions {
@@ -65,14 +69,16 @@ export interface UseActionsOptions extends DoActionOptions {
     refresh?: boolean
     store?: BTStoreDefinition
     throwError?: boolean
-    url?: string
+    url?: string,
+    /**for basic functionality when no store is provided */
+    items?: any[]
 }
 
 export interface BTActions {
-    apiGet: (doOptions: ApiActionOptions) => Promise<any>
-    apiPost: (doOptions: ApiActionOptions) => Promise<any>
     actionLoadingMsg: ShallowRef<string | undefined>
     actionErrorMsg: ShallowRef<string | undefined>
+    apiGet: (doOptions: ApiActionOptions) => Promise<any>
+    apiPost: (doOptions: ApiActionOptions) => Promise<any>
     clearErrors: () => void
     deleteItem: (doOptions: DeleteOptions) => Promise<any>
     doAction: (action: any, options?: DoActionOptions) => Promise<any>
@@ -94,12 +100,30 @@ export function useActions(options?: UseActionsOptions): BTActions {
         doOptions.throwError ??= options?.throwError
         doOptions.url ??= options?.url
         doOptions.confirmationMsg ??= doOptions.requireConfirmation === true ? 'Are you sure you want to delete this item?' : undefined
-        doOptions.store ??= options?.store
-        const store = doOptions?.store ?? options?.store
 
-        if (doOptions.nav != null && store != null) {
+        let store = doOptions?.store ?? options?.store
+        const items = options?.items ?? []
+
+        if (store == null && doOptions.nav != null) {
+            store = useStoreDefinition({ nav: doOptions.nav })
+        }
+
+        if (store != null) {
             doOptions.onDeleteAsync ??= () => {
                 return store().deleteItem(doOptions)
+            }
+        }
+        else {
+            doOptions.onDeleteAsync ??= () => {
+                const id = doOptions.id ?? doOptions.data?.id
+                if (id == null)
+                    return Promise.resolve('No id found in delete action')
+
+                const ind = items.findIndex(x => x.id == id)
+                if (ind >= 0)
+                    items.splice(ind, 1)
+
+                return Promise.resolve(undefined)
             }
         }
 
@@ -117,6 +141,8 @@ export function useActions(options?: UseActionsOptions): BTActions {
             }
 
             logError(err)
+
+            return undefined
         }, {
             completionMsg: doOptions.completionMsg ?? options?.completionMsg,
             confirmationMsg: doOptions.confirmationMsg ?? options?.confirmationMsg,
@@ -134,11 +160,28 @@ export function useActions(options?: UseActionsOptions): BTActions {
         doOptions.throwError ??= options?.throwError
         doOptions.url ??= options?.url
         doOptions.confirmationMsg ??= doOptions.requireConfirmation === true ? 'Are you sure you want to get this item?' : undefined
-        const store = doOptions?.store ?? options?.store
 
-        if (doOptions.nav != null && store != null) {
+        let store = doOptions?.store ?? options?.store
+        const items = options?.items ?? []
+
+        if (store == null && doOptions.nav != null) {
+            store = useStoreDefinition({ nav: doOptions.nav })
+        }
+
+        if (store != null) {
+            doOptions.onGetAsync ??= async () => {
+                let res = await store().get(doOptions)
+                return res.data
+            }
+        }
+        else {
             doOptions.onGetAsync ??= () => {
-                return store().get(doOptions)
+                const id = doOptions.id ?? doOptions.data?.id
+
+                if (id == null)
+                    return Promise.resolve(undefined)
+
+                return Promise.resolve(items.find(x => x.id == id))
             }
         }
 
@@ -147,7 +190,6 @@ export function useActions(options?: UseActionsOptions): BTActions {
             
             if (doOptions.onGetAsync != null) {
                 res = await doOptions.onGetAsync(doOptions)
-                res = res.data
             }
 
             if (doOptions.onGetSuccessAsync != null)
@@ -171,11 +213,22 @@ export function useActions(options?: UseActionsOptions): BTActions {
         doOptions.throwError ??= options?.throwError
         doOptions.url ??= options?.url
         doOptions.confirmationMsg ??= doOptions.requireConfirmation === true ? 'Are you sure you want to get these items?' : undefined
-        const store = doOptions?.store ?? options?.store
+        
+        let store = doOptions?.store ?? options?.store
+        const items = options?.items ?? []
 
-        if (doOptions.nav != null && store != null) {
+        if (store == null && doOptions.nav != null) {
+            store = useStoreDefinition({ nav: doOptions.nav })
+        }
+
+        if (store != null) {
             doOptions.onGetAsync ??= () => {
                 return store().getAll(doOptions)
+            }
+        }
+        else {
+            doOptions.onGetAsync ??= () => {
+                return Promise.resolve(items)
             }
         }
 
@@ -207,9 +260,14 @@ export function useActions(options?: UseActionsOptions): BTActions {
         doOptions.throwError ??= options?.throwError
         doOptions.url ??= options?.url
         doOptions.confirmationMsg ??= doOptions.requireConfirmation === true ? 'Are you sure you want to restore this item?' : undefined
-        const store = doOptions?.store ?? options?.store
+        
+        let store = doOptions?.store ?? options?.store
+        
+        if (store == null && doOptions.nav != null) {
+            store = useStoreDefinition({ nav: doOptions.nav })
+        }
 
-        if (doOptions.nav != null && store != null) {
+        if (store != null) {
             doOptions.onRestoreAsync ??= () => {
                 return store().restore(doOptions)
             }
@@ -248,19 +306,39 @@ export function useActions(options?: UseActionsOptions): BTActions {
         doOptions.throwError ??= options?.throwError
         doOptions.url ??= options?.url
         doOptions.confirmationMsg ??= doOptions.requireConfirmation === true ? 'Are you sure you want to save this item?' : undefined
-        const store = doOptions?.store ?? options?.store
+        
+        let store = doOptions?.store ?? options?.store
+        const items = options?.items ?? []
 
         doOptions.onGetSaveAsync ??= (item: any) => item
         doOptions.onCanSaveAsync ??= () => Promise.resolve(undefined)
 
-        if (doOptions.nav != null && store != null) {
+        if (store == null && doOptions.nav != null) {
+            store = useStoreDefinition({ nav: doOptions.nav })
+        }
+        
+        if (store != null) {
             doOptions.onSaveAsync ??= async () => { //item: any
+                doOptions.mode ??= doOptions.data?.id == null ? 'new' : 'edit'
                 if (doOptions.mode == 'new') {
                     return await store().post(doOptions)
                 }
                 else {
                     return await store().patch(doOptions)
                 }
+            }
+        }
+        else {
+            doOptions.onSaveAsync ??= (item: any) => {
+                const ind = items.findIndex(x => x.id == item.id)
+                if (ind >= 0) {
+                    items.splice(ind, 1, item)
+                }
+                else {
+                    items.push(item)
+                }
+
+                return Promise.resolve(item)
             }
         }
 
@@ -277,14 +355,14 @@ export function useActions(options?: UseActionsOptions): BTActions {
                 let err = await doOptions.onCanSaveAsync(itemToSave)
                 logError(err)
 
-                if (err == null)
+                if (err != null)
                     return undefined
             }
 
             let res: any
             if (doOptions.onSaveAsync != null) {
                 res = await doOptions.onSaveAsync!(itemToSave)
-                res = res.data
+                res = res.data != null ? res.data : res
             }
 
             if (doOptions.onSaveSuccessAsync != null) {
@@ -301,7 +379,22 @@ export function useActions(options?: UseActionsOptions): BTActions {
             throwError: doOptions.throwError ?? options?.throwError
         })
     }
-    
+
+    /**
+    * Get from api (no extra '/get' url or anything)
+    */
+    function apiGet(doOptions: ApiActionOptions) {
+        doOptions.nav ??= options?.nav
+        doOptions.proxyID ??= options?.proxyID
+        doOptions.throwError ??= options?.throwError
+        doOptions.url ??= options?.url
+
+        return doAction(async () => {
+            const api = doOptions.api ?? useApi()
+            return await api.get(doOptions)
+        }, { ...options, ...doOptions })
+    }
+
     /**
      * Post to api (no extra '/post' url or anything)
      * @param options 
@@ -309,35 +402,20 @@ export function useActions(options?: UseActionsOptions): BTActions {
     function apiPost(doOptions: ApiActionOptions) {
         doOptions.nav ??= options?.nav
         doOptions.proxyID ??= options?.proxyID
-        doOptions.refresh ??= options?.refresh
         doOptions.throwError ??= options?.throwError
         doOptions.url ??= options?.url
         
         return doAction(async () => {
-            return await doOptions.api.post(doOptions)
-        }, options)
+            const api = doOptions.api ?? useApi()
+            return await api.post(doOptions)
+        }, { ...options, ...doOptions })
     }
-
-    /**
-     * Get from api (no extra '/get' url or anything)
-     */
-    function apiGet(doOptions: ApiActionOptions) {
-        doOptions.nav ??= options?.nav
-        doOptions.proxyID ??= options?.proxyID
-        doOptions.refresh ??= options?.refresh
-        doOptions.throwError ??= options?.throwError
-        doOptions.url ??= options?.url
-
-        return doAction(async () => {
-            return await doOptions.api.get(doOptions)
-        }, options)
-    }
-
+    
     return {
-        apiGet,
-        apiPost,
         actionLoadingMsg,
         actionErrorMsg,
+        apiGet,
+        apiPost,
         clearErrors,
         deleteItem,
         doAction,

@@ -36,6 +36,10 @@ describe("navigation", () => {
         ]
     })
 
+    test('display name is set', () => {
+        expect(nav.findDisplay('test-nav')).toEqual('Test Nav')
+    })
+
     test('find archive name', () => {
         expect(nav.findArchiveName('navC')).toEqual('nav-archive')
         expect(nav.findArchiveName('navB')).toEqual(undefined)
@@ -48,7 +52,7 @@ describe("navigation", () => {
     })
 
     test('find display', () => {
-        expect(nav.findDisplay('test-nav')).toEqual(undefined)
+        expect(nav.findDisplay('test-nav')).toEqual('Test Nav')
         expect(nav.findDisplay('navA')).toEqual('discs')
     })
 

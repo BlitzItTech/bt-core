@@ -1,5 +1,5 @@
 import { setActivePinia, createPinia } from 'pinia'
-import { createSessionStore, createWholeLastUpdateStore } from '../src/composables/stores'
+import { createSessionStoreDefinition, createWholeLastUpdateStoreDefinition } from '../src/composables/stores'
 import { createApi } from '../src/composables/api'
 import { describe, test, expect, beforeEach, afterAll, afterEach, beforeAll } from 'vitest'
 import { setupServer } from 'msw/node'
@@ -46,11 +46,12 @@ afterEach(() => {
 describe('use session store with no api no caching', () => {
     const [api, app] = withSetup(() => createApi())
 
+
     const pinia = createPinia()
     app.use(pinia)
     setActivePinia(pinia)
 
-    const store = createSessionStore({
+    const store = createSessionStoreDefinition({
         storageMode: 'session',
         storeName: 'sesh'
     })()
@@ -79,7 +80,7 @@ describe('use session store with api no caching', () => {
 
     setActivePinia(pinia)
 
-    const store = createSessionStore({
+    const store = createSessionStoreDefinition({
         storageMode: 'session',
         api: api,
         storeName: 'test'
@@ -109,6 +110,7 @@ describe('use session store with api no caching', () => {
         expect(getRes.data).toEqual({ test: 'b' })
     })
 
+    
     test('patch', async () => {
         const res = await store.patch<any>({ nav: 'test', data: { test: 'a', id: '1', rowVersion: 1 }})
         let getRes = await store.get<any>({ nav: 'test', id: '1' })

@@ -1,8 +1,11 @@
 import { DateTime } from 'luxon'
 
 export interface BTDates {
+    /**returns start of day */
     getToday: () => string
+    /**returns start of tomorrow */
     getTomorrow: () => string
+    /**returns current datetime in tz format */
     tzDate: (val?: string, fromFormat?: string) => DateTime
     tzString: (val?: string, format?: string, fromFormat?: string) => string
     utcDate: (val?: string, fromFormat?: string) => DateTime
@@ -11,6 +14,7 @@ export interface BTDates {
 
 export interface CreateDatesOptions {
   getTimeZone: () => string
+  getUTC?: () => DateTime
 }
 
 let current: BTDates
@@ -20,19 +24,21 @@ export function useDates(): BTDates {
 }
 
 export function createDates(options: CreateDatesOptions): BTDates {
+    const getUtc = options.getUTC ?? DateTime.utc
 
     function getToday(): string {
-        return tzDate()?.startOf('day').toUTC().toString() ?? '';
+        return tzDate().startOf('day').toUTC().toString() ?? '';
     }
 
     function getTomorrow(): string {
-        return tzDate()?.endOf('day').toUTC().toString() ?? '';
+        return tzDate().startOf('day').plus({ day: 1 }).toUTC().toString() ?? '';
+        // return tzDate().endOf('day').toUTC().toString() ?? '';
     }
 
     function tzDate(val?: string, fromFormat?: string): DateTime {
         if (val == null) {
             //create now
-            return DateTime.utc().setZone(options.getTimeZone())
+            return getUtc().setZone(options.getTimeZone())
         }
 
         return fromFormat ? DateTime.fromFormat(val, fromFormat, { zone: options.getTimeZone() }) : DateTime.fromISO(val, { zone: options.getTimeZone() })
@@ -41,7 +47,7 @@ export function createDates(options: CreateDatesOptions): BTDates {
     function tzString(val?: string, format?: string, fromFormat?: string): string {
         if (val == null) {
             //create now
-            const d = DateTime.utc().setZone(options.getTimeZone())
+            const d = getUtc().setZone(options.getTimeZone())
             return format ? d.toFormat(format) : d.toString()
         }
 
@@ -56,7 +62,7 @@ export function createDates(options: CreateDatesOptions): BTDates {
 
     function utcDate(val?: string, fromFormat?: string): DateTime {
         if (val == null) {
-            return DateTime.utc()
+            return getUtc()
         }
         else {
             return fromFormat ? DateTime.fromFormat(val, fromFormat) : DateTime.fromISO(val)
@@ -65,7 +71,7 @@ export function createDates(options: CreateDatesOptions): BTDates {
 
     function utcString(val?: string, format?: string, fromFormat?: string): string {
         if (val == null) {
-            return format ? DateTime.utc().toFormat(format) : DateTime.utc().toString()
+            return format ? getUtc().toFormat(format) : getUtc().toString()
         }
         else {
             const d = fromFormat ? DateTime.fromFormat(val, fromFormat) : DateTime.fromISO(val)

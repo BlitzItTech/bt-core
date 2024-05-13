@@ -1,6 +1,6 @@
 import { type RouteLocationNormalized } from 'vue-router'
-import { BTDemo } from '../composables/demo'
-import { type Environment } from '../composables/urls'
+import { BTDemo } from '../composables/demo.ts'
+import { type Environment } from '../composables/urls.ts'
 
 export interface UseDocumentMetaOptions {
     demo?: BTDemo
@@ -20,7 +20,7 @@ export function useDocumentMeta(options?: UseDocumentMetaOptions): BTDocumentMet
             document.title = nearestWithTitle.meta.title as string
         }
         else {
-            const env = import.meta.env.MODE as Environment
+            const env = import.meta.env.VITE_NODE_ENV as Environment
             let title = ''
 
             if (env == 'development')

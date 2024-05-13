@@ -17,7 +17,7 @@
 
 <script setup lang="ts">
 import { computed, inject, ref } from 'vue'
-import { isLengthyArray } from '../composables/helpers'
+import { isLengthyArray } from '../composables/helpers.ts'
 
     defineOptions({
         inheritAttrs: false

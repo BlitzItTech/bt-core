@@ -17,9 +17,9 @@
 </template>
 
 <script setup lang="ts">
-import { type TableColumn } from '../composables/list'
-import { nestedValue } from '../composables/helpers'
-import { useFilters } from '../composables/filters'
+import { type TableColumn } from '../composables/list.ts'
+import { nestedValue } from '../composables/helpers.ts'
+import { useFilters } from '../composables/filters.ts'
 import { computed } from 'vue';
     
     interface Props {

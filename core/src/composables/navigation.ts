@@ -1,8 +1,9 @@
 //nav item needs to have a 'ignore Suspension' prop
-import { useUrl } from '../composables/urls'
-import { appendUrl, deepSelect } from '../composables/helpers'
+import { useDataUrl } from '../composables/urls.ts'
+import { appendUrl, capitalizeWords, deepSelect, singularize } from '../composables/helpers.ts'
 import { ref, type Ref } from 'vue'
-import { type AuthItem } from './auth'
+import { type AuthItem } from './auth.ts'
+import type { StorageMode, StoreMode } from './stores.ts'
 
 export interface ExternalParty {
     party?: string
@@ -65,6 +66,10 @@ export interface NavigationItem extends AuthItem {
     requiresAuth?: boolean
     /**the name of the route to access individual items */
     singleName?: string
+    /**what kind of store is needed for this api item */
+    storeMode?: StoreMode
+    /**what kind of storage mode is needed for this api item */
+    storageMode?: StorageMode
     /**this nav item is restricted to these subscriptions.  So the user needs to have at least one of these subscription codes. */
     subscriptions?: string[]
     /**this nav item is preferred in this subscription codes. */
@@ -83,19 +88,20 @@ export interface BTNavigation {
     backgroundName: Ref<string | undefined>
     hesitate: Ref<boolean>
     navigationItems: NavigationItem[],
-    findArchiveName: (navName?: string) => string | undefined
-    findCacheHours: (navName?: string) => number
-    findDisplay: (navName?: string) => string | undefined
-    findIcon: (navName?: string) => string | undefined
+    findArchiveName: (navName?: string | NavigationItem) => string | undefined
+    findCacheHours: (navName?: string | NavigationItem) => number
+    findDisplay: (navName?: string | NavigationItem) => string | undefined
+    findIcon: (navName?: string | NavigationItem) => string | undefined
     findItem: (navName?: string | NavigationItem) => NavigationItem | null
-    findStoreName: (navName?: string) => string
-    findPath: (navName?: string) => string | undefined
-    findSingleDisplay: (navName?: string) => string | undefined
+    findStoreName: (navName?: string | NavigationItem) => string | undefined
+    findPath: (navName?: string | NavigationItem) => string | undefined
+    findSingleDisplay: (navName?: string | NavigationItem) => string | undefined
     updateNavigationProperties: (navName?: string | NavigationItem) => void
 }
 
 export interface UseNavigationOptions {
     defaultCacheExpiryHours?: number
+    getDisplayName?: (navItem: NavigationItem) => string | undefined
     navItems?: NavigationItem[]
 }
 
@@ -107,21 +113,35 @@ export function useNavigation(): BTNavigation {
 
 export function createNavigation(options: UseNavigationOptions): BTNavigation {
     const cacheExpiryHours = options.defaultCacheExpiryHours ?? 7
-    const navigationList = options.navItems ?? []
+    
+    options.getDisplayName ??= (navItem: NavigationItem) => {
+        if (navItem.displayName != null)
+            return navItem.displayName
+        if (navItem.name != null)
+            return capitalizeWords(navItem.name.replaceAll('-', ' '))
+        return undefined
+    }
 
-    function findArchiveName(navName?: string): string | undefined {
+    const navigationList = (options.navItems ?? []).map(x => {
+        return {
+            displayName: x.displayName ?? options.getDisplayName!(x),
+            ...x
+        }
+    })
+
+    function findArchiveName(navName?: string | NavigationItem): string | undefined {
         return findItem(navName)?.archiveName
     }
 
-    function findCacheHours(navName?: string): number {
+    function findCacheHours(navName?: string | NavigationItem): number {
         return findItem(navName)?.cacheExpiryHours ?? cacheExpiryHours
     }
 
-    function findDisplay(navName?: string): string | undefined {
+    function findDisplay(navName?: string | NavigationItem): string | undefined {
         return findItem(navName)?.displayName
     }
 
-    function findIcon(navName?: string): string | undefined {
+    function findIcon(navName?: string | NavigationItem): string | undefined {
         return findItem(navName)?.icon
     }
 
@@ -137,11 +157,11 @@ export function createNavigation(options: UseNavigationOptions): BTNavigation {
     }
 
     /**defaults to microservice of default */
-    function findPath(navName?: string) {
+    function findPath(navName?: string | NavigationItem) {
         const navItem = findItem(navName)
         if (navItem == null) return undefined
 
-        let vPath = useUrl(navItem.microservice ?? 'default') ?? ''
+        let vPath = useDataUrl(navItem.microservice ?? 'default') ?? ''
 
         if (navItem.path != null)
             vPath = appendUrl(vPath, navItem.path)
@@ -153,7 +173,7 @@ export function createNavigation(options: UseNavigationOptions): BTNavigation {
     }
 
     /**finds display name and attempts to remove plural suffixes */
-    function findSingleDisplay(navName?: string): string | undefined {
+    function findSingleDisplay(navName?: string | NavigationItem): string | undefined {
         const item = findItem(navName)
 
         if (item?.singleName != null)
@@ -163,21 +183,12 @@ export function createNavigation(options: UseNavigationOptions): BTNavigation {
 
         if (displayName == null) return undefined
 
-        if (displayName.endsWith('ies'))
-            return displayName.slice(0, displayName.length - 3)
-
-        if (displayName.endsWith('es'))
-            return displayName.slice(0, displayName.length - 2)
-
-        if (displayName.endsWith('s'))
-            return displayName.slice(0, displayName.length - 1)
-
-        return displayName
+        return singularize(displayName)
     }
 
-    function findStoreName(navName?: string) {
+    function findStoreName(navName?: string | NavigationItem) {
         const navItem = findItem(navName)
-        return navItem?.name ?? navItem?.singleName ?? 'store'
+        return navItem?.name ?? navItem?.singleName
     }
 
     /**updates background, navigation sidebar, and app bar settings */

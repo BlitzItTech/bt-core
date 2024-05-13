@@ -1,8 +1,8 @@
 import { toValue, useEventListener, useParentElement } from "@vueuse/core"
 import { type ComponentPublicInstance, type Ref, ref } from 'vue'
 import type { Position, MaybeRefOrGetter } from "@vueuse/core"
-import { copyDeep } from "../composables/helpers"
-import { type BladeVariant } from "../types"
+import { copyDeep } from "../composables/helpers.ts"
+import { type BladeVariant } from "../types.ts"
 
 export type ResizeHandle = 't' | 'r' | 'b' | 'l' | 'tr' | 'br' | 'bl' | 'tl'
 

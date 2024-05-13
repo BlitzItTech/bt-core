@@ -147,10 +147,10 @@
 </template>
 
 <script setup lang="ts">
-    import { type ListProps, useList } from '../composables/list'
+    import { type ListProps, useList } from '../composables/list.ts'
     import { computed, inject, ref } from 'vue'
-    import { useFilters } from '../composables/filters'
-    import { isLengthyArray, nestedValue } from '../composables/helpers'
+    import { useFilters } from '../composables/filters.ts'
+    import { isLengthyArray, nestedValue } from '../composables/helpers.ts'
 
     defineOptions({
         inheritAttrs: false
@@ -205,10 +205,7 @@
     const mIsEditing = inject('isEditing', () => ref(false), true)
     const cIsEditing = computed(() => props.isEditing ?? mIsEditing.value)
 
-    const ui = useList(props, undefined, {
-        useBladeSrc: false,
-        useRouteSrc: false
-    })
+    const ui = useList(props, undefined)
 
     const filters = useFilters()
 

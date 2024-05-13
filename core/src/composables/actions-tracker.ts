@@ -1,8 +1,8 @@
 import { computed, ref, shallowRef } from 'vue'
 import type { ShallowRef, Ref } from 'vue'
-import { useConfirmAsync } from '../composables/dialogs'
+// import { useConfirmAsync } from '../composables/dialogs'
 import { watchArray } from '@vueuse/core'
-import { useId } from '../composables/id'
+import { useId } from '../composables/id.ts'
 
 interface LoadingMsg {
     id: string,
@@ -14,7 +14,8 @@ export interface DoActionOptions {
     confirmationMsg?: string
     errorMsg?: string
     loadingMsg?: string
-    requireConfirmation?: boolean,
+    onError?: (err: any) => void,
+    requireConfirmation?: boolean
     throwError?: boolean
 }
 
@@ -60,8 +61,8 @@ export function useActionsTracker(useOptions?: DoActionOptions) {
 
         try {
             if (opt.requireConfirmation || opt.confirmationMsg) {
-                if (!await useConfirmAsync(opt.confirmationMsg ?? 'Are you sure?'))
-                    return
+                // if (!await useConfirmAsync(opt.confirmationMsg ?? 'Are you sure?'))
+                //     return
             }
 
             res = await action()
@@ -72,9 +73,11 @@ export function useActionsTracker(useOptions?: DoActionOptions) {
 
             return res
         }
-        catch (err) {
-            if (opt.throwError == true)
-                return res
+        catch (err: any) {
+            if (useOptions?.onError != null)
+                useOptions.onError(err)
+            else if (opt.throwError == true)
+                return err
             else
                 logError(opt.errorMsg ?? (err as string) ?? 'error')
         }

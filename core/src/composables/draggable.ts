@@ -1,6 +1,6 @@
 import { type ComponentPublicInstance, type MaybeRefOrGetter, type Ref, ref, toValue } from 'vue'
 import { type Position, useEventListener } from '@vueuse/core'
-import { type PointerOrTouchEvent } from './resizable'
+import { type PointerOrTouchEvent } from './resizable.ts'
 
 export interface UseDraggableOptions {
     /**

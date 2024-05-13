@@ -1,4 +1,4 @@
-import { validEmail } from '../composables/helpers'
+import { validEmail } from '../composables/helpers.ts'
 
 export interface UseRulesOptions {
     forEmail?: boolean

@@ -1,5 +1,5 @@
-import { TableColumn } from "./list"
-import { isLengthyArray, fromCamelCase, nestedValue } from "../index"
+import { TableColumn } from "./list.ts"
+import { isLengthyArray, fromCamelCase, nestedValue } from "../composables/helpers.ts"
 
 export interface CSVProps {
     canExportCSV?: boolean
@@ -25,13 +25,23 @@ declare global {
     }
 }
 
+export interface ExportToCSVOptions {
+    items: any[],
+    headers?: TableColumn[],
+    fileName?: string,
+    format: 'array' | 'file'
+}
+
 export function useCSV(): UseCSVPropsReturn {
 
-    function exportToCSV(
-        items: any[],
-        headers?: TableColumn[],
-        fileName: string = 'csvData.csv') {
-
+    function exportToCSV(options: ExportToCSVOptions) {
+        const {
+            items,
+            headers,
+            fileName = 'data.csv',
+            format = 'file'
+        } = options
+        
         if (!isLengthyArray(items)) {
             return;
         }
@@ -42,7 +52,7 @@ export function useCSV(): UseCSVPropsReturn {
             dnaArray = headers?.filter(y => (y.csv ?? y.csvText ?? y.csvFilter ?? y.csvArray) != null)
                         .map(z => {
                             return {
-                                header: z.title ?? '',
+                                header: z.title ?? z.value ?? '',
                                 itemText: z.itemText,
                                 value: z.value
                             }
@@ -160,7 +170,7 @@ export function useCSV(): UseCSVPropsReturn {
         // }
 
         //print header row
-        resArray.push(dnaArray.map(x => x.header))
+        resArray.push(dnaArray.map(x => x.header).toString())
 
         lineArray.forEach(obj => {
             let propArray: any[] = [];
@@ -172,24 +182,32 @@ export function useCSV(): UseCSVPropsReturn {
             resArray.push(propArray.join(","));
         })
 
-        var csvContent = resArray.join("\n");
-        var file = new Blob([csvContent], { type: "text/plain;charset=utf-8" });
-        
-        if (window.navigator.msSaveOrOpenBlob) {
-            window.navigator.msSaveOrOpenBlob(file, fileName);
+
+        if (format == 'array') {
+            return resArray
         }
         else {
-            var a = document.createElement("a"),
-                url = URL.createObjectURL(file);
-                a.href = url;
-                a.download = fileName;
-                document.body.appendChild(a);
-                a.click();
-                setTimeout(function () {
-                    document.body.removeChild(a);
-                    window.URL.revokeObjectURL(url);
-                }, 0);
+            //file
+            var csvContent = resArray.join("\n")
+
+            var file = new Blob([csvContent], { type: "text/plain;charset=utf-8" });
+            
+            if (window.navigator.msSaveOrOpenBlob) {
+                window.navigator.msSaveOrOpenBlob(file, fileName);
             }
+            else {
+                var a = document.createElement("a"),
+                    url = URL.createObjectURL(file);
+                    a.href = url;
+                    a.download = fileName;
+                    document.body.appendChild(a);
+                    a.click();
+                    setTimeout(function () {
+                        document.body.removeChild(a);
+                        window.URL.revokeObjectURL(url);
+                    }, 0);
+                }
+        }
     }
 
     return {

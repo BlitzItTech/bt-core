@@ -1,5 +1,5 @@
-import { type MaybeRefOrGetter, type Ref, ref, toRef, toValue, watch } from "vue";
-import { copyDeep } from '../composables/helpers';
+import { type MaybeRefOrGetter, type Ref, ref, toRef, toValue, watch } from "vue"
+import { copyDeep } from '../composables/helpers.ts'
 
 export interface UseTrackerOptions {
     propsToIgnore?: string[]

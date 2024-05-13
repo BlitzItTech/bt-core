@@ -3,7 +3,7 @@
 </template>
 
 <script setup lang="ts">
-    import { useFilters } from '../index'
+    import { useFilters } from '../composables/filters.ts'
     import { computed } from 'vue'
     
     interface Props {

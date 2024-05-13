@@ -1,13 +1,15 @@
-import type { GetOptions, OnCanDoAsync, OnDoAsync, OnDoSuccessAsync, OnGetAsync, OnGetSuccessAsync } from './actions'
-import type { BladeVariant } from '../types'
-import { useCSV } from '../composables/csv'
-import { isLengthyArray, hasSearch } from '../index'
+import type { GetOptions, OnCanDoAsync, OnDoAsync, OnDoSuccessAsync, OnGetAsync, OnGetSuccessAsync } from './actions.ts'
+import type { BladeVariant } from '../types.ts'
+import { useCSV } from '../composables/csv.ts'
+import { isLengthyArray, hasSearch } from '../composables/helpers.ts'
 import { firstBy } from 'thenby'
 import { computed, ref, onMounted, toValue, shallowRef, MaybeRefOrGetter, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useArrayDifference, useArrayUnique, watchArray, watchDebounced } from '@vueuse/core'
-import { useActions } from '../composables/actions'
-import { StorageMode, StoreMode, useStoreDefinition } from '../index'
+import { useActions } from '../composables/actions.ts'
+import { StorageMode, StoreMode, useStoreDefinition } from './stores.ts'
+import { useNavigation } from './navigation.ts'
+import { useBlade } from './blade.ts'
 
 export interface RefreshOptions {
     deepRefresh?: boolean,
@@ -18,9 +20,10 @@ export interface TableColumn {
     align?: 'start' | 'end' | 'center'
     bool?: number
     csv?: boolean,
-    csvArray?: boolean,
-    csvFilter?: string,
-    csvText?: string,
+    csvArray?: boolean
+    csvFilter?: string
+    csvText?: string
+    display?: boolean
     hide?: boolean
     itemText?: string
     level?: number
@@ -29,8 +32,9 @@ export interface TableColumn {
     nav?: string
     prefix?: string
     searchable?: boolean
+    showSize?: string
     single?: boolean
-    sublevel?: number,
+    sublevel?: number
     suffix?: string
     textFilter?: string
     textFunction?: Function
@@ -52,37 +56,41 @@ export interface ListEvents {
     (e: 'mouse-over-item', item: any): void
 }
 
+//unused props for ui
+    // canAdd?: boolean
+    // canDelete?: boolean
+    // canEdit?: boolean
+    // canRestore?: boolean
+    // canShowInactive?: boolean
+    // hideColumns?: boolean
+    // hideFilters?: boolean
+    // hideRefresh?: boolean
+    // hideSubtoolbarSettings?: boolean
+    // itemValue?: string
+    // lines?: 'one' | 'two' | 'three'
+    // showListOnly?: boolean
+    // showTableOnly?: boolean
+    // variant?: BladeVariant
+
 export interface ListProps {
     additionalUrl?: string
     bladeName?: string
-    canAdd?: boolean
-    canDelete?: boolean
-    canEdit?: boolean
-    canRestore?: boolean
-    canShowInactive?: boolean
     canSelect?: boolean
     canUnselect?: boolean
     confirmOnDelete?: boolean
     customFilters?: CustomFilterParam[]
     defaultFilters?: string[]
-    dividers?: boolean
     eager?: boolean
     errorMsg?: string
     headers?: TableColumn[]
     hideActions?: boolean
-    hideColumns?: boolean
-    hideFilters?: boolean
-    hideRefresh?: boolean
-    hideSubtoolbarSettings?: boolean
-    includeDetails?: boolean
     isSingle?: boolean
     itemBladeName?: string
     itemID?: string
     items?: any[]
+    /**only used with server pagination */
     itemsPerPage?: number
     itemText?: string
-    // itemValue?: string
-    lines?: 'one' | 'two' | 'three'
     loadingMsg?: string
     localOnly?: boolean //if local only or if nav is null, then will seek to only remove from items and asyncItems
     nav?: string
@@ -90,32 +98,27 @@ export interface ListProps {
     onCanDelete?: (item: any) => boolean
     /**when trying to delete in api */
     onCanDeleteAsync?: OnCanDoAsync
-    onGetSaveAsync?: OnDoSuccessAsync
+    // onGetSaveAsync?: OnDoSuccessAsync
     onCanRestore?: (item: any) => boolean
     onCanRestoreAsync?: OnCanDoAsync
-    onCanSaveAsync?: OnCanDoAsync
+    // onCanSaveAsync?: OnCanDoAsync
     onCanSelectItem?: (item: any) => boolean
     onDeleteAsync?: OnDoAsync
     onDeleteSuccessAsync?: OnDoAsync
+    onError?: (err: any) => void
     onFilter?: Function
     onGetAsync?: OnGetAsync
     onGetSuccessAsync?: OnGetSuccessAsync
     onRestoreAsync?: OnDoSuccessAsync
     onRestoreSuccessAsync?: OnDoSuccessAsync
-    onSaveAsync?: OnDoSuccessAsync
-    onSaveSuccessAsync?: OnDoSuccessAsync
     onSelectItem?: (item: any) => void
     params?: any
     proxyID?: string
-    proxyQueryKey?: string
     refreshToggle?: boolean
     searchProps?: string[]
-    searchQueryKey?: string
     selectProps?: string[]
-    sortBy?: string
-    sortOrder?: 'Ascending' | 'Descending'
-    showListOnly?: boolean
-    showTableOnly?: boolean
+    // sortBy?: string
+    // sortOrder?: 'Ascending' | 'Descending'
     showSearch?: boolean
     startShowingInactive?: boolean
     storeMode?: StoreMode
@@ -124,7 +127,6 @@ export interface ListProps {
     useServerPagination?: boolean
     useBladeSrc?: boolean
     useRouteSrc?: boolean
-    variant?: BladeVariant
 }
 
 export interface GroupedHeaderOption {
@@ -133,39 +135,39 @@ export interface GroupedHeaderOption {
 }
 
 export interface UseListOptions {
-    storeMode?: StoreMode
-    storageMode?: StorageMode
-    useBladeSrc?: boolean
-    useRouteSrc?: boolean
+    hideActions?: boolean
+    onError?: (err: any) => void
 }
 
 /**
  * PROPS first
  * ROUTE second
+ *  page=1
+ *  
  * BLADE third
  * @param props 
  * @param emit 
  * @param options 
  */
 export function useList(props: ListProps, emit?: ListEvents, options?: UseListOptions) {
-    // const useBladeSrc = props.useBladeSrc ?? options?.useBladeSrc ?? true
-    // const useRouteSrc = props.useRouteSrc ?? options?.useRouteSrc ?? true
-    const storeMode = props.storeMode ?? options?.storeMode ?? 'session'
-    const storageMode = props.storageMode ?? options?.storageMode ?? 'local-cache'
-    // const bladeName = props.bladeName ?? props.nav
-    const nav = props.nav ?? props.nav ?? 'basic'
     const csv = useCSV()
-
+    const navigation = useNavigation()
     const router = useRouter()
     const route = useRoute()
 
-    //server pagination
-    const currentPage = ref<number>(1)
+    const { bladeData } = useBlade({  })
+
+    //sources for params, etc.
+    const useBladeSrc = props.useBladeSrc ?? true
+    const useRouteSrc = props.useRouteSrc ?? true
+
+    const nav = props.nav ?? props.bladeName ?? props.itemBladeName ?? 'basic'
+    const storeMode = props.storeMode ?? navigation.findItem(nav)?.storeMode
+    const storageMode = props.storageMode ?? navigation.findItem(nav)?.storageMode
 
     //server filtering
     const customFilters = toValue(props.customFilters) ?? []
     const serverFilters = ref<string[]>([])
-    let latestFilters = ref(new Array<number>())
     const allFilters = computed(() => {
         return useArrayUnique([
             ...customFilters.filter(x => x.name != null).map(x => x.name),
@@ -173,22 +175,70 @@ export function useList(props: ListProps, emit?: ListEvents, options?: UseListOp
             ...serverFilters.value
         ]).value
     })
+    //selected indexes of all filters
     const selectedFilters = ref((props.defaultFilters ?? []).map(x => allFilters.value.indexOf(x)))
+    let latestFilters = ref([...selectedFilters.value])
     const filtersChanged = computed(() => {
         return useArrayDifference(latestFilters, selectedFilters).value.length > 0 ||
             useArrayDifference(selectedFilters, latestFilters).value.length > 0
     })
 
-    //server headers
-    const qKey = toValue(props.proxyQueryKey)
-    const proxyID = computed(() => { return toValue(props.proxyID) ?? (qKey != null ? route.query?.[qKey] : undefined) as string | undefined; })
+    //page
+    
+    //server pagination
+    const currentPage = ref<number>(getStartingPage())
+    function getStartingPage() {
+        if (useBladeSrc) {
+            const bladePage = bladeData.value?.page
+            if (bladePage != null)
+                return Number.parseInt(bladePage)
+        }
 
-    //server query
-    const sKey = toValue(props.searchQueryKey)
-    const searchString = ref<string | undefined>(sKey != null ? route.query?.[sKey] as string | undefined : undefined)
-    // const selectProps = toValue(props.selectProps) ?? []
+        if (useRouteSrc) {
+            const routePage = route?.query?.page
+            if (routePage != null)
+                return Number.parseInt(typeof routePage == 'string' ? routePage : routePage.toString())
+        }
+
+        return 1
+    }
+
+    //proxy
+    const proxyID = computed(() => { 
+        if (useBladeSrc) {
+            const bladeProxyID = bladeData.value?.proxyID
+            if (bladeProxyID != null)
+                return bladeProxyID as string
+        }
+
+        if (useRouteSrc) {
+            const routeProxyID = route?.query?.query
+            if (routeProxyID != null)
+                return routeProxyID as string
+        }
+
+        return props.proxyID
+    })
+
+    //search
+    const searchString = ref<string | undefined>(getSearchString())
+    function getSearchString() {
+        if (useBladeSrc) {
+            const bladeSearch = bladeData.value?.search
+            if (bladeSearch != null)
+                return bladeSearch as string
+        }
+
+        if (useRouteSrc) {
+            const routeSearch = route?.query?.search
+            if (routeSearch != null)
+                return routeSearch as string
+        }
+
+        return undefined
+    }
+
     const showInactive = ref(toValue(props.startShowingInactive) ?? false)
-    const sortOrder = ref(toValue(props.sortOrder))
 
     //list
     const searchableProps = computed(() => {
@@ -197,21 +247,21 @@ export function useList(props: ListProps, emit?: ListEvents, options?: UseListOp
             ...(props.headers ?? []).filter(x => x.searchable != null && x.value != null).map(x => x.value ?? '')
         ]
     })
+
     const asyncItems = ref<any[]>([])
     const filteredItems = shallowRef<any[]>([])
-    // let filtersLoaded = false
-
     const headerOptions = ref<TableColumn[]>([])
 
     let lastSelectedItem: any
 
     const { actionErrorMsg, actionLoadingMsg, deleteItem, doAction, getItem, getAllItems, restoreItem } = useActions({
-        nav: props.nav ?? props.bladeName ?? props.itemBladeName,
+        nav: nav,
+        onError: props.onError ?? options?.onError,
         proxyID: proxyID.value,
         store: useStoreDefinition({
             storeMode: storeMode,
             storageMode: storageMode,
-            storeName: nav
+            nav: nav
         })
     })
 
@@ -219,8 +269,55 @@ export function useList(props: ListProps, emit?: ListEvents, options?: UseListOp
     const loadingMsg = computed(() => props.loadingMsg ?? actionLoadingMsg.value)
     const isLoading = computed(() => loadingMsg.value != null)
     const showError = shallowRef(false)
-    const showSearch = shallowRef(props.showSearch ?? false)
+    const showSearch = shallowRef(props.showSearch ?? true)
     const totalPages = ref(0)
+    const filterParams = computed(() => {
+        let query: string | undefined
+        let filterBys: string[] = []
+
+        selectedFilters.value.forEach(ind => {
+            const sFilter = allFilters.value[ind]
+            const customFilter = customFilters.find((z: CustomFilterParam) => z.name == sFilter)
+            if (customFilter != null)
+                query = query != null ? `${query}ANDALSO${customFilter.filterFunction()}` : customFilter.filterFunction()
+            else
+                filterBys.push(sFilter)
+        })
+
+        const r: any = {}
+
+        if (isLengthyArray(filterBys))
+            r.filterBy = filterBys.toString()
+
+        if (query != null)
+            r.query = query
+        
+        return r
+    })
+
+    const allParams = computed(() => { 
+        let p = props.params != null ? { ...props.params } : {}
+
+        if (props.useServerPagination && props.itemsPerPage != null) {
+            p.includeCount = true
+            p.takeAmount = props.itemsPerPage
+            p.takeFrom = (currentPage.value - 1) * props.itemsPerPage
+        }
+
+        if (filterParams.value != null)
+            p = { ...p, ...filterParams.value}
+
+        if (showInactive.value)
+            p.includeInactive = true
+
+        if (isLengthyArray(props.selectProps))
+            p.properties = props.selectProps?.toString()
+
+        if (searchString.value != null)
+            p.searchString = searchString.value
+
+        return p
+    })
 
     const isDeletable = computed(() => (item: any) => {
         if (props.onCanDelete != null)
@@ -275,8 +372,8 @@ export function useList(props: ListProps, emit?: ListEvents, options?: UseListOp
         return returnList.sort(firstBy(x => x.position))
     })
     const displayHeaders = computed(() => {
-        return []
-        // return tableHeaders.value.filter(x => (x.nav != null && x.itemText != null) || x.textFilter != null || x.display != null || x.bool != null)
+        // return []
+        return tableHeaders.value.filter(x => (x.nav != null && x.itemText != null) || x.textFilter != null || x.display != null || x.bool != null)
     })
 
     function add(variant: BladeVariant) {
@@ -412,10 +509,12 @@ export function useList(props: ListProps, emit?: ListEvents, options?: UseListOp
     }
 
     function refreshTableHeaders() {
+        const hideActions = options?.hideActions ?? props.hideActions
+        
         if (props.headers != null) {
             headerOptions.value = [...props.headers]
             
-            if (!props.hideActions)
+            if (!hideActions)
                 headerOptions.value.push({ title: 'Actions', value: 'itemActions', align: 'end' })
         }
     }
@@ -436,7 +535,8 @@ export function useList(props: ListProps, emit?: ListEvents, options?: UseListOp
         const getOptions: GetOptions = {
             additionalUrl: props.additionalUrl,
             id: props.itemID,
-            nav: props.nav,
+            nav,
+            params: allParams.value, //params,
             // params: params.getParamOptions(),
             proxyID: proxyID.value,
             // ...(useBladeSrc ? bladeData.value : {}),
@@ -450,17 +550,15 @@ export function useList(props: ListProps, emit?: ListEvents, options?: UseListOp
             if (getOptions.id === 'new')
                 asyncItems.value = []
             else
-            console.log('getting')
                 asyncItems.value = await getItem(getOptions)
-                console.log('gottne')
         }
         else {
             let r = await getAllItems({
                 ...getOptions,
                 onGetSuccessAsync: async (gRes, opt) => {
-                    let dataRes = gRes.data
+                    let dataRes = gRes?.data
                     // if (!filtersLoaded) {
-                        serverFilters.value = gRes.filters ?? []
+                        serverFilters.value = gRes?.filters ?? []
                         // filtersLoaded = true
                     // }
 
@@ -478,6 +576,8 @@ export function useList(props: ListProps, emit?: ListEvents, options?: UseListOp
             })
 
             asyncItems.value = r
+
+            latestFilters.value = [...selectedFilters.value]
         }
 
         refreshFilteredList()
@@ -515,7 +615,7 @@ export function useList(props: ListProps, emit?: ListEvents, options?: UseListOp
                 let bladeData = {
                     bladeName: props.itemBladeName,
                     id: item.id,
-                    nav: props.nav
+                    nav: nav
                 }
     
                 if (variant == 'page') {
@@ -566,7 +666,7 @@ export function useList(props: ListProps, emit?: ListEvents, options?: UseListOp
 
     onMounted(async () => {
         if (props.eager == true)
-            await refresh({ deepRefresh: route.params?.refresh == 'true' })
+            await refresh({ deepRefresh: route?.params?.refresh == 'true' })
     })
 
     return {
@@ -590,11 +690,10 @@ export function useList(props: ListProps, emit?: ListEvents, options?: UseListOp
         searchString,
         selectedFilters,
         selectItem,
-        serverFilters,
+        // serverFilters,
         showError,
         showInactive,
         showSearch,
-        sortOrder,
         subtitleOptions,
         tableHeaders,
         titleOptions,

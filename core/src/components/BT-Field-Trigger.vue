@@ -126,7 +126,7 @@
 </template>
 
 <script setup lang="ts">
-import { type BladeDensity } from '../types'
+import { type BladeDensity } from '../types.ts'
 import { computed, inject, ref, type Ref } from 'vue'
 
     defineOptions({

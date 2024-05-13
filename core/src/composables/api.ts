@@ -1,6 +1,7 @@
 import { toValue } from 'vue'
-import { appendUrl } from '../composables/helpers'
-import { type BTAuth } from './auth'
+import { appendUrl } from '../composables/helpers.ts'
+import { type BTAuth } from './auth.ts'
+import { type BTDemo } from './demo.ts'
 
 export interface QueryParams {
     filterBy?: string,
@@ -58,7 +59,7 @@ type FindPath = (navName?: string) => string | undefined
 // type BuildQuery = (params: any) => string
 // type BuildUrl = (path: PathOptions) => string
 
-export interface UseApiOptions {
+export interface CreateApiOptions {
     auth?: BTAuth
     /**overrides the default */
     buildHeaders?: (path: PathOptions) => HeadersInit
@@ -74,6 +75,8 @@ export interface UseApiOptions {
     defaultReturnText?: boolean
     /**defaults to true.  Will throw an error on fail */
     defaultThrowError?: boolean
+    /**demo for providing any demo data */
+    demo?: BTDemo
     /**defaults to a function that returns '' */
     findPath?: FindPath
     /**if true and logged in then will set an authorization header with 'bearer [token]' */
@@ -85,8 +88,8 @@ export interface BTApi {
     buildQuery: (params: any) => string
     buildUrl: (path: PathOptions) => string
     deleteItem: (pathOptions: PathOptions) => Promise<string | undefined>
-    get: <T>(pathOptions: PathOptions) => Promise<T>
-    getAll: <T>(pathOptions: PathOptions) => Promise<T>
+    get: <T>(pathOptions: PathOptions) => Promise<T | undefined>
+    getAll: <T>(pathOptions: PathOptions) => Promise<T | undefined>
     post: <T>(pathOptions: PathOptions) => Promise<T | undefined>
     patch: <T>(pathOptions: PathOptions) => Promise<T | undefined>
 }
@@ -97,10 +100,17 @@ export function useApi(): BTApi {
     return current
 }
 
-export function createApi(options?: UseApiOptions): BTApi {
+export interface ApiError {
+    name: string,
+    code: 401 | 403,
+    message: string
+}
+
+export function createApi(options?: CreateApiOptions): BTApi {
     const buildHeaders = options?.buildHeaders ?? defaultBuildHeaders
     const buildQuery = options?.buildQuery ?? defaultBuildQuery
     const buildUrl = options?.buildUrl ?? defaultBuildUrl
+    const demo = options?.demo
 
     function defaultBuildQuery(params: QueryParams): string {
         let query = new URLSearchParams()
@@ -161,7 +171,7 @@ export function createApi(options?: UseApiOptions): BTApi {
         let url: string | undefined = toValue(path.url) ?? undefined
         let id = toValue(path.id)
 
-        if (url == null && path.nav != null && options?.findPath != null)
+        if (url == null && options?.findPath != null)
             url = options.findPath(path.nav)
 
         if (path.additionalUrl != null) {
@@ -188,20 +198,20 @@ export function createApi(options?: UseApiOptions): BTApi {
 
     function defaultBuildHeaders(path: PathOptions): HeadersInit {
         let fetchOptions:any = { ...path.headers }
-        const auth = options?.auth?.credentials
+        //const auth = options?.auth?.credentials
 
         if (path.proxyID)
             fetchOptions.ManagedCompanyAccountID ??= path.proxyID
 
-        if (options?.useBearerToken != false && auth?.isLoggedIn == true)
-            fetchOptions.authorization ??= `bearer ${auth.token}`
+        if (options?.useBearerToken != false && options?.auth?.isLoggedIn.value == true)
+            fetchOptions.authorization ??= `bearer ${options?.auth?.credentials.value.token}`
         
         fetchOptions['Content-Type'] ??= (path.contentType ?? options?.defaultContentType ?? 'application/json')
 
         return fetchOptions
     }
 
-    async function get<T>(pathOptions: PathOptions): Promise<T> {
+    async function get<T>(pathOptions: PathOptions): Promise<T | undefined> {
         const throwError = pathOptions.throwError ?? options?.defaultThrowError ??  true
         const returnJson = pathOptions.returnJson ?? options?.defaultReturnJson ?? true
         const returnText = pathOptions.returnText ?? options?.defaultReturnText ?? false
@@ -215,9 +225,14 @@ export function createApi(options?: UseApiOptions): BTApi {
         if (pathOptions.overrideHeaders !== true)
             headers = buildHeaders(pathOptions)
 
+        if (demo?.isDemoing.value) {
+            console.log(`DEMO: Get from ${url}`)
+            return demo.get(pathOptions)
+        }
+        
         console.log(`Get from ${url}`)
 
-        let res: any = undefined
+        let res: Response | undefined
 
         try {
             res = await fetch(url, {
@@ -227,32 +242,40 @@ export function createApi(options?: UseApiOptions): BTApi {
                 headers
             });
 
-            // if (!throwError) {
-            //     return res
-            // }
-
             if (!res.ok) {
+                if (res.status == 401) {
+                    throw {
+                        code: res.status,
+                        name: 'Unauthorized',
+                        message: res.statusText
+                    }
+                }
+
                 let errorContent = await res.text()
                 throw new Error(errorContent ?? res.statusText ?? 'Get error')
             }
         
             if (returnText)
-                return await res.text()
+                return await res.text() as T
             if (returnJson)
-                return await res.json()
+                return await res.json() as T
             
-            return res
+            throw new Error()
         }
-        catch (err) {
+        catch (err: any) {
+            const errMsg = `${res?.status ?? ''} ${res?.statusText ?? ''} ${err.message}`
             if (!throwError) {
-                return res
+                return undefined
             }
 
-            throw new Error(err as string)
+            if (err.code == 401)
+                throw err
+
+            throw new Error(errMsg)
         }
     }
     
-    async function getAll<T>(pathOptions: PathOptions): Promise<T> {
+    async function getAll<T>(pathOptions: PathOptions): Promise<T | undefined> {
         const throwError = pathOptions.throwError ?? options?.defaultThrowError ??  true
         const returnJson = pathOptions.returnJson ?? options?.defaultReturnJson ?? true
         const returnText = pathOptions.returnText ?? options?.defaultReturnText ?? false
@@ -266,9 +289,14 @@ export function createApi(options?: UseApiOptions): BTApi {
         if (pathOptions.overrideHeaders !== true)
             headers = buildHeaders(pathOptions)
 
+        if (demo?.isDemoing.value) {
+            console.log(`DEMO: Get all from ${url}`)
+            return demo.getAll(pathOptions)
+        }
+        
         console.log(`Get all from ${url}`)
 
-        let res: any = undefined
+        let res: Response | undefined
 
         try {
             res = await fetch(url, {
@@ -283,23 +311,35 @@ export function createApi(options?: UseApiOptions): BTApi {
             // }
 
             if (!res.ok) {
+                if (res.status == 401) {
+                    throw {
+                        code: res.status,
+                        name: 'Unauthorized',
+                        message: res.statusText
+                    }
+                }
+                
                 let errorContent = await res.text()
                 throw new Error(errorContent ?? res.statusText ?? 'Get all error')
             }
         
             if (returnText)
-                return await res.text()
+                return await res.text() as T
             if (returnJson)
-                return await res.json()
+                return await res.json() as T
             
-            return res
+            throw new Error()
         }
-        catch (err) {
+        catch (err: any) {
+            const errMsg = `${res?.status ?? ''} ${res?.statusText ?? ''} ${err.message}`
             if (!throwError) {
-                return res
+                return undefined
             }
 
-            throw new Error(err as string)
+            if (err.code == 401)
+                throw err
+
+            throw new Error(errMsg)
         }
         
     }
@@ -318,9 +358,14 @@ export function createApi(options?: UseApiOptions): BTApi {
         if (pathOptions.overrideHeaders !== true)
             headers = buildHeaders(pathOptions)
 
+        if (demo?.isDemoing.value) {
+            console.log(`DEMO: Post to ${url}`)
+            return demo.post(pathOptions)
+        }
+        
         console.log(`Post to ${url}`)
         
-        let res: any = undefined
+        let res: Response | undefined
         
         try {
             res = await fetch(url, {
@@ -336,26 +381,35 @@ export function createApi(options?: UseApiOptions): BTApi {
             // }
 
             if (!res.ok) {
+                if (res.status == 401) {
+                    throw {
+                        code: res.status,
+                        name: 'Unauthorized',
+                        message: res.statusText
+                    }
+                }
+
                 let errorContent = await res.text()
                 throw new Error(errorContent ?? res.statusText ?? 'Post error!')
             }
         
             if (returnText)
-                return await res.text()
+                return await res.text() as T
             if (returnJson)
-                return await res.json()
+                return await res.json() as T
             
-            return res
+            throw new Error()
         }
-        catch (err) {
-            if (!throwError) {
-                return res
-            }
-
-            if (res.status == 200)
+        catch (err: any) {
+            if (res!.status == 200 || !throwError)
                 return undefined
 
-            throw new Error(err as string)
+            const errMsg = `${res?.status ?? ''} ${res?.statusText ?? ''} ${err.message}`
+
+            if (err.code == 401)
+                throw err
+
+            throw new Error(errMsg)
         }
     }
     
@@ -373,9 +427,14 @@ export function createApi(options?: UseApiOptions): BTApi {
         if (pathOptions.overrideHeaders !== true)
             headers = buildHeaders(pathOptions)
 
+        if (demo?.isDemoing.value) {
+            console.log(`DEMO: Patch to ${url}`)
+            return demo.patch(pathOptions)
+        }
+        
         console.log(`Patch to ${url}`)
 
-        let res: any = undefined
+        let res: Response | undefined
 
         try {
             res = await fetch(url, {
@@ -391,26 +450,39 @@ export function createApi(options?: UseApiOptions): BTApi {
             // }
 
             if (!res.ok) {
+                if (res.status == 401) {
+                    throw {
+                        code: res.status,
+                        name: 'Unauthorized',
+                        message: res.statusText
+                    }
+                }
+
                 let errorContent = await res.text()
                 throw new Error(errorContent ?? res.statusText ?? 'Patch error!')
             }
         
             if (returnText)
-                return await res.text()
+                return await res.text() as T
             if (returnJson)
-                return await res.json()
+                return await res.json() as T
             
-            return res
+            throw new Error()
         }
-        catch (err) {
-            if (!throwError) {
-                return res
-            }
+        catch (err: any) {
+            // if (!throwError) {
+            //     return res
+            // }
 
-            if (res.status == 200)
+            if (res!.status == 200 || !throwError)
                 return undefined
         
-            throw new Error(err as string)
+            const errMsg = `${res?.status ?? ''} ${res?.statusText ?? ''} ${err.message}`
+            
+            if (err.code == 401)
+                throw err
+
+            throw new Error(errMsg)
         }
     }
 
@@ -431,9 +503,14 @@ export function createApi(options?: UseApiOptions): BTApi {
         if (pathOptions.overrideHeaders !== true)
             headers = buildHeaders(pathOptions)
 
+        if (demo?.isDemoing.value) {
+            console.log(`DEMO: Delete ${url}`)
+            return demo.deleteItem(pathOptions)
+        }
+        
         console.log(`Delete ${url}`)
 
-        let res: any = undefined
+        let res: Response | undefined
 
         try {
             res = await fetch(url, {
@@ -447,7 +524,14 @@ export function createApi(options?: UseApiOptions): BTApi {
             // if (!throwError) {
             //     return res
             // }
-
+            if (res.status == 401) {
+                throw {
+                    code: res.status,
+                    name: 'Unauthorized',
+                    message: res.statusText
+                }
+            }
+            
             if (res.status == 200) {
                 return undefined
             }
@@ -455,12 +539,16 @@ export function createApi(options?: UseApiOptions): BTApi {
                 return res.statusText
             }
         }
-        catch (err) {
+        catch (err: any) {
+            const errMsg = `${res?.status ?? ''} ${res?.statusText ?? ''} ${err.message}`
             if (!throwError) {
-                return res
+                return errMsg
             }
 
-            throw new Error(err as string)
+            if (err.code == 401)
+                throw err
+
+            throw new Error(`${res!.status} ${res!.statusText} ${err.message}`)
         }
     }
 

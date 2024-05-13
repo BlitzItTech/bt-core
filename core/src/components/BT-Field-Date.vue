@@ -25,7 +25,7 @@
                 inline
                 :is-24="false"
                 :time-picker-inline="useTime"
-                :timezone="auth.credentials.timeZone.value"
+                :timezone="auth.timeZone.value"
                 utc
                 v-bind="$attrs"
                 v-model="value" />
@@ -37,8 +37,8 @@
     import VueDatePicker from '@vuepic/vue-datepicker'
     import '@vuepic/vue-datepicker/dist/main.css'
     import { computed, inject, ref } from 'vue'
-    import { useDates } from '../composables/dates'
-    import { useAuth } from '../composables/auth'
+    import { useDates } from '../composables/dates.ts'
+    import { useAuth } from '../composables/auth.ts'
 
     defineOptions({
         inheritAttrs: false
@@ -86,7 +86,7 @@
 
     const displayValue = computed(() => props.modelValue ? tzString(props.modelValue, props.format) : undefined)
 
-    const modal = ref(false)
+    // const modal = ref(false)
     const startDate = ref()
     const mIsEditing = inject('isEditing', () => ref(false), true)
     const cIsEditing = computed(() => props.isEditing ?? mIsEditing.value)
@@ -103,10 +103,6 @@
     }
     else if (props.fromNow) {
         startDate.value = tzString()
-    }
-
-    function show() {
-        modal.value = true
     }
 
 </script>

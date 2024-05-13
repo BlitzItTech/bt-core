@@ -7,17 +7,17 @@ The template uses Vue 3 `<script setup>` SFCs, check out the [script setup docs]
 
 - [VS Code](https://code.visualstudio.com/) + [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur) + [TypeScript Vue Plugin (Volar)](https://marketplace.visualstudio.com/items?itemName=Vue.vscode-typescript-vue-plugin).
 
-
+<!-- 
 ## Environment modes - production, staging, development
 
 Control what mode you are in by adding environment files to your project root folder with these variables:
 
 ```
 VITE_BASE_AUTH_URL=[https://auth...]
-VITE_BASE_DATA_URL=[https://data...]
+VITE_[BASE_DATA_URL]=[https://data...]
 VITE_WEB_APP_URL=[https://webapp...]
 VITE_[MICROSERVICE]=[https://microservice...]
-VITE_LOCAL_DB_NAME=[btweb]
+VITE_[LOCAL_DB_NAME]=[btweb]
 ```
 The VITE_[MICROSERVICE] variable can include any number of variables like this:
 
@@ -25,7 +25,7 @@ The VITE_[MICROSERVICE] variable can include any number of variables like this:
 VITE_auth=[https://data_auth...]
 VITE_ordering=[https://data_ordering...]
 VITE_courier-invoicing=[https://data_courier-invoicing...]
-```
+``` -->
 
 ## Auth modes
 
