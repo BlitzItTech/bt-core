@@ -1,39 +1,21 @@
-## Vue 3 + TypeScript + Vite
+## Vue 3 + TypeScript + Vite + Vuetify
 
-This template should help get you started developing with Vue 3 and TypeScript in Vite.  It includes a number of helpful components and composables. 
-The template uses Vue 3 `<script setup>` SFCs, check out the [script setup docs](https://v3.vuejs.org/api/sfc-script-setup.html#sfc-script-setup) to learn more.
+## Custom Themes
+Enables saving local cosmetic settings that are loaded in to Vuetify
 
-## Recommended IDE Setup
+## Data URL Navigation
+Enables managing navigation and permissions through defining permissions, urls, and microservices base urls.
 
-- [VS Code](https://code.visualstudio.com/) + [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur) + [TypeScript Vue Plugin (Volar)](https://marketplace.visualstudio.com/items?itemName=Vue.vscode-typescript-vue-plugin).
+## Auto Routes
+Uses unplugin-auto-router to define routes.  Specific details can be overriden with navigation items.
 
-<!-- 
-## Environment modes - production, staging, development
+## Component Presets
+Can set default settings that are applied to components with a single property.
 
-Control what mode you are in by adding environment files to your project root folder with these variables:
-
-```
-VITE_BASE_AUTH_URL=[https://auth...]
-VITE_[BASE_DATA_URL]=[https://data...]
-VITE_WEB_APP_URL=[https://webapp...]
-VITE_[MICROSERVICE]=[https://microservice...]
-VITE_[LOCAL_DB_NAME]=[btweb]
-```
-The VITE_[MICROSERVICE] variable can include any number of variables like this:
-
-```
-VITE_auth=[https://data_auth...]
-VITE_ordering=[https://data_ordering...]
-VITE_courier-invoicing=[https://data_courier-invoicing...]
-``` -->
+## Components
+Some custom components that are built off Vuetify and have default grid/column settings, but haven't worked out how to export them with Vuetify components and styles.
 
 ## Auth modes
-
-Auth credentials are stored locally using @vueuse/core's useStorage composable.  You can change the storage key by setting an environment variable:
-
-```
-VITE_AUTH_STORAGE_TOKEN=[string]
-```
 
 Permissions take the format [permission].[access].  For instance:
 
@@ -43,3 +25,6 @@ customers.edit
 ```
 
 If the navigation item requires a permission of 'customers', then it will allow viewing and also editing.
+
+## Environment URL Testing
+Can set different data urls for each stage - whether development or staging or production
