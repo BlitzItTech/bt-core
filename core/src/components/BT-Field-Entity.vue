@@ -8,7 +8,8 @@
             <v-list-item-subtitle v-if="label != null">{{ label }}</v-list-item-subtitle>
             <v-list-item-title>
                 <bt-entity
-                    v-bind="$attrs" />
+                    v-bind="$attrs"
+                    :isSingle="true" />
             </v-list-item-title>
         </v-list-item>
     </v-col>

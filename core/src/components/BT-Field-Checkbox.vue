@@ -17,7 +17,7 @@
 </template>
 
 <script setup lang="ts">
-import type { BladeDensity } from '../types.ts'
+import type { BladeDensity } from '../composables/blade.ts'
 import { computed, inject, ref } from 'vue'
 
     defineOptions({

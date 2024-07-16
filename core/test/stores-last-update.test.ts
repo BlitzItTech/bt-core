@@ -136,3 +136,55 @@ describe('use last update store with api no caching', () => {
     })
 
 })
+
+
+describe('use last update store with api and caching', () => {
+    const [api, app] = withSetup(() => createApi({
+        findPath: () => 'https://api/',
+        defaultThrowError: false
+    }))
+
+    const pinia = createPinia()
+        app.use(pinia)
+        setActivePinia(pinia)
+
+    const store = createWholeLastUpdateStoreDefinition({
+        storageMode: 'session',
+        api: api,
+        storeName: 'whole-api'
+    })()
+
+    // test('get', async () => {
+    //     const res = await store.get<any>({ id: '1' })
+    //     expect(res.data).toEqual({ test: 'a', id: '1' })
+    //     let getAll = await store.getAll<any>({})
+    //     expect(getAll.data.length).toEqual(2)
+    //     expect(getAll.count).toEqual(2)
+    // })
+
+    test('get all', async () => {
+        const res = await store.getAll<any>({})
+        expect(res).toEqual({
+            data: [{test: 'a', id: '1' },{test: 'b', id: '2' }],
+            count: 2,
+            filters: ['test', 'test two']
+        })
+    })
+    
+
+    // test('post', async () => {
+    //     const res = await store.post<any>({ data: { test: 'a', id: '11' }})
+    //     expect(res).not.toBeNull()
+        
+    //     //gets api post return
+    //     let getRes = await store.get<any>({ id: '11' })
+    //     expect(getRes.data).toEqual({ test: 'd', id: '11' })
+    // })
+
+    // test('patch', async () => {
+    //     const res = await store.patch<any>({ data: { test: 'a', id: '1', rowVersion: 1 }})
+    //     let getRes = await store.get<any>({ id: '1' })
+    //     expect(getRes.data.rowVersion).toEqual(2)
+    // })
+
+})

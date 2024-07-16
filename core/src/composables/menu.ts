@@ -4,6 +4,7 @@ import { RouteRecordNormalized, useRouter } from 'vue-router'
 import { firstBy } from 'thenby'
 import { useNavigation } from './navigation.ts'
 import { useAuth } from './auth.ts'
+import { isLengthyArray } from './helpers.ts'
 
 export interface MenuGroup {
     displayName: string
@@ -26,7 +27,10 @@ export interface CreateMenuOptions {
 }
 
 export interface BTCreateMenu {
+    /**filter to only these groups */
     currentGroup: Ref<string | undefined>
+    /**filter to only menu items with this subscription view */
+    currentView: Ref<string | undefined>
     groupOptions: Ref<MenuGroup[]>
     /**whether to read from vue routes or just purely the given groups */
     useRoutes?: boolean
@@ -39,11 +43,13 @@ export interface BTUseMenu extends BTCreateMenu {
 let current: BTCreateMenu
 
 export function createMenu(options?: CreateMenuOptions): BTCreateMenu {
-    const currentGroup = ref<string | undefined>(options?.default ?? 'Admin')
+    const currentGroup = ref<string | undefined>(options?.default) // ?? 'Admin')
+    const currentView = ref<string | undefined>()
     const groups = ref<MenuGroup[]>(options?.groups ?? [])
 
     current = {
         currentGroup,
+        currentView,
         groupOptions: groups,
         useRoutes: options?.useRoutes
     }
@@ -81,15 +87,29 @@ export function useMenu(): BTUseMenu {
                     groupItems.push(existingGroup)
                 }
 
-                existingGroup.items?.push({
-                    displayName: routeMeta?.displayName as string ?? navigation.findDisplay(navMeta ?? undefined),
-                    icon: routeMeta?.icon as string ?? navigation.findIcon(navMeta ?? undefined),
-                    permissions: routeMeta?.permissions as string[] ?? navMeta?.permissions ?? [],
-                    requiresAuth: routeMeta?.requiresAuth !== false,
-                    subscriptions: routeMeta?.subscriptions as string[] ?? navMeta?.subscriptions ?? [],
-                    subFilters: routeMeta?.subFilters as string[] ?? navMeta?.subFilters ?? [],
-                    routeName: route.name as string
-                })
+                let subOptions: string[] = []
+                if (routeMeta.subFilters != null) {
+                    if (Array.isArray(routeMeta.subFilters))
+                        subOptions = routeMeta.subFilters
+                    else
+                        subOptions = [routeMeta.subFilters as string]
+                }
+                
+                if (navMeta != null && !isLengthyArray(subOptions)) {
+                    subOptions = navMeta.subFilters ?? []
+                }
+                
+                if (current.currentView.value == null || subOptions == null || subOptions.some((subOption: string) => current.currentView.value == subOption)) {
+                    existingGroup.items?.push({
+                        displayName: routeMeta?.displayName as string ?? navigation.findDisplay(navMeta ?? undefined),
+                        icon: routeMeta?.icon as string ?? navigation.findIcon(navMeta ?? undefined),
+                        permissions: routeMeta?.permissions as string[] ?? navMeta?.permissions ?? [],
+                        requiresAuth: routeMeta?.requiresAuth !== false,
+                        subscriptions: routeMeta?.subscriptions as string[] ?? navMeta?.subscriptions ?? [],
+                        subFilters: subOptions, //routeMeta?.subFilters as string[] ?? navMeta?.subFilters ?? [],
+                        routeName: route.name as string
+                    })
+                }
             })
 
             groupItems.forEach((grp: MenuGroup) => {

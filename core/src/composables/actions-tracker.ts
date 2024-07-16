@@ -14,8 +14,10 @@ export interface DoActionOptions {
     confirmationMsg?: string
     errorMsg?: string
     loadingMsg?: string
-    onError?: (err: any) => void,
+    onFinished?: () => void
+    onError?: (err: any) => void
     requireConfirmation?: boolean
+    stringifyError?: (err: any) => string
     throwError?: boolean
 }
 
@@ -25,7 +27,7 @@ export function useActionsTracker(useOptions?: DoActionOptions) {
     const mErrorMsg: ShallowRef<string | undefined> = shallowRef()
     const mCompletionMsg: ShallowRef<string | undefined> = shallowRef()
     const isLoading = computed(() => mLoadingMsg.value != null)
-
+    
     function endLoading(id: string) {
         loadingMsgs.value = loadingMsgs.value.filter(x => x.id != id)
     }
@@ -39,9 +41,15 @@ export function useActionsTracker(useOptions?: DoActionOptions) {
         return e.id
     }
 
+    function stringifyError(err: any) {
+        if (useOptions?.stringifyError != null)
+            return useOptions?.stringifyError(err)
+        return err?.toString()
+    }
+
     function logError(err?: string | Error) {
         if (err != null)
-            mErrorMsg.value = err.toString()
+            mErrorMsg.value = stringifyError(err)
     }
 
     function clearErrors() {
@@ -55,6 +63,8 @@ export function useActionsTracker(useOptions?: DoActionOptions) {
         opt.errorMsg ??= useOptions?.errorMsg
         opt.loadingMsg ??= useOptions?.loadingMsg ?? 'Loading'
         opt.requireConfirmation ??= useOptions?.requireConfirmation
+        opt.onError ??= useOptions?.onError
+        opt.onFinished ??= useOptions?.onFinished
         
         const id = startLoading(opt.loadingMsg)
         let res: any = null
@@ -74,14 +84,17 @@ export function useActionsTracker(useOptions?: DoActionOptions) {
             return res
         }
         catch (err: any) {
-            if (useOptions?.onError != null)
-                useOptions.onError(err)
+            if (opt.onError != null)
+                opt.onError(err)
             else if (opt.throwError == true)
-                return err
+                throw err
             else
                 logError(opt.errorMsg ?? (err as string) ?? 'error')
         }
         finally {
+            if (opt.onFinished != null)
+                opt.onFinished()
+
             endLoading(id)
         }
     }

@@ -10,7 +10,6 @@
 <script setup lang="ts">
     import { computed, inject, ref } from 'vue'
     import { usePresets } from '../composables/presets.ts'
-    // import { VBtn } from 'vuetify/components'
     
     interface BtnProps {
         icon?: string

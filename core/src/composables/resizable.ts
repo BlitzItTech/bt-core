@@ -2,7 +2,7 @@ import { toValue, useEventListener, useParentElement } from "@vueuse/core"
 import { type ComponentPublicInstance, type Ref, ref } from 'vue'
 import type { Position, MaybeRefOrGetter } from "@vueuse/core"
 import { copyDeep } from "../composables/helpers.ts"
-import { type BladeVariant } from "../types.ts"
+import { type BladeVariant } from "../composables/blade.ts"
 
 export type ResizeHandle = 't' | 'r' | 'b' | 'l' | 'tr' | 'br' | 'bl' | 'tl'
 
@@ -63,13 +63,20 @@ export function useResizable(
     let activeHandle: any
     let handleEls: HTMLDivElement[] = []
     const isAutoResizing = ref(false)
+    
+    const useLeft = ref(false)
+    const useRight = ref(false)
+    const useTop = ref(false)
+    const useBottom = ref(false)
+
     let listeners: Function[] = []
     let moveListeners: Function[] = []
     const resizingIsOn: Ref<boolean> = ref(false)
     const startingPointerPosition: Ref<Position> = ref<Position>({ x: 0, y: 0 })
-    let startingElementPosition: ElementPosition = { left: 0, top: 0, height: 0, width: 0, position: 'absolute' }
+    let startingElementPosition: ElementPosition = {
+        position: 'absolute'
+    }
     let currentElementPosition: ElementPosition = { }
-    // let variantMemory: any = {}
 
     function handleEvent(e: PointerOrTouchEvent) {
         if (toValue(preventDefault))
@@ -81,6 +88,10 @@ export function useResizable(
     function addHandles(el: ComponentPublicInstance, handles: ResizeHandle[]) {
         handleEls = handles.map(createHandleEl)
         handleEls.forEach(handleEl => el.$el.appendChild(handleEl))
+        useLeft.value = handles.some(x => x.includes('l'))
+        useRight.value = handles.some(x => x.includes('r'))
+        useTop.value = handles.some(x => x.includes('t'))
+        useBottom.value = handles.some(x => x.includes('b'))
     }
 
     function removeHandles(el: ComponentPublicInstance) {
@@ -147,10 +158,10 @@ export function useResizable(
         startingPointerPosition.value.y = evtData.clientY
 
         startingElementPosition = {
-            left: el.offsetLeft,
-            top: el.offsetTop,
-            height: parseInt(window.getComputedStyle(el).getPropertyValue('height')),
-            width: parseInt(window.getComputedStyle(el).getPropertyValue('width'))
+            left: useLeft.value ? el.offsetLeft : undefined,
+            top: useTop.value ? el.offsetTop : undefined,
+            height: useBottom.value ? parseInt(window.getComputedStyle(el).getPropertyValue('height')) : undefined,
+            width: useRight.value ? parseInt(window.getComputedStyle(el).getPropertyValue('width')) : undefined
         }
         
         currentElementPosition = copyDeep(startingElementPosition)
@@ -171,10 +182,10 @@ export function useResizable(
     }
 
     function move(e: any) {
+        // console.log('moving')
         const t = toValue(target)
         if (!t) return
         const el = t.$el
-
         const isTouch = e.type === 'touchmove' && e.touches.length > 0
         const evtData = isTouch ? e.touches[0] : e
         let dx = evtData.clientX - startingPointerPosition.value.x
@@ -193,7 +204,7 @@ export function useResizable(
         if (activeHandle.includes('l')) {
             const newWidth = Math.min(maxWidth, Math.max(minWidth, (start.width ?? 0) - dx))
             currentElementPosition.width = newWidth
-            currentElementPosition.left = (start.left ?? 0) + dx
+            // currentElementPosition.left = (start.left ?? 0) + dx
         }
         if (activeHandle.includes('r')) {
             const newWidth = Math.min(maxWidth, Math.max(minWidth, (start.width ?? 0) + dx))
@@ -207,6 +218,7 @@ export function useResizable(
     }
 
     function end() {
+        // console.log('ending')
         document.documentElement.style.cursor = ''
         activeHandle = null
         moveListeners.forEach(l => { l() })
@@ -227,7 +239,6 @@ export function useResizable(
         const t = toValue(target)
         if (!t) return
         const el = t.$el as HTMLElement
-        console.log(currentVariant)
       
         if (currentVariant !== 'page' && variant == 'page') {
             //moving back to default page settings
@@ -309,6 +320,7 @@ export function useResizable(
     }
 
     function applyToElementStyle(s: ElementPosition) {
+        console.log('applying style')
         const t = toValue(target)
         if (!t) return
         const el = t.$el
@@ -347,8 +359,6 @@ export function useResizable(
         else {
             el.style.position = undefined
         }
-
-        console.log(el.style.position)
     }
 
     function turnResizingOn(handles?: ResizeHandle[], variant?: BladeVariant) {
@@ -356,11 +366,12 @@ export function useResizable(
         const t = toValue(target)
         if (!t) return
         addHandles(t, handles ?? allHandles)
-        restoreSize(variant)
+        // restoreSize(variant)
         listeners.push(useEventListener(t.$el, 'mousedown', start))
         listeners.push(useEventListener(t.$el, 'touchstart', start))
         resizingIsOn.value = true
         currentVariant = variant
+        // restoreSize(variant)
     }
 
     function turnResizingOff(variant?: BladeVariant | undefined) {

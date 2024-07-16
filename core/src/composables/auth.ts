@@ -404,7 +404,7 @@ export function createAuth(options: CreateAuthOptions): BTAuth {
         
         v.token = token
         v.userID = d.UserLoginID
-        v.userPermissions = d.Permissions?.split(',') ?? []
+        v.userPermissions = d.Permissions != null && d.Permissions.length > 0 ? d.Permissions?.split(',') ?? [] : []
     }
 
     function reinstateDefaults() {

@@ -8,7 +8,10 @@
             v-bind="$attrs"
             :readonly="!cIsEditing"
             :fieldVariant="cIsEditing ? editVariant : variant"
-            v-model="value" />
+            v-model="value">
+            <template #item="data"><slot name="item" v-bind="data" /></template>
+            <template #selection="data"><slot name="selection" v-bind="data" /></template>
+        </bt-select>
     </v-col>
 </template>
 

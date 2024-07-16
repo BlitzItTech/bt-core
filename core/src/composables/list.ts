@@ -1,5 +1,5 @@
 import type { GetOptions, OnCanDoAsync, OnDoAsync, OnDoSuccessAsync, OnGetAsync, OnGetSuccessAsync } from './actions.ts'
-import type { BladeVariant } from '../types.ts'
+import type { BladeVariant } from '../composables/blade.ts'
 import { useCSV } from '../composables/csv.ts'
 import { isLengthyArray, hasSearch } from '../composables/helpers.ts'
 import { firstBy } from 'thenby'
@@ -10,8 +10,9 @@ import { useActions } from '../composables/actions.ts'
 import { StorageMode, StoreMode, useStoreDefinition } from './stores.ts'
 import { useNavigation } from './navigation.ts'
 import { useBlade } from './blade.ts'
+// import { SaveItemOptions } from './item.ts'
 
-export interface RefreshOptions {
+export interface ListRefreshOptions {
     deepRefresh?: boolean,
     resetSearch?: boolean
 }
@@ -53,6 +54,7 @@ export interface ListEvents {
     (e: 'deleted', item: any): void
     (e: 'input', item: any): void
     (e: 'select', item: any): void
+    (e: 'confirm', item: any): void
     (e: 'mouse-over-item', item: any): void
 }
 
@@ -73,8 +75,11 @@ export interface ListEvents {
     // variant?: BladeVariant
 
 export interface ListProps {
+    addBladeName?: string
     additionalUrl?: string
+    bladeGroup?: string
     bladeName?: string
+    bladeStartShowing?: boolean
     canSelect?: boolean
     canUnselect?: boolean
     confirmOnDelete?: boolean
@@ -101,32 +106,40 @@ export interface ListProps {
     // onGetSaveAsync?: OnDoSuccessAsync
     onCanRestore?: (item: any) => boolean
     onCanRestoreAsync?: OnCanDoAsync
-    // onCanSaveAsync?: OnCanDoAsync
+    onCanSave?: (item: any) => boolean
+    onCanSaveAsync?: OnCanDoAsync
     onCanSelectItem?: (item: any) => boolean
     onDeleteAsync?: OnDoAsync
     onDeleteSuccessAsync?: OnDoAsync
     onError?: (err: any) => void
     onFilter?: Function
+    onFinished?: () => void
     onGetAsync?: OnGetAsync
+    onGetSaveAsync?: OnDoSuccessAsync
     onGetSuccessAsync?: OnGetSuccessAsync
     onRestoreAsync?: OnDoSuccessAsync
     onRestoreSuccessAsync?: OnDoSuccessAsync
+    onSaveAsync?: OnDoSuccessAsync
+    onSaveSuccessAsync?: OnDoSuccessAsync
     onSelectItem?: (item: any) => void
     params?: any
     proxyID?: string
+    proxyKey?: string
     refreshToggle?: boolean
+    searchKey?: string
     searchProps?: string[]
     selectProps?: string[]
     // sortBy?: string
     // sortOrder?: 'Ascending' | 'Descending'
     showSearch?: boolean
     startShowingInactive?: boolean
+    storeKey?: string
     storeMode?: StoreMode
     storageMode?: StorageMode
-    useInterEvents?: boolean
     useServerPagination?: boolean
     useBladeSrc?: boolean
-    useRouteSrc?: boolean
+    useRouteSrc?: boolean,
+    variant?: BladeVariant
 }
 
 export interface GroupedHeaderOption {
@@ -137,6 +150,12 @@ export interface GroupedHeaderOption {
 export interface UseListOptions {
     hideActions?: boolean
     onError?: (err: any) => void
+    onFinished?: () => void
+    storeKey?: string
+}
+
+export interface BaseIDModel {
+    id?: string
 }
 
 /**
@@ -149,19 +168,27 @@ export interface UseListOptions {
  * @param emit 
  * @param options 
  */
-export function useList(props: ListProps, emit?: ListEvents, options?: UseListOptions) {
+export function useList<T extends BaseIDModel>(props: ListProps, emit?: ListEvents, options?: UseListOptions) {
     const csv = useCSV()
     const navigation = useNavigation()
     const router = useRouter()
     const route = useRoute()
 
-    const { bladeData } = useBlade({  })
+    const bladeEvents = useBlade({
+        bladeGroup: props.bladeGroup,
+        bladeName: props.bladeName,
+        onUpdate: () => {
+            refresh({ deepRefresh: false, resetSearch: true })
+        },
+        bladeStartShowing: props.bladeStartShowing
+    })
 
     //sources for params, etc.
-    const useBladeSrc = props.useBladeSrc ?? true
-    const useRouteSrc = props.useRouteSrc ?? true
+    const useBladeSrc = props.useBladeSrc ?? props.variant == 'blade'
+    const useRouteSrc = props.useRouteSrc ?? props.variant == 'page'
 
     const nav = props.nav ?? props.bladeName ?? props.itemBladeName ?? 'basic'
+    const storeKey = props.storeKey ?? options?.storeKey
     const storeMode = props.storeMode ?? navigation.findItem(nav)?.storeMode
     const storageMode = props.storageMode ?? navigation.findItem(nav)?.storageMode
 
@@ -189,7 +216,7 @@ export function useList(props: ListProps, emit?: ListEvents, options?: UseListOp
     const currentPage = ref<number>(getStartingPage())
     function getStartingPage() {
         if (useBladeSrc) {
-            const bladePage = bladeData.value?.page
+            const bladePage = bladeEvents.bladeData.data.page
             if (bladePage != null)
                 return Number.parseInt(bladePage)
         }
@@ -204,38 +231,32 @@ export function useList(props: ListProps, emit?: ListEvents, options?: UseListOp
     }
 
     //proxy
-    const proxyID = computed(() => { 
-        if (useBladeSrc) {
-            const bladeProxyID = bladeData.value?.proxyID
-            if (bladeProxyID != null)
-                return bladeProxyID as string
-        }
+    const defaultProxyKey = props.proxyKey ?? 'proxyID'
+    const proxyID = computed(() => {
+        let cProxyID: string | undefined = props.proxyID
 
-        if (useRouteSrc) {
-            const routeProxyID = route?.query?.query
-            if (routeProxyID != null)
-                return routeProxyID as string
-        }
+        if (cProxyID == null && useBladeSrc)
+            cProxyID = bladeEvents.bladeData.data[defaultProxyKey] as string | undefined
 
-        return props.proxyID
+        if (cProxyID == null && useRouteSrc)
+            cProxyID = route?.query?.[defaultProxyKey] as string | undefined
+        
+        return cProxyID
     })
 
     //search
+    const defaultSearchKey = props.searchKey ?? 'search'
     const searchString = ref<string | undefined>(getSearchString())
     function getSearchString() {
-        if (useBladeSrc) {
-            const bladeSearch = bladeData.value?.search
-            if (bladeSearch != null)
-                return bladeSearch as string
-        }
+        let search: string | undefined
 
-        if (useRouteSrc) {
-            const routeSearch = route?.query?.search
-            if (routeSearch != null)
-                return routeSearch as string
-        }
-
-        return undefined
+        if (search == null && useBladeSrc)
+            search = bladeEvents.bladeData.data[defaultSearchKey] as string | undefined
+        
+        if (search == null && useRouteSrc)
+            search = route?.query?.[defaultSearchKey] as string | undefined
+        
+        return search
     }
 
     const showInactive = ref(toValue(props.startShowingInactive) ?? false)
@@ -248,15 +269,16 @@ export function useList(props: ListProps, emit?: ListEvents, options?: UseListOp
         ]
     })
 
-    const asyncItems = ref<any[]>([])
-    const filteredItems = shallowRef<any[]>([])
+    const asyncItems = ref<T[]>([])
+    const filteredItems = shallowRef<T[]>([])
     const headerOptions = ref<TableColumn[]>([])
 
     let lastSelectedItem: any
 
-    const { actionErrorMsg, actionLoadingMsg, deleteItem, doAction, getItem, getAllItems, restoreItem } = useActions({
+    const { actionErrorMsg, actionLoadingMsg, deleteItem, doAction, getItem, getAllItems, restoreItem, saveItem } = useActions({
         nav: nav,
         onError: props.onError ?? options?.onError,
+        onFinished: props.onFinished ?? options?.onFinished,
         proxyID: proxyID.value,
         store: useStoreDefinition({
             storeMode: storeMode,
@@ -293,6 +315,17 @@ export function useList(props: ListProps, emit?: ListEvents, options?: UseListOp
             r.query = query
         
         return r
+    })
+    
+    const id = computed(() => {
+        let cID: string | undefined = props.itemID
+        if (cID == null && useBladeSrc)
+            cID = bladeEvents.bladeData.data.id as string | undefined
+
+        if (cID == null && useRouteSrc)
+            cID = route?.query?.id as string | undefined
+
+        return cID
     })
 
     const allParams = computed(() => { 
@@ -377,27 +410,21 @@ export function useList(props: ListProps, emit?: ListEvents, options?: UseListOp
     })
 
     function add(variant: BladeVariant) {
-        if (props.itemBladeName != null) {
-            // if (allProps.useInterEvents) {
-            //     eventBus?.sendSelect(allProps.addBladeName ?? '', 'new')
-            // }
-            // else {
-                let bladeData = {
-                    bladeName: props.itemBladeName,
-                    id: 'new',
-                    nav
-                }
-    
-                if (variant == 'page') {
-                    router.push({
-                        name: bladeData.bladeName,
-                        params: { id: 'new' }
-                    })
-                }
-                else if (variant == 'freestyle' || variant == 'blade') {
-    
-                }
-            // }
+        const aBladeName = props.addBladeName ?? props.itemBladeName
+
+        if (aBladeName != null) {
+            if (variant == 'page') {
+                router.push({
+                    name: aBladeName,
+                    params: { id: 'new' }
+                })
+            }
+            else if (variant == 'blade') {
+                bladeEvents.updateBlade({
+                    data: { id: 'new' },
+                    bladeName: aBladeName
+                })
+            }
         }
     }
 
@@ -464,8 +491,9 @@ export function useList(props: ListProps, emit?: ListEvents, options?: UseListOp
                     return Promise.resolve(undefined)
                 },
                 proxyID: proxyID.value,
+                storeKey
                 // ...(useBladeSrc ? bladeData.value : {}),
-                requireConfirmation: true
+                // requireConfirmation: true
             })
         }
 
@@ -474,7 +502,7 @@ export function useList(props: ListProps, emit?: ListEvents, options?: UseListOp
     }
 
     function mRestoreItem(dItem: MaybeRefOrGetter<any>) {
-        restoreItem({
+        return restoreItem({
             data: toValue(dItem),
             additionalUrl: props.additionalUrl,
             nav,
@@ -482,7 +510,31 @@ export function useList(props: ListProps, emit?: ListEvents, options?: UseListOp
             onRestoreAsync: props.onRestoreAsync,
             onRestoreSuccessAsync: props.onRestoreSuccessAsync,
             proxyID: proxyID.value,
+            storeKey
             // ...(useBladeSrc ? bladeData.value : {})
+        })
+    }
+
+    function mSaveItem(dItem: MaybeRefOrGetter<any>) { //, options?: SaveItemOptions) {
+        const item = toValue(dItem)
+        const {
+            additionalUrl,
+            onCanSaveAsync,
+            onGetSaveAsync,
+            onSaveAsync,
+            onSaveSuccessAsync
+        } = { ...props }
+        return saveItem({
+            additionalUrl,
+            data: item,
+            nav,
+            onCanSaveAsync,
+            onGetSaveAsync,
+            onSaveAsync,
+            onSaveSuccessAsync,
+            proxyID: proxyID.value,
+            storeKey
+            // mode: item.id == null ? 'new' : 'edit'
         })
     }
     
@@ -505,7 +557,7 @@ export function useList(props: ListProps, emit?: ListEvents, options?: UseListOp
                 l = l.filter(x => hasSearch(x, searchString.value, sProps))
         }
 
-        filteredItems.value = l
+        filteredItems.value = l as T[]
     }
 
     function refreshTableHeaders() {
@@ -519,29 +571,32 @@ export function useList(props: ListProps, emit?: ListEvents, options?: UseListOp
         }
     }
 
-    async function refresh(options?: RefreshOptions) {
+    async function refresh(options?: ListRefreshOptions) {
         showError.value = false
-
         if (options?.resetSearch === true) {
             showSearch.value = props.showSearch ?? false
             searchString.value = undefined
         }
-
+        
         if (props.items != null) {
             asyncItems.value = props.onGetSuccessAsync != null ? await props.onGetSuccessAsync(props.items) : props.items
+            if (props.onFinished)
+                props.onFinished()
+
             return
         }
 
         const getOptions: GetOptions = {
             additionalUrl: props.additionalUrl,
-            id: props.itemID,
+            id: id.value,
             nav,
-            params: allParams.value, //params,
-            // params: params.getParamOptions(),
+            params: {
+                ...allParams.value,
+                ...(useBladeSrc ? bladeEvents.bladeData.data.params : {})
+            },
             proxyID: proxyID.value,
-            // ...(useBladeSrc ? bladeData.value : {}),
-            // ...(props.useInterEvents ? eventData : {}),
             refresh: options?.deepRefresh ?? false,
+            storeKey,
             onGetAsync: props.onGetAsync,
             onGetSuccessAsync: props.onGetSuccessAsync,
         }
@@ -562,7 +617,8 @@ export function useList(props: ListProps, emit?: ListEvents, options?: UseListOp
                         // filtersLoaded = true
                     // }
 
-                    if (props.useServerPagination === true &&
+                    if (storeMode != 'whole-last-updated' &&
+                        props.useServerPagination === true &&
                         props.itemsPerPage &&
                         gRes.count) {
                             totalPages.value = Math.ceil(gRes.count / props.itemsPerPage)
@@ -585,61 +641,69 @@ export function useList(props: ListProps, emit?: ListEvents, options?: UseListOp
 
     function selectItem(rItem: any, variant: BladeVariant) {
         const item = toValue(rItem)
-        if (item != null && item === lastSelectedItem && props.canUnselect) {
-            lastSelectedItem = null;
+        
+        if (props.canUnselect) {
+            lastSelectedItem = item === lastSelectedItem ? null : item
         }
         else {
-            lastSelectedItem = item
+            lastSelectedItem = item != null ? item : lastSelectedItem
+        }
+        
+        // if (item != null && item === lastSelectedItem) { //&& props.canUnselect) {
+        //     lastSelectedItem = null;
+        // }
+        // else {
+        //     lastSelectedItem = item
+        // }
+
+        console.log(lastSelectedItem)
+
+        if (props.canSelect == true && (props.onCanSelectItem == null || props.onCanSelectItem(item))) {
+            if (props.onSelectItem != null) {
+                props.onSelectItem(lastSelectedItem)
+            }
+            else if (variant == 'blade' && lastSelectedItem == null) {
+                //close blade
+                bladeEvents.closeBlade({ bladeName: props.itemBladeName })
+            }
+            else {
+                if (variant == 'page') {
+                    router.push({
+                        name: props.itemBladeName,
+                        params: { id: item.id }
+                    })
+                }
+                else if (variant == 'blade') {
+                    bladeEvents.updateBlade({
+                        data: { id: item.id, data: item },
+                        bladeName: props.itemBladeName
+                    })
+                }
+                else if (variant == 'freestyle') {
+                    // sendUpdate(bladeData)
+                }
+            }
         }
 
         if (emit != null) {
             emit('select', lastSelectedItem)
-        }
-
-        if (!props.canSelect || (props.onCanSelectItem != null && !props.onCanSelectItem(item)))
-            return;
-        
-        if (props.onSelectItem != null) {
-            props.onSelectItem(lastSelectedItem)
-        }
-        // else if (lastSelectedItem == null) {
-        //     //close blade
-        //     sendClose({ bladeName: allProps.addBladeName })
-        // }
-        else {
-            // if (props.useInterEvents) {
-            //     console.log('is selecting')
-            //     eventBus?.sendSelect(allProps.addBladeName ?? '', lastSelectedItem?.id)
-            // }
-            // else {
-                let bladeData = {
-                    bladeName: props.itemBladeName,
-                    id: item.id,
-                    nav: nav
-                }
-    
-                if (variant == 'page') {
-                    router.push({
-                        name: bladeData.bladeName,
-                        params: { id: bladeData.id }
-                    })
-                }
-                else if (variant == 'freestyle' || variant == 'blade') {
-                    // sendUpdate(bladeData)
-                }
-            // }
+            emit('confirm', lastSelectedItem)
         }
     }
 
     function toggleSearch() {
-        if (showSearch.value) {
-            showSearch.value = props.showSearch ?? false
-            searchString.value = undefined
-            refresh()
-        }
-        else {
-            showSearch.value = props.showSearch ?? true
-        }
+        showSearch.value = !showSearch.value
+        searchString.value = undefined
+        refresh()
+
+        // if (showSearch.value) {
+        //     showSearch.value = props.showSearch ?? false
+        //     searchString.value = undefined
+        //     refresh()
+        // }
+        // else {
+        //     showSearch.value = props.showSearch ?? true
+        // }
     }
 
     refreshTableHeaders()
@@ -687,10 +751,10 @@ export function useList(props: ListProps, emit?: ListEvents, options?: UseListOp
         loadingMsg,
         refresh,
         restoreItem: mRestoreItem,
+        saveItem: mSaveItem,
         searchString,
         selectedFilters,
         selectItem,
-        // serverFilters,
         showError,
         showInactive,
         showSearch,
@@ -698,6 +762,7 @@ export function useList(props: ListProps, emit?: ListEvents, options?: UseListOp
         tableHeaders,
         titleOptions,
         toggleSearch,
-        totalPages
+        totalPages,
+        ...bladeEvents
     }
 }

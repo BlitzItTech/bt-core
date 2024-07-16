@@ -1,7 +1,10 @@
-import { type ComponentPublicInstance, type Ref, ref, watch } from "vue"
+import { type ComponentPublicInstance, type Ref, ref, watch, onMounted } from "vue"
 import { useResizeObserver } from "@vueuse/core"
 import { useDraggable } from "./draggable.ts"
 import { useResizable } from './resizable.ts'
+// import { useSpring } from 'vue-use-spring'
+// import { useId } from "./id.ts"
+import { GetOptions } from "./actions.ts"
 
 export type BladeDensity = 'default' | 'comfortable' | 'compact'
 
@@ -11,50 +14,111 @@ export type BladeDensity = 'default' | 'comfortable' | 'compact'
     Blade: shows blade minimize, maximize, close, and pins as a column
     Free-moving: show blade as draggable and resizable with minimize, maximize, and close and pinning
  */
-export type BladeVariant = 'page' | 'blade' | 'freestyle' | 'inline'
+// export type BladeVariant = 'page' | 'blade' | 'freestyle' | 'inline'
+export type BladeVariant = 'page' | 'blade' | 'freestyle' | 'inline' | 'pane' | 'pure'
 
-// export interface BladeProps {
-//     bladeID?: string
-//     bladeName?: string
-//     mobileBreakpoint?: number
-//     variant?: BladeVariant
-// }
-
-// export interface BladeEventData extends GetOptions {
-//     bladeID?: string
-//     bladeName?: string
-// }
-
-// export interface UseBladeReturn {
-//     mode: Ref<string>
-//     queryData: Ref<any>
-// }
+export type BladeMode = 'new' | 'view' | 'edit'
 
 export interface UseBladeOptions {
-    bladeID?: string
-    bladeName?: string
     blade?: Ref<ComponentPublicInstance | null>
-    defaultVariant?: BladeVariant
+    bladeGroup?: string
+    /**a custom name for just this blade */
+    bladeName?: string
+    bladeStartShowing?: boolean
+    /**whether to include full functionality */
+    bladeBasic?: boolean
     handle?: Ref<ComponentPublicInstance | null>
     mobileBreakpoint?: number
+    onClose?: () => void
+    // onOpen?: (data: BladeData) => void
+    onUpdate?: (data: BladeData) => void
+    variant?: BladeVariant
 }
 
-export interface BTBlade {
-    bladeData: Ref<any>
+export interface BTBlade<T extends GetOptions> {
+    blades: Ref<BladeData[]>
+    bladeData: BladeData
+    // bladeStyle: ComputedRef<string>,
+    closeBlade: (options?: CloseBladeOptions) => void
+    // show: Ref<boolean>
     isMobile: Ref<boolean>
+    updateBlade: (data: UpdateBladeData<T>) => void
     variant: Ref<BladeVariant>
 }
 
-export function useBlade(options?: UseBladeOptions): BTBlade {
+const blades = ref<InternalBladeData[]>([])
+
+export function useBlade<T extends GetOptions>(options?: UseBladeOptions): BTBlade<T> {
     const blade = options?.blade ?? ref(null)
+    const bladeBasic = options?.bladeBasic == true
+    const bladeData = ref<InternalBladeData>()
+    const bladeName = options?.bladeName
+    const breakpoint = options?.mobileBreakpoint ?? 500
+    const groupName = options?.bladeGroup ?? 'default'
     const handle = options?.handle ?? ref(null)
     const isMobile = ref(false)
-    const breakpoint = options?.mobileBreakpoint ?? 500
-    const variant: Ref<BladeVariant> = ref(options?.defaultVariant ?? 'page')
-    const bladeData = ref<any>({})
+    // let lastWidth: number = 400
+    // const position = useSpring({ width: 400 })
+    const variant: Ref<BladeVariant> = ref(options?.variant ?? 'page')
 
     const { turnResizingOff, turnResizingOn } = useResizable(blade)
     const { turnDraggableOff, turnDraggableOn } = useDraggable(blade, handle)
+
+    // function updateBladeStyle(bladeData: BladeData) {
+    //     console.log(bladeData)
+    // }
+
+    function close(cOptions?: CloseBladeOptions) {
+        if (cOptions?.bladeName == null)
+            return
+
+        const mode = cOptions?.mode ?? 'remove'
+        const ind = findBladeIndex(cOptions?.bladeName)
+        if (ind >= 0) {
+            const bladeData = blades.value[ind]
+            if (mode == 'remove')
+                bladeData.data = {}
+
+            bladeData.show = false
+            // position.width = 0
+
+            // if (blade.value != null)
+            //     lastWidth = parseInt(window.getComputedStyle(blade.value.$el).getPropertyValue('width')) ?? undefined
+
+            // console.log('lastWidth')
+            // console.log(lastWidth)
+
+            bladeData.closeFunctions.forEach(c => {
+                c()
+            })
+        }
+    }
+    
+    function findBladeIndex(bladeName: string) {
+        return blades.value.findIndex(blade => blade.bladeGroup == groupName && blade.bladeName == bladeName)
+    }
+
+    function update(updateOptions: UpdateBladeData<T>) {
+        // console.log('updating')
+        // console.log(updateOptions)
+        if (updateOptions.bladeName == null)
+            return
+
+        const ind = findBladeIndex(updateOptions.bladeName)
+        if (ind >= 0) {
+            const bladeData = blades.value[ind]
+            bladeData.data = updateOptions.data
+
+            bladeData.show = true
+            // position.width = lastWidth
+
+            bladeData.updateFunctions.forEach(u => {
+                u(bladeData)
+            })
+
+            // updateBladeStyle(bladeData)
+        }
+    }
 
     useResizeObserver(blade, (entries) => {
         const entry = entries[0]
@@ -72,7 +136,8 @@ export function useBlade(options?: UseBladeOptions): BTBlade {
         }
         else if (newVariant == 'blade') {
             // turnResizingOff()
-            turnResizingOn(['l', 'r'], newVariant)
+            // turnResizingOn(['l', 'r'], newVariant)
+            turnResizingOn(['r'], newVariant)
         }
         else if (newVariant == 'freestyle') {
             turnResizingOff()
@@ -84,104 +149,84 @@ export function useBlade(options?: UseBladeOptions): BTBlade {
         }
     }
 
-    refreshVariant(variant.value)
+    if (bladeName != null) {
+        const existingInd = findBladeIndex(bladeName)
+        if (existingInd < 0) {
+            bladeData.value = {
+                bladeName,
+                bladeGroup: groupName,
+                // bladeStyle: '',
+                // bladeVariant: variant.value, //options?.variant ?? 'page',
+                closeFunctions: [],
+                updateFunctions: [],
+                data: {},
+                show: options?.bladeStartShowing === true
+            }
+    
+            if (!bladeBasic)
+                blades.value.push(bladeData.value)
+        }
+        else {
+            bladeData.value = blades.value[existingInd]
+        }
+
+        if (options?.onClose != null)
+            bladeData.value.closeFunctions.push(options.onClose)
+
+        if (options?.onUpdate != null)
+            bladeData.value.updateFunctions.push(options.onUpdate)
+    }
 
     watch(variant, (newV) => refreshVariant(newV))
 
+    onMounted(() => {
+        refreshVariant(variant.value)
+    })
+
     return {
+        blades,
+        bladeData: bladeData.value ?? {
+            bladeName: '',
+            bladeGroup: '',
+            // bladeStyle: '',
+            // bladeVariant: variant.value,
+            data: {},
+            show: false
+        },
+        closeBlade: close,
         isMobile,
-        variant,
-        bladeData,
+        updateBlade: update,
+        variant
     }
 }
 
-// export interface UseBladeEventsOptions {
-//     bladeID?: string //can be an existing id through props or auto-generated
-//     bladeName?: string
-//     nav?: string
+export interface BladeData {
+    // bladeID: string
+    bladeName: string
+    bladeGroup: string
+    // bladeStyle: string
+    // bladeVariant: BladeVariant
+    data: any
+    show: boolean
+}
 
-//     /**
-//      * caught by blades handler
-//      */
-//     onClose?: OnCloseBlade,
+export interface InternalBladeData extends BladeData {
+    closeFunctions: Array<() => void>,
+    // openFunctions: Array<(data: BladeData) => void>,
+    updateFunctions: Array<(data: BladeData) => void>,
+    // onClose?: () => void
+    // onOpen?: (data: BladeData) => void
+    // onUpdate?: (data: BladeData) => void
+}
 
-//     /**
-//      * caught by blades handler
-//      */
-//     onCreate?: OnCreateBlade,
+export interface UpdateBladeData<T extends GetOptions> {
+    // bladeID?: string
+    bladeName?: string
+    data?: T
+}
 
-//     /**
-//      * this blade will be updated with this call
-//      */
-//     onUpdate?: OnUpdateBlade
-// }
-
-// const bladeSets: Ref<BladeEventData[]> = ref([])
-// let bladeIndex: number = 0
-
-// export function useBladeEvents(thisBladeOptions: UseBladeEventsOptions) {
-//     let {
-//         bladeID,
-//         bladeName,
-//         nav
-//     } = thisBladeOptions
-
-//     const bus = useEventBus<string>('blades')
-//     const myBladeData: Ref<BladeEventData> = shallowRef({})
-    
-//     if (bladeID == null) {
-//         //create new blade data
-//         bladeIndex++
-//         bladeID = bladeIndex.toString()
-//     }
-    
-//     //find or create existing blade data
-//     let bladeData = bladeSets.value.find(x => x.bladeID == bladeID)
-//     if (bladeData == null) {
-//         //create new blade data
-//         myBladeData.value = {
-//             bladeID,
-//             bladeName,
-//             nav
-//         }
-
-//         bladeSets.value.push(myBladeData.value)
-//     }
-
-//     function sendClose(data: BladeEventData) {
-//         bus.emit('close', data)
-//     }
-
-//     function sendUpdate(data: BladeEventData) {
-//         bus.emit('update', data)
-//     }
-
-//     bus.on((event: string, newBladeData: BladeEventData) => {
-//         let existingBladeData = bladeSets.value.find(x => newBladeData.bladeID != null && newBladeData.bladeID == x.bladeID)
-//         let isNew = false
-
-//         if (existingBladeData == null) {
-//             //create new blade data
-//             bladeIndex++
-//             existingBladeData = newBladeData = { bladeID: bladeIndex.toString() }
-//             bladeSets.value.push(existingBladeData)
-//             myBladeData.value = existingBladeData
-//             isNew = true
-//         }
-
-//         if (event == 'close' && thisBladeOptions.onClose != null) {
-//             thisBladeOptions.onClose(newBladeData)
-//         }
-//         else if (event == 'update' && thisBladeOptions.onUpdate != null) {
-//             myBladeData.value = myBladeData.value = newBladeData
-//             thisBladeOptions.onUpdate(myBladeData.value)
-//         }
-//     });
-
-//     return {
-//         bladeData: myBladeData,
-//         bus,
-//         sendClose,
-//         sendUpdate
-//     }
-// }
+export interface CloseBladeOptions {
+    mode?: 'remove' | 'hide'
+    // bladeID?: string
+    bladeName?: string
+}

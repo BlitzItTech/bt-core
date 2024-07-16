@@ -17,8 +17,6 @@
 
 <script setup lang="ts">
 import { computed, inject, ref } from 'vue'
-import { VCol, VTextField } from 'vuetify/components'
-
 
     defineOptions({
         inheritAttrs: false
@@ -66,13 +64,4 @@ import { VCol, VTextField } from 'vuetify/components'
     const mLg = computed(() => (props.isMobile ?? mIsMobile.value) ? false : props.lg)
     const mMd = computed(() => (props.isMobile ?? mIsMobile.value) ? false : props.md)
     const mSm = computed(() => (props.isMobile ?? mIsMobile.value) ? false : props.sm)
-    // const str: Ref<any> = ref(undefined)
-
-    // watch(props.modelValue, (v) => { str.value = v })
-
-    // function update(v: any) {
-    //     emit('update:modelValue', v)
-    //     emit('change', v)
-    // }
-
 </script>

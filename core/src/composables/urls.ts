@@ -1,7 +1,9 @@
+import { appendUrl } from "./helpers.ts"
+
 export type Environment = 'production' | 'staging' | 'development'
 
 export interface CreateUrlOptions {
-    getEnv: () => string,
+    getEnv?: () => string,
     production: UrlSet
     staging: UrlSet
     development: UrlSet
@@ -11,13 +13,39 @@ export interface UrlSet {
     auth?: string
     data?: string
     localDbName?: string
+    /**the origins that are this url set */
+    origins?: string[]
     other?: any
+    images?: string
 }
 
 let current: CreateUrlOptions
 
+export function useCurrentEnv(): Environment {
+    let getE = current?.getEnv
+    if (getE == null && current != null) {
+        getE = () => {
+            if (current.development.origins?.some((o: string) => o == location.origin))
+                return 'development'
+            
+            if (current.staging.origins?.some((o: string) => o == location.origin))
+                return 'staging'
+
+            if (current.production.origins?.some((o: string) => o == location.origin))
+                return 'production'
+
+            return 'staging'
+        }
+    }
+
+    if (getE != null)
+        return getE() as Environment
+
+    return 'staging'
+}
+
 export function useDbName(): string {
-    const env = current?.getEnv() as Environment
+    const env = useCurrentEnv()
 
     if (current == null)
         return env as string
@@ -27,14 +55,23 @@ export function useDbName(): string {
 }
 
 export function useAuthUrl(): string {
-    const env = current?.getEnv() as Environment
+    const env = useCurrentEnv()
 
-    console.log(`env var: ${env}`)
     if (current == null)
         return ''
 
     const urlSet = current[env] ?? current['development']
     return urlSet.auth ?? ''
+}
+
+export function useImageUrl(id: string, containerUrl?: string): string {
+    const env = useCurrentEnv()
+
+    if (current == null)
+        return ''
+
+    const urlSet = current[env] ?? current['development']
+    return appendUrl(appendUrl(urlSet.images ?? '', containerUrl), id)
 }
 
 /**
@@ -43,7 +80,7 @@ export function useAuthUrl(): string {
  * @returns 
  */
 export function useDataUrl(microservice?: string): string {
-    const env = current?.getEnv() as Environment
+    const env = useCurrentEnv()
 
     if (current == null)
         return ''

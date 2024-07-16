@@ -10,14 +10,14 @@ interface CosmeticData {
     theme?: string
 }
 
-export interface BaseCosmeticTheme {
+export interface BaseCosmeticTheme extends Record<string, string> {
     primary: string,
-    secondary?: string,
-    accent?: string,
-    error?: string,
-    info?: string,
-    success?: string,
-    warning?: string,
+    // secondary?: string,
+    // accent?: string,
+    // error?: string,
+    // info?: string,
+    // success?: string,
+    // warning?: string,
 }
 
 const defaultLight: BaseCosmeticTheme = {
@@ -117,35 +117,10 @@ export function createCosmetics<T extends BaseCosmeticTheme>(options: UseCosmeti
     }
 
     function save() {
+        console.log('saving')
         localStorage.setItem('cosmetics', JSON.stringify(state.value))
     }
 
-    // function setVuetifyInstance(v: ThemeInstance) {
-    //     themeManager = v
-    // }
-    
-    // /**used for initiating the themes and colors from storage when the web app is loaded */
-    // function loadCosmetics() {
-    //     themeManager.global.name.value = state.value.theme!
-        
-    //     //load dark colors
-    //     let darkColors = themeManager.themes.value.dark.colors
-    //     let storedDarkTheme = state.value.dark!
-    //     const darkThemeKeys = Object.keys(storedDarkTheme)
-    //     darkThemeKeys.forEach(darkKey => {
-    //         const k = darkKey as keyof typeof storedDarkTheme
-    //         darkColors[darkKey] = storedDarkTheme[k]
-    //     })
-        
-    //     let lightColors = themeManager.themes.value.light.colors
-    //     let storedLightTheme = state.value.light!
-    //     const lightThemeKeys = Object.keys(storedLightTheme)
-    //     lightThemeKeys.forEach(lightKey => {
-    //         const lKey = lightKey as keyof typeof storedLightTheme
-    //         lightColors[lKey] = storedLightTheme[lKey]
-    //     })
-    // }
-    
     /**resets to the default colors or last saved colors of the current theme */
     function resetCosmetics(toDefault: boolean) {
         if (themeManager != null) {
@@ -177,6 +152,8 @@ export function createCosmetics<T extends BaseCosmeticTheme>(options: UseCosmeti
                     }
                 }
             }
+
+            save()
         }
     }
 
@@ -195,16 +172,20 @@ export function createCosmetics<T extends BaseCosmeticTheme>(options: UseCosmeti
 
     function toggleDrawer() {
         state.value.drawer = !state.value.drawer
+        save()
     }
 
     function toggleDrawerStick() {
         state.value.drawerStick = !state.value.drawerStick
+        save()
     }
 
     function toggleLightDark() {
         state.value.theme = state.value.theme == 'dark' ? 'light' : 'dark'
         if (themeManager != null)
             themeManager.global.name.value = state.value.theme
+
+        save()
     }
 
     function undoTemporaryColor() {

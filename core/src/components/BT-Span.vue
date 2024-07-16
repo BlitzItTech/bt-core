@@ -7,7 +7,8 @@
     import { computed } from 'vue'
     
     interface Props {
-        filter: string
+        customFilter?: any
+        filter?: string
         prefix?: string
         suffix?: string
         value: any
@@ -16,6 +17,7 @@
     const props = defineProps<Props>()
     const { findFilter } = useFilters()
     const displayText = computed(() => {
-        return props.filter ? findFilter(props.filter)(props.value) : props.value
+        const func = props.filter != null ? findFilter(props.filter) : props.customFilter
+        return func(props.value)
     })
 </script>

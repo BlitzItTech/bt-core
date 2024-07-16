@@ -1,9 +1,10 @@
 //nav item needs to have a 'ignore Suspension' prop
 import { useDataUrl } from '../composables/urls.ts'
-import { appendUrl, capitalizeWords, deepSelect, singularize } from '../composables/helpers.ts'
+import { appendUrl, capitalizeWords, checkImage, deepSelect, singularize } from '../composables/helpers.ts'
 import { ref, type Ref } from 'vue'
 import { type AuthItem } from './auth.ts'
 import type { StorageMode, StoreMode } from './stores.ts'
+import { RouteLocation, RouteLocationNormalized, useRouter } from 'vue-router'
 
 export interface ExternalParty {
     party?: string
@@ -54,6 +55,8 @@ export interface NavigationItem extends AuthItem {
     ignoreSuspension?: boolean
     /**default to true.  When false will hide from nav menu */
     isInNavMenu?: boolean
+    /**default item text in lists, selects, etc. */
+    itemText?: string
     /**the microservice the leads to the default url to obtain data from.  Defaults to 'default'. */
     microservice?: string
     /**the name of this nav item. */
@@ -76,32 +79,35 @@ export interface NavigationItem extends AuthItem {
     subFilters?: string[]
 }
 
-const appBar = ref(true)
-const appNavigation = ref(false)
-const backgroundName: Ref<string | undefined> = ref()
-const hesitate = ref(false)
-let removeHesitateListener: any = null
-
 export interface BTNavigation {
     showAppBar: Ref<boolean>
     showAppNavigation: Ref<boolean>
     backgroundName: Ref<string | undefined>
+    backgroundURL: Ref<string | undefined>
     hesitate: Ref<boolean>
+    navHistory: RouteLocation[]
     navigationItems: NavigationItem[],
     findArchiveName: (navName?: string | NavigationItem) => string | undefined
     findCacheHours: (navName?: string | NavigationItem) => number
     findDisplay: (navName?: string | NavigationItem) => string | undefined
     findIcon: (navName?: string | NavigationItem) => string | undefined
     findItem: (navName?: string | NavigationItem) => NavigationItem | null
+    findItemText: (navName?: string | NavigationItem) => string | undefined
     findStoreName: (navName?: string | NavigationItem) => string | undefined
     findPath: (navName?: string | NavigationItem) => string | undefined
     findSingleDisplay: (navName?: string | NavigationItem) => string | undefined
-    updateNavigationProperties: (navName?: string | NavigationItem) => void
+    updateBackgroundID: (id?: string) => void
+    updateNavigationChange: (to: RouteLocationNormalized, from?: RouteLocationNormalized) => void
 }
 
 export interface UseNavigationOptions {
     defaultCacheExpiryHours?: number
+    /**for overriding getting the display name */
     getDisplayName?: (navItem: NavigationItem) => string | undefined
+    /**returns potential a default company id for background image */
+    getDefaultBackgroundID?: () => string | undefined
+    /**formulate the background url - whether external or internal */
+    getBackgroundURL?: (backgroundID?: string, backgroundName?: string) => string | undefined
     navItems?: NavigationItem[]
 }
 
@@ -111,8 +117,42 @@ export function useNavigation(): BTNavigation {
     return current
 }
 
+export function useNavBack() {
+    const router = useRouter()
+    const navigation = useNavigation()
+
+    function navBack() {
+        const navLength = navigation.navHistory.length
+        if (navLength > 1) {
+            navigation.navHistory.pop()
+            const n = navigation.navHistory[navLength - 1]
+            navigation.navHistory.pop()
+            router.push(n)
+        }
+        else {
+            router.back()
+        }
+    }
+
+    return {
+        navBack
+    }
+}
+
 export function createNavigation(options: UseNavigationOptions): BTNavigation {
     const cacheExpiryHours = options.defaultCacheExpiryHours ?? 7
+    const navHistory: RouteLocation[] = []
+
+    const appBar = ref(true)
+    const appNavigation = ref(false)
+    const backgroundURL: Ref<string | undefined> = ref()
+    const backgroundID: Ref<string | undefined> = ref()
+    const backgroundName: Ref<string | undefined> = ref()
+    const hesitate = ref(false)
+    // let removeHesitateListener: any = null
+
+    const failedBackgroundIDs: string[] = []
+    const goodBackgroundIDs: string [] = []
     
     options.getDisplayName ??= (navItem: NavigationItem) => {
         if (navItem.displayName != null)
@@ -121,6 +161,9 @@ export function createNavigation(options: UseNavigationOptions): BTNavigation {
             return capitalizeWords(navItem.name.replaceAll('-', ' '))
         return undefined
     }
+
+    options.getDefaultBackgroundID ??= () => undefined
+    options.getBackgroundURL ??= () => undefined
 
     const navigationList = (options.navItems ?? []).map(x => {
         return {
@@ -154,6 +197,10 @@ export function createNavigation(options: UseNavigationOptions): BTNavigation {
         return items.find(navItem => navItem.name == navName ||
             navItem.singleName == navName ||
             navItem.aliases?.some(y => y == navName)) ?? null
+    }
+
+    function findItemText(navName?: string | NavigationItem): string | undefined {
+        return findItem(navName)?.itemText
     }
 
     /**defaults to microservice of default */
@@ -191,31 +238,72 @@ export function createNavigation(options: UseNavigationOptions): BTNavigation {
         return navItem?.name ?? navItem?.singleName
     }
 
-    /**updates background, navigation sidebar, and app bar settings */
-    function updateNavigationProperties(navName?: string | NavigationItem) {
-        if (navName == null) return
+    function updateBackgroundURL() {
+        let bID = backgroundID.value ?? options.getDefaultBackgroundID!()
+        if (bID != null && failedBackgroundIDs.some(x => x == bID))
+            bID = undefined
 
-        const item = typeof navName == 'string' ? findItem(navName) : navName
+        backgroundID.value = bID
+        backgroundURL.value = options.getBackgroundURL!(backgroundID.value, backgroundName.value)
+    }
 
-        backgroundName.value = item?.background
-        appNavigation.value = item?.hideNavigation !== true
-        appBar.value = item?.hideAppBar !== true
+    function updateBackgroundID(id?: string) {
+        if (id == null || goodBackgroundIDs.some(x => x == id)) {
+            backgroundID.value = id
+            updateBackgroundURL()
+        }
+        else if (failedBackgroundIDs.some(x => x == id)) {
+            backgroundID.value = undefined
+            updateBackgroundURL()
+        }
+        else {
+            const url = options.getBackgroundURL != null ? options.getBackgroundURL(id) : undefined
+            if (url != null) {
+                checkImage(
+                    url,
+                    () => {
+                        goodBackgroundIDs.push(id)
+                        backgroundID.value = id
+                        updateBackgroundURL()
+                    },
+                    () => {
+                        failedBackgroundIDs.push(id)
+                        backgroundID.value = undefined
+                        updateBackgroundURL()
+                    }
+                )
+            }
+        }
+    }
 
-        if (removeHesitateListener != null)
-            removeHesitateListener()
+    function updateNavigationChange(to: RouteLocationNormalized, from?: RouteLocationNormalized) {
+        if (from != null && to.name == from.name && (from.params.id == 'new' || from.query.id == 'new'))
+            navHistory.pop()
 
-        hesitate.value = item?.hesitate === true
+        if (to != null && (to.params == null || to.params.navIgnore != 'true'))
+            navHistory.push(to)
 
-        if (hesitate.value)
-            removeHesitateListener = window.addEventListener('beforeunload', e => {
-                e.preventDefault()
-            })
+        const navName = (to.meta.nav ?? to.name) as string
+        const navItem = findItem(navName)
+
+        const newBackgroundName = to.meta.background as string ?? navItem?.background
+
+        if (newBackgroundName != backgroundName.value) {
+            backgroundName.value = newBackgroundName
+            if (backgroundID.value == null)
+                updateBackgroundURL()
+        }
+
+        appNavigation.value = to.meta.hideNavigation as string !== 'true' && navItem?.hideNavigation !== true 
+        appBar.value = to.meta.hideAppBar as string !== 'true' && navItem?.hideAppBar !== true
+
     }
 
     current = {
         showAppBar: appBar,
         showAppNavigation: appNavigation,
         backgroundName,
+        backgroundURL,
         hesitate,
         navigationItems: navigationList,
         findArchiveName,
@@ -223,10 +311,13 @@ export function createNavigation(options: UseNavigationOptions): BTNavigation {
         findDisplay,
         findIcon,
         findItem,
+        findItemText,
         findStoreName,
         findPath,
         findSingleDisplay,
-        updateNavigationProperties
+        navHistory,
+        updateBackgroundID,
+        updateNavigationChange
     }
 
     return current

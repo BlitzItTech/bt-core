@@ -4,8 +4,7 @@ import path from 'path'
 import vue from '@vitejs/plugin-vue'
 import dts from 'vite-plugin-dts'
 import vuetify, { transformAssetUrls } from 'vite-plugin-vuetify'
-
-// https://vitejs.dev/config/
+// import fonts from 'unplugin-fonts/vite'
 
 export default defineConfig({
   test: {
@@ -19,25 +18,34 @@ export default defineConfig({
       formats: ['es']
     },
     rollupOptions: {
-      external: ['vue', 'pinia', 'luxon', 'vuetify', /vuetify\/.+/, 'vue-router', '@vueuse/core'],
+      external: ['vue', 'pinia', 'vue-router', '@vueuse/core'],
       output: {
         globals: {
           vue: 'Vue',
           pinia: 'pinia',
           vuetify: 'Vuetify',
-          'vue-router': 'vue-router',
-          '@vueuse/core': '@vueuse/core'
         }
       }
     }
   },
   optimizeDeps: {
-    include: ['vuetify', 'pinia', 'vue', 'vue-router', '@vueuse/core']
+    include: ['vuetify']
   },
   plugins: [
     vue({ template: { transformAssetUrls }}),
-    vuetify({ autoImport: true }),
-    dts({ rollupTypes: true })
+    vuetify({ 
+      autoImport: true,
+      // styles: 'none'
+    }),
+    dts({ rollupTypes: true }),
+    // fonts({
+    //   google: {
+    //     families: [ {
+    //       name: 'Roboto',
+    //       styles: 'wght@100;300;400;500;700;900',
+    //     }],
+    //   },
+    // })
   ],
   resolve: {
     alias: {

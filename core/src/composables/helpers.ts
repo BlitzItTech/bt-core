@@ -1,5 +1,9 @@
 import { firstBy } from 'thenby'
 
+export function sum(array: number[]): number {
+    return array.reduce((sum, v) => sum += v, 0)
+}
+
 export function appendUrl(originalVal?: string, additionalVal?: string) {
     let original = originalVal ?? ''
     let additional = additionalVal ?? ''
@@ -19,15 +23,42 @@ export function appendUrl(originalVal?: string, additionalVal?: string) {
     return `${original}/${additional}`
 }
 
+export function checkImage(
+    url: string,
+    onGood: (this: GlobalEventHandlers, ev: Event) => void,
+    onBad: OnErrorEventHandler) {
+        let img = new Image()
+        img.onload = onGood
+        img.onerror = onBad
+        img.src = url
+}
+
 export function distinct(list: any) {
     if (list == null || !Array.isArray(list)) {
         return list
     }
 
     return [...new Set(list.map(item => item))]
-    // return list.filter((v, ind, arr) => {
-    //     return arr.indexOf(v === ind)
-    // })
+}
+
+export function group<T>(list: T[], keyGetter: string | ((item: T) => string | number)) {
+    const map = new Map()
+    
+    list.forEach((item: any) => {
+        let key: any
+        if (typeof keyGetter == 'string')
+            key = item[keyGetter]
+        else
+            key = keyGetter(item)
+
+        const collection = map.get(key)
+        if (!collection)
+            map.set(key, [item])
+        else
+            collection.push(item)
+    })
+
+    return map
 }
 
 export function extensionExists(elementId: string = 'blitzItExtensionExists') {
@@ -43,9 +74,9 @@ export function extensionExists(elementId: string = 'blitzItExtensionExists') {
 
 //#region area and space
 
-interface GeoCoordinate {
-    lat: number
-    lng: number
+export interface GeoCoordinate {
+    lat?: number
+    lng?: number
 }
 
 // /**
@@ -93,6 +124,9 @@ interface GeoCoordinate {
  * @returns 
  */
 export function getAreaAround(location: GeoCoordinate, radius: number) {
+    if (location.lat == null || location.lng == null)
+        return undefined
+
     return [
         { lat: location.lat - radius, lng: location.lng + radius },
         { lat: location.lat - radius, lng: location.lng - radius },
@@ -103,6 +137,9 @@ export function getAreaAround(location: GeoCoordinate, radius: number) {
 
 /**get square area using the location as the far right line */
 export function getAreaToLeft(location: GeoCoordinate, radius: number) {
+    if (location.lat == null || location.lng == null)
+        return undefined
+
     return [
         { lat: location.lat - (radius * 2), lng: location.lng + radius },
         { lat: location.lat - (radius * 2), lng: location.lng - radius },
@@ -113,6 +150,9 @@ export function getAreaToLeft(location: GeoCoordinate, radius: number) {
 
 /**get square area using the location as the far left line */
 export function getAreaToRight(location: GeoCoordinate, radius: number) {
+    if (location.lat == null || location.lng == null)
+        return undefined
+
     return [
         { lat: location.lat, lng: location.lng + radius },
         { lat: location.lat, lng: location.lng - radius },
@@ -196,16 +236,6 @@ export function getLocationLine(value: any, forGoogle: boolean = false) {
 //#endregion
 
 //#region images
-
-export function checkImage(url?: string, goodCallback?: any, badCallback?: any) {
-    if (!url)
-        return
-
-    var img = new Image();
-    img.onload = goodCallback;
-    img.onerror = badCallback;
-    img.src = url;
-}
 
 export async function getImageData(url?: string, throwErrorOnFail: boolean = true) {
     return new Promise((resolve, reject) => {
@@ -401,6 +431,10 @@ export function isArrayOfLength(val: any, l: number) {
 
 export function isLengthyArray(val: any, greaterThan: number = 0) {
     return val != null && Array.isArray(val) && val.length > greaterThan
+}
+
+export function isNullOrEmpty(val: string | undefined): boolean {
+    return val == null || val.length == 0
 }
 
 //#endregion

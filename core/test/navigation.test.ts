@@ -4,6 +4,15 @@ import { describe, expect, test } from 'vitest'
 describe("navigation", () => {
     const nav = createNavigation({
         defaultCacheExpiryHours: 3,
+        getBackgroundURL: (id?: string, n?: string) => {
+            if (id != null)
+                return id
+            else
+                return n
+        },
+        getDefaultBackgroundID: () => {
+            return 'b'
+        },
         navItems: [
             {
                 name: 'test-nav'
@@ -15,7 +24,7 @@ describe("navigation", () => {
                 hideAppBar: true,
                 hideNavigation: true,
                 hesitate: true,
-                icon: 'mdi-plus',
+                icon: '$plus',
                 path: '/testing/one',
                 children: [
                     {
@@ -58,7 +67,7 @@ describe("navigation", () => {
 
     test('find icon', () => {
         expect(nav.findIcon('test-nav')).toEqual(undefined)
-        expect(nav.findIcon('navA')).toEqual('mdi-plus')
+        expect(nav.findIcon('navA')).toEqual('$plus')
     })
 
     test('find item', () => {
@@ -100,4 +109,10 @@ describe("navigation", () => {
         expect(nav.backgroundName.value).toEqual('b')
         expect(nav.hesitate.value).toEqual(true)
     })
+
+    // test('change background', () => {
+    //     nav.updateBackgroundID('testID')
+
+    //     expect()
+    // })
 })

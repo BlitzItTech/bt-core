@@ -61,8 +61,13 @@ describe.sequential('actions with api store', () => {
         api: api
     })
 
+    let f = false
+
     const actions = useActions({
         nav: 'test-store',
+        onFinished: () => {
+            f = true
+        },
         store: store 
     })
     
@@ -100,6 +105,20 @@ describe.sequential('actions with api store', () => {
             count: 2,
             filters: ['test', 'test two']
         })
+    })
+
+    test('get all finishes', async () => {
+        let isFinished = false
+        f = false
+        await actions.getAllItems({
+            // onFinished: undefined
+            onFinished: () => {
+                isFinished = true
+            }
+        })
+
+        expect(isFinished).toEqual(true)
+        expect(f).toEqual(false)
     })
 
     // test('add another item', async () => {

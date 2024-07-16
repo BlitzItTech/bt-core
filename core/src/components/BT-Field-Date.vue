@@ -37,8 +37,8 @@
     import VueDatePicker from '@vuepic/vue-datepicker'
     import '@vuepic/vue-datepicker/dist/main.css'
     import { computed, inject, ref } from 'vue'
-    import { useDates } from '../composables/dates.ts'
     import { useAuth } from '../composables/auth.ts'
+    import { useDates } from '../composables/dates.ts'
 
     defineOptions({
         inheritAttrs: false
@@ -67,7 +67,7 @@
         lg: false,
         md: false,
         sm: '6',
-        format: 'dd-LL-yyyy', //ccc dd-LL-yyyy t
+        format: 'ccc dd/LL/yyyy', //'dd-LL-yyyy', //ccc dd-LL-yyyy t
         fromNow: false
     })
 

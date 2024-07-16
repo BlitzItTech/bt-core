@@ -5,7 +5,7 @@
         :sm="mSm"
         :cols="cols"
         :class="noGutters ? 'px-0' : ''">
-        <slot></slot>
+        <slot name="default"></slot>
     </v-col>
 </template>
 

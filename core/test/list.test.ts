@@ -301,3 +301,33 @@ describe.sequential('list pull unauthorized', async () => {
         await list.refresh({ deepRefresh: true })
     })
 })
+
+describe.sequential('list setup last updated store from nav items', async () => {
+    const [{ list }, app] = setupListAndStuff({
+        additionalUrl: '/getError',
+        eager: true,
+        nav: 'test',
+        onError: (err: any) => {
+            var e = 'str'
+        },
+        useRouteSrc: false,
+        useBladeSrc: false
+    },
+    {
+        navItems: [{ 
+            name: 'test', 
+            path: '',
+            storeMode: 'whole-last-updated',
+            storageMode: 'session'
+        }]
+    })
+    
+
+    const pinia = createPinia()
+    app.use(pinia)
+    setActivePinia(pinia)
+    
+    test('reset fails', async () => {
+        await list.refresh({ deepRefresh: true })
+    })
+})

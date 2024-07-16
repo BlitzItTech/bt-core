@@ -2,15 +2,15 @@
     <v-slide-x-transition group>
         <span v-if="option.prefix != null">{{ option.prefix }}</span>
         <span v-if="option.bool != null">
-            <v-icon v-if="nestedValue(data, option.value) === true" :size="size">mdi-check</v-icon>
+            <v-icon v-if="nestedValue(data, option.value) === true" :size="size">$check</v-icon>
         </span>
         <bt-entity
             v-else-if="option.nav != null && (option.itemText != null || option.textFilter != null)"
             inline
             :itemText="option.itemText"
-            :itemId="nestedValue(data, option.value)"
+            :itemID="nestedValue(data, option.value)"
             :nav="option.nav"
-            :single="option.single"
+            :isSingle="true"
             :textFilter="option.textFilter" />
         <span v-else>{{ displayText(data) }}</span>
     </v-slide-x-transition>

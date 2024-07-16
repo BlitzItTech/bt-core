@@ -3,21 +3,25 @@ export interface BTPresets {
 }
 
 export interface CreatePresetsOptions {
-    presets: any
+    presets?: any
 }
 
 let current: BTPresets
 
 export function usePresets(preset?: string): any {
-    return current.usePresets(preset)
+    if (current != null)
+        return current.usePresets(preset)
+
+    return {}
 }
 
 export function createPresets(options: CreatePresetsOptions): BTPresets {
     
     function usePresets(preset?: string): any {
         if (!preset) return {}
-        let mPreset = preset as keyof typeof options.presets
-        return options.presets[mPreset] ?? {}
+        const sets = options.presets ?? {}
+        let mPreset = preset as keyof typeof sets
+        return sets[mPreset] ?? {}
     }
 
     current = {

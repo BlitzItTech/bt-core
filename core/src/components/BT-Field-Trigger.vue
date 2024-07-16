@@ -20,7 +20,7 @@
                     <v-col>
                         <v-menu v-if="useAutomation || useAutomationDaily || useAutomationLarge">
                             <template #activator="{ props }">
-                                <v-btn v-bind="props" :disabled="!cIsEditing" :size="mSize" append-icon="mdi-menu-down" title="Automation">{{ automation ?? 'select' }}</v-btn>
+                                <v-btn v-bind="props" :disabled="!cIsEditing" :size="mSize" append-icon="$menu-down" title="Automation">{{ automation ?? 'select' }}</v-btn>
                             </template>
                             <v-list 
                                 :items="automationOptions"
@@ -34,7 +34,7 @@
                     <v-col>
                         <v-menu v-if="useGuideList">
                             <template #activator="{ props }">
-                                <v-btn v-bind="props" :disabled="!cIsEditing" :size="mSize" append-icon="mdi-menu-down" title="Guide">{{ guide ?? 'select' }}</v-btn>
+                                <v-btn v-bind="props" :disabled="!cIsEditing" :size="mSize" append-icon="$menu-down" title="Guide">{{ guide ?? 'select' }}</v-btn>
                             </template>
                             <v-list 
                                 :items="guideOptions"
@@ -64,7 +64,7 @@
                     <v-col>
                         <v-menu v-if="useTriggerList">
                             <template #activator="{ props }">
-                                <v-btn v-bind="props" :disabled="!cIsEditing" append-icon="mdi-menu-down" title="Trigger">{{ trigger ?? 'select' }}</v-btn>
+                                <v-btn v-bind="props" :disabled="!cIsEditing" append-icon="$menu-down" title="Trigger">{{ trigger ?? 'select' }}</v-btn>
                             </template>
                             <v-list 
                                 :items="triggerOptions"
@@ -94,7 +94,7 @@
                     <v-col>
                         <v-menu v-if="useCustomList">
                             <template #activator="{ props }">
-                                <v-btn v-bind="props" :disabled="!cIsEditing" append-icon="mdi-menu-down">{{ custom ?? 'select' }}</v-btn>
+                                <v-btn v-bind="props" :disabled="!cIsEditing" append-icon="$menu-down">{{ custom ?? 'select' }}</v-btn>
                             </template>
                             <v-list 
                                 :items="customOptions"
@@ -126,7 +126,7 @@
 </template>
 
 <script setup lang="ts">
-import { type BladeDensity } from '../types.ts'
+import { type BladeDensity } from '../composables/blade.ts'
 import { computed, inject, ref, type Ref } from 'vue'
 
     defineOptions({
@@ -183,23 +183,23 @@ import { computed, inject, ref, type Ref } from 'vue'
     
     if (props.useScheduledTrigger) {
         triggerOptions.value = [
-            { text: 'Manual', value: 'Manual', icon: 'mdi-account' },
-            { text: 'Auto', value: 'Auto', icon: 'mdi-robot' },
-            { text: 'Scheduled', value: 'Scheduled', icon: 'mdi-calendar' }
+            { text: 'Manual', value: 'Manual', icon: '$account' },
+            { text: 'Auto', value: 'Auto', icon: '$robot' },
+            { text: 'Scheduled', value: 'Scheduled', icon: '$calendar' }
         ]
     }
 
     if (props.useTrigger) {
         triggerOptions.value = [
-            { text: 'Manual', value: 'Manual', icon: 'mdi-account' },
-            { text: 'Auto', value: 'Auto', icon: 'mdi-robot' },
+            { text: 'Manual', value: 'Manual', icon: '$account' },
+            { text: 'Auto', value: 'Auto', icon: '$robot' },
         ]
     }
 
     if (props.useGuide) {
         guideOptions.value = [
-            { text: 'Global', value: 'Settings', icon: 'mdi-earth' }, 
-            { text: 'Individual', value: 'Agreements', icon: 'mdi-account-circle-outline' }
+            { text: 'Global', value: 'Settings', icon: '$earth' }, 
+            { text: 'Individual', value: 'Agreements', icon: '$account-circle-outline' }
         ]
     }
 

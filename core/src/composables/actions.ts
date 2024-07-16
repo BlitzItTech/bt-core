@@ -1,6 +1,6 @@
-import type { BladeMode } from '../types.ts'
-import { BTStoreDefinition, useStoreDefinition } from './stores.ts'
-import { type PathOptions, type BTApi, useApi } from '../composables/api.ts'
+import type { BladeMode } from '../composables/blade.ts'
+import { type StorePathOptions, BTStoreDefinition, useStoreDefinition } from './stores.ts'
+import { type BTApi, useApi } from '../composables/api.ts'
 import { useActionsTracker, type DoActionOptions } from '../composables/actions-tracker.ts'
 import { ShallowRef, ComputedRef } from 'vue'
 
@@ -10,7 +10,7 @@ export type OnDoSuccessAsync = (item: any) => Promise<any>
 export type OnGetAsync = (opt?: GetOptions) => Promise<any>
 export type OnGetSuccessAsync = (item: any, opt?: GetOptions) => Promise<any>
 
-export interface GetOptions extends PathOptions, DoActionOptions {
+export interface GetOptions extends StorePathOptions, DoActionOptions {
     /**returns an error msg if failed */
     onGetAsync?: OnGetAsync
     /**called after get occurs successfully */
@@ -18,7 +18,7 @@ export interface GetOptions extends PathOptions, DoActionOptions {
     store?: BTStoreDefinition
 }
 
-export interface DeleteOptions extends PathOptions, DoActionOptions {
+export interface DeleteOptions extends StorePathOptions, DoActionOptions {
     /**Returns a string if cannot */
     onCanDeleteAsync?: OnCanDoAsync
     /**Will override the default store delete action */
@@ -28,7 +28,7 @@ export interface DeleteOptions extends PathOptions, DoActionOptions {
     store?: BTStoreDefinition
 }
 
-export interface RestoreOptions extends PathOptions, DoActionOptions {
+export interface RestoreOptions extends StorePathOptions, DoActionOptions {
     /**Returns a string if cannot */
     onCanRestoreAsync?: OnCanDoAsync
     /**Will override the default store delete action */
@@ -38,7 +38,7 @@ export interface RestoreOptions extends PathOptions, DoActionOptions {
     store?: BTStoreDefinition
 }
 
-export interface SaveOptions extends PathOptions, DoActionOptions {
+export interface SaveOptions extends StorePathOptions, DoActionOptions {
     /**will seek to post if 'new' otherwise will patch */
     mode?: BladeMode
     /**called to check whether to proceed with save */
@@ -55,11 +55,11 @@ export interface SaveOptions extends PathOptions, DoActionOptions {
     store?: BTStoreDefinition
 }
 
-export interface ActionOptions extends PathOptions, DoActionOptions {
+export interface ActionOptions extends StorePathOptions, DoActionOptions {
     
 }
 
-export interface ApiActionOptions extends PathOptions, DoActionOptions {
+export interface ApiActionOptions extends StorePathOptions, DoActionOptions {
     api?: BTApi
 }
 
@@ -68,6 +68,7 @@ export interface UseActionsOptions extends DoActionOptions {
     proxyID?: string
     refresh?: boolean
     store?: BTStoreDefinition
+    storeKey?: string
     throwError?: boolean
     url?: string,
     /**for basic functionality when no store is provided */
@@ -91,12 +92,23 @@ export interface BTActions {
 }
 
 export function useActions(options?: UseActionsOptions): BTActions {
-    const { actionErrorMsg, actionLoadingMsg, clearErrors, isLoading, doAction, logError } = useActionsTracker(options)
+    const { actionErrorMsg, actionLoadingMsg, clearErrors, isLoading, doAction, logError } = useActionsTracker(
+        {
+            ...options,
+            stringifyError: (err: any) => {
+                if (typeof err == 'object') {
+                    return err.message
+                }
+
+                return err?.toString()
+            }
+        })
 
     function deleteItem(doOptions: DeleteOptions) {
         doOptions.nav ??= options?.nav
         doOptions.proxyID ??= options?.proxyID
         doOptions.refresh ??= options?.refresh
+        doOptions.storeKey ??= options?.storeKey
         doOptions.throwError ??= options?.throwError
         doOptions.url ??= options?.url
         doOptions.confirmationMsg ??= doOptions.requireConfirmation === true ? 'Are you sure you want to delete this item?' : undefined
@@ -144,6 +156,8 @@ export function useActions(options?: UseActionsOptions): BTActions {
 
             return undefined
         }, {
+            ...options,
+            ...doOptions,
             completionMsg: doOptions.completionMsg ?? options?.completionMsg,
             confirmationMsg: doOptions.confirmationMsg ?? options?.confirmationMsg,
             errorMsg: doOptions.errorMsg ?? options?.errorMsg,
@@ -157,6 +171,7 @@ export function useActions(options?: UseActionsOptions): BTActions {
         doOptions.nav ??= options?.nav
         doOptions.proxyID ??= options?.proxyID
         doOptions.refresh ??= options?.refresh
+        doOptions.storeKey ??= options?.storeKey
         doOptions.throwError ??= options?.throwError
         doOptions.url ??= options?.url
         doOptions.confirmationMsg ??= doOptions.requireConfirmation === true ? 'Are you sure you want to get this item?' : undefined
@@ -197,6 +212,8 @@ export function useActions(options?: UseActionsOptions): BTActions {
 
             return res
         }, {
+            ...options,
+            ...doOptions,
             completionMsg: doOptions.completionMsg ?? options?.completionMsg,
             confirmationMsg: doOptions.confirmationMsg ?? options?.confirmationMsg,
             errorMsg: doOptions.errorMsg ?? options?.errorMsg,
@@ -210,6 +227,7 @@ export function useActions(options?: UseActionsOptions): BTActions {
         doOptions.nav ??= options?.nav
         doOptions.proxyID ??= options?.proxyID
         doOptions.refresh ??= options?.refresh
+        doOptions.storeKey ??= options?.storeKey
         doOptions.throwError ??= options?.throwError
         doOptions.url ??= options?.url
         doOptions.confirmationMsg ??= doOptions.requireConfirmation === true ? 'Are you sure you want to get these items?' : undefined
@@ -244,6 +262,8 @@ export function useActions(options?: UseActionsOptions): BTActions {
 
             return res
         }, {
+            ...options,
+            ...doOptions,
             completionMsg: doOptions.completionMsg ?? options?.completionMsg,
             confirmationMsg: doOptions.confirmationMsg ?? options?.confirmationMsg,
             errorMsg: doOptions.errorMsg ?? options?.errorMsg,
@@ -257,6 +277,7 @@ export function useActions(options?: UseActionsOptions): BTActions {
         doOptions.nav ??= options?.nav
         doOptions.proxyID ??= options?.proxyID
         doOptions.refresh ??= options?.refresh
+        doOptions.storeKey ??= options?.storeKey
         doOptions.throwError ??= options?.throwError
         doOptions.url ??= options?.url
         doOptions.confirmationMsg ??= doOptions.requireConfirmation === true ? 'Are you sure you want to restore this item?' : undefined
@@ -290,6 +311,8 @@ export function useActions(options?: UseActionsOptions): BTActions {
 
             return res
         }, {
+            ...options,
+            ...doOptions,
             completionMsg: doOptions.completionMsg ?? options?.completionMsg,
             confirmationMsg: doOptions.confirmationMsg ?? options?.confirmationMsg,
             errorMsg: doOptions.errorMsg ?? options?.errorMsg,
@@ -303,6 +326,7 @@ export function useActions(options?: UseActionsOptions): BTActions {
         doOptions.nav ??= options?.nav
         doOptions.proxyID ??= options?.proxyID
         doOptions.refresh ??= options?.refresh
+        doOptions.storeKey ??= options?.storeKey
         doOptions.throwError ??= options?.throwError
         doOptions.url ??= options?.url
         doOptions.confirmationMsg ??= doOptions.requireConfirmation === true ? 'Are you sure you want to save this item?' : undefined
@@ -371,6 +395,8 @@ export function useActions(options?: UseActionsOptions): BTActions {
 
             return res
         }, {
+            ...options,
+            ...doOptions,
             completionMsg: doOptions.completionMsg ?? options?.completionMsg,
             confirmationMsg: doOptions.confirmationMsg ?? options?.confirmationMsg,
             errorMsg: doOptions.errorMsg ?? options?.errorMsg,
@@ -386,6 +412,7 @@ export function useActions(options?: UseActionsOptions): BTActions {
     function apiGet(doOptions: ApiActionOptions) {
         doOptions.nav ??= options?.nav
         doOptions.proxyID ??= options?.proxyID
+        doOptions.storeKey ??= options?.storeKey
         doOptions.throwError ??= options?.throwError
         doOptions.url ??= options?.url
 
@@ -402,6 +429,7 @@ export function useActions(options?: UseActionsOptions): BTActions {
     function apiPost(doOptions: ApiActionOptions) {
         doOptions.nav ??= options?.nav
         doOptions.proxyID ??= options?.proxyID
+        doOptions.storeKey ??= options?.storeKey
         doOptions.throwError ??= options?.throwError
         doOptions.url ??= options?.url
         

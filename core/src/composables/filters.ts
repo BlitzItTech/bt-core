@@ -6,17 +6,23 @@ export interface BTFilters {
 }
 
 export interface UseFiltersOptions {
-    dates: BTDates
+    dates: BTDates,
+    filters?: any
 }
 
 let current: BTFilters
 
 export function useFilters(): BTFilters {
+    if (current == null)
+        return {
+            findFilter: () => { return () => {} }
+        }
+
     return current
 }
 
 export function createFilters(options: UseFiltersOptions): BTFilters {
-    // const { tzString, tzDate, utcString } = useDates()
+    const customFilters = options.filters ?? {}
 
     function toTimeZoneFormat(value?: string, format?: string, placeholder?: string): string {
         if (!value)
@@ -170,7 +176,7 @@ export function createFilters(options: UseFiltersOptions): BTFilters {
     }
 
     function toLongDate(value?: string, placeholder?: string): string {
-        return toTimeZoneFormat(value, 'ddd DD MMM YYYY', placeholder);
+        return toTimeZoneFormat(value, 'ccc dd LLL yyyy', placeholder);
     }
 
     function toLongDateAndTime(value?: string, placeholder?: string): string {
@@ -239,10 +245,11 @@ export function createFilters(options: UseFiltersOptions): BTFilters {
         toShortDate,
         toShortDateAndTime,
         toTime,
-        toTimeOfDay
+        toTimeOfDay,
+        ...customFilters
     }
 
-    function findFilter(mFilter: undefined | string): Function {
+    function findFilter(mFilter?: string): Function {
         if (mFilter != null) {
             let filter = mFilter as keyof typeof e
             if (filter != null && e[filter] != null) {
@@ -261,4 +268,4 @@ export function createFilters(options: UseFiltersOptions): BTFilters {
     return current
 }
 
-export type Textfilter = 'toLocationLine' | 'toLocationLineNoCommas' | 'toLongDate' | 'toLongDateAndTime' | 'toPercent' | 'toPrettyCSV' | 'toShortDate' | 'toShortDateAndTime' | 'toTime' | 'toTimeOfDay' | 'toCompanyNameAndLocationLine' | 'toCurrency' | 'toDayDate' | 'toDayMonth' | 'toDayOfWeek' | 'toDayShortDate' | 'toDayShortDateAndTime' | 'toDisplayNumber' | 'toDisplayNumberOver' | 'toDisplayNumberSigned' | 'toFormat'
+// export type Textfilter = 'toLocationLine' | 'toLocationLineNoCommas' | 'toLongDate' | 'toLongDateAndTime' | 'toPercent' | 'toPrettyCSV' | 'toShortDate' | 'toShortDateAndTime' | 'toTime' | 'toTimeOfDay' | 'toCompanyNameAndLocationLine' | 'toCurrency' | 'toDayDate' | 'toDayMonth' | 'toDayOfWeek' | 'toDayShortDate' | 'toDayShortDateAndTime' | 'toDisplayNumber' | 'toDisplayNumberOver' | 'toDisplayNumberSigned' | 'toFormat'

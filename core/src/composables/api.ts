@@ -3,7 +3,7 @@ import { appendUrl } from '../composables/helpers.ts'
 import { type BTAuth } from './auth.ts'
 import { type BTDemo } from './demo.ts'
 
-export interface QueryParams {
+export interface QueryParams extends Record<string, any> {
     filterBy?: string,
     includeCount?: boolean,
     includeDetails?: boolean,
@@ -114,7 +114,7 @@ export function createApi(options?: CreateApiOptions): BTApi {
 
     function defaultBuildQuery(params: QueryParams): string {
         let query = new URLSearchParams()
-        
+
         Object.entries(params).forEach(x => {
             if (x[1] != undefined) {
                 query.append(x[0], x[1])
@@ -252,7 +252,13 @@ export function createApi(options?: CreateApiOptions): BTApi {
                 }
 
                 let errorContent = await res.text()
-                throw new Error(errorContent ?? res.statusText ?? 'Get error')
+
+                throw {
+                    code: res.status,
+                    name: 'Get error',
+                    message: errorContent ?? res.statusText ?? ''
+                }
+                // throw new Error(errorContent ?? res.statusText ?? 'Get error')
             }
         
             if (returnText)
@@ -271,7 +277,12 @@ export function createApi(options?: CreateApiOptions): BTApi {
             if (err.code == 401)
                 throw err
 
-            throw new Error(errMsg)
+            throw {
+                code: res?.status ?? err?.code ?? undefined,
+                name: 'Error',
+                message: errMsg
+            }
+            // throw new Error(errMsg)
         }
     }
     
@@ -320,7 +331,12 @@ export function createApi(options?: CreateApiOptions): BTApi {
                 }
                 
                 let errorContent = await res.text()
-                throw new Error(errorContent ?? res.statusText ?? 'Get all error')
+                throw {
+                    code: res.status,
+                    name: 'Get all error',
+                    message: errorContent ?? res.statusText ?? ''
+                }
+                // throw new Error(errorContent ?? res.statusText ?? 'Get all error')
             }
         
             if (returnText)
@@ -339,7 +355,12 @@ export function createApi(options?: CreateApiOptions): BTApi {
             if (err.code == 401)
                 throw err
 
-            throw new Error(errMsg)
+            throw {
+                code: res?.status ?? err?.code ?? undefined,
+                name: 'Error',
+                message: errMsg
+            }
+            // throw new Error(errMsg)
         }
         
     }
@@ -390,7 +411,13 @@ export function createApi(options?: CreateApiOptions): BTApi {
                 }
 
                 let errorContent = await res.text()
-                throw new Error(errorContent ?? res.statusText ?? 'Post error!')
+
+                throw {
+                    code: res.status,
+                    name: 'Post error',
+                    message: errorContent ?? res.statusText ?? ''
+                }
+                // throw new Error(errorContent ?? res.statusText ?? 'Post error!')
             }
         
             if (returnText)
@@ -409,7 +436,13 @@ export function createApi(options?: CreateApiOptions): BTApi {
             if (err.code == 401)
                 throw err
 
-            throw new Error(errMsg)
+            throw {
+                code: res?.status ?? err?.code ?? undefined,
+                name: 'Post error',
+                message: errMsg
+            }
+
+            // throw new Error(errMsg)
         }
     }
     
@@ -459,7 +492,14 @@ export function createApi(options?: CreateApiOptions): BTApi {
                 }
 
                 let errorContent = await res.text()
-                throw new Error(errorContent ?? res.statusText ?? 'Patch error!')
+
+                throw {
+                    code: res.status,
+                    name: 'Patch error',
+                    message: errorContent ?? res.statusText ?? ''
+                }
+
+                // throw new Error(errorContent ?? res.statusText ?? 'Patch error!')
             }
         
             if (returnText)
@@ -482,7 +522,13 @@ export function createApi(options?: CreateApiOptions): BTApi {
             if (err.code == 401)
                 throw err
 
-            throw new Error(errMsg)
+            throw {
+                code: res?.status ?? err?.code ?? undefined,
+                name: 'Error',
+                message: errMsg
+            }
+
+            // throw new Error(errMsg)
         }
     }
 
@@ -548,7 +594,13 @@ export function createApi(options?: CreateApiOptions): BTApi {
             if (err.code == 401)
                 throw err
 
-            throw new Error(`${res!.status} ${res!.statusText} ${err.message}`)
+            throw {
+                code: res?.status ?? err?.code ?? undefined,
+                name: 'Error',
+                message: errMsg
+            }
+
+            // throw new Error(`${res!.status} ${res!.statusText} ${err.message}`)
         }
     }
 

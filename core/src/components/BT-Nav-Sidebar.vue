@@ -1,6 +1,6 @@
 <template>
+    <!-- v-if="isLoggedIn" -->
     <v-navigation-drawer
-        v-if="isLoggedIn"
         disabled-resize-watcher
         expand-on-hover
         :rail="!state.drawerStick"
@@ -22,7 +22,7 @@
                                 icon
                                 size="small"
                                 title="Pin/Unpin Menu">
-                                <v-icon>{{ state.drawerStick ? 'mdi-pin-off' : 'mdi-pin' }}</v-icon>
+                                <v-icon>{{ state.drawerStick ? '$pin-off' : '$pin' }}</v-icon>
                             </v-btn>
                         </v-row>
                     </template>
@@ -33,11 +33,31 @@
             </v-list>
 
             <slot name="middle-list">
-                <v-list nav>
-                    <BT-Nav-Menu-Item
-                        v-for="(item, index) in navItems"
-                        :key="index"
-                        :item="item" />
+                <v-list v-if="isLoggedIn" nav>
+                    <template v-for="grp in menu.sidebarNavItems.value">
+                        <v-list-group v-if="grp.isGroup" :key="`${grp.displayName}a`">
+                            <template #activator="{ props }">
+                                <v-list-item v-bind="props" 
+                                    color="primary"
+                                    :prepend-icon="grp.icon"
+                                    :title="grp.displayName" />
+                            </template>
+
+                            <v-list-item v-for="menuItem in grp.items" :key="menuItem.displayName"
+                                color="primary"
+                                :prepend-icon="menuItem.icon"
+                                :title="menuItem.displayName"
+                                :value="menuItem.displayName"
+                                :to="{ name: menuItem.routeName }" />
+
+                        </v-list-group>
+                        <v-list-item v-else :key="`${grp.displayName}b`"
+                            color="primary"
+                            :prepend-icon="grp.icon"
+                            :title="grp.displayName"
+                            :value="grp.displayName"
+                            :to="{ name: grp.routeName }" />
+                    </template>
                 </v-list>
             </slot>
         </slot>
@@ -46,9 +66,10 @@
                 <v-list v-if="isLoggedIn" class="ma-0 pa-0">
                     <v-list-item
                         class="bg-primary"
-                        prepend-icon="mdi-logout"
+                        nav
+                        prepend-icon="$logout"
                         title="Logout"
-                        @click="() => logout()" />
+                        @click="() => logout('/', router)" />
                 </v-list>
             </slot>
         </template>
@@ -56,14 +77,12 @@
 </template>
 
 <script setup lang="ts">
-import BTNavMenuItem from './BT-Nav-Menu-Item.vue'
 import { useCosmetics } from '../composables/cosmetics.ts'
-import { useNavigation } from '../composables/navigation.ts'
 import { useAuth } from '../composables/auth.ts'
-import { computed } from 'vue'
+import { useMenu } from '../composables/menu.ts'
+import { useRouter } from 'vue-router'
 
 interface SidebarProps {
-    // greeting?: string
     iconSrc?: string
     title?: string
 }
@@ -71,8 +90,7 @@ interface SidebarProps {
 defineProps<SidebarProps>()
 const { state, toggleDrawerStick } = useCosmetics()
 const { isLoggedIn, logout } = useAuth()
-const navigation = useNavigation()
-
-const navItems = computed(() => navigation.navigationItems.filter(x => x.isInNavMenu !== false && navigation.backgroundName.value == x.background));
+const router = useRouter()
+const menu = useMenu()
 
 </script>

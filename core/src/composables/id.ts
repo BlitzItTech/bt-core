@@ -18,3 +18,12 @@ function replacePattern(c: string) {
     const v = c == 'x' ? r : (r & 0x3) | 0x8;
     return v.toString(16);
 }
+
+export function useIds() {
+    const _pattern = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx';
+    return {
+        getID: () => {
+            return _pattern.replace(/[xy]/g, replacePattern)
+        }
+    }
+}
