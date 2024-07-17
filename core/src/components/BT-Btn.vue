@@ -1,6 +1,7 @@
 <template>
     <v-btn
         v-bind="$attrs"
+        :color="mColor"
         :disabled="!mIsEditing"
         :icon="mIcon"
         :size="mSize"
@@ -12,6 +13,7 @@
     import { usePresets } from '../composables/presets.ts'
     
     interface BtnProps {
+        color?: string
         icon?: string
         isEditing?: boolean
         preset?: string
@@ -23,13 +25,13 @@
         icon: undefined,
         isEditing: true,
         size: undefined,
-        variant: 'text'
+        variant: undefined //'text'
     })
 
     const presets = usePresets(props.preset)
 
     const mIcon = computed(() => props.icon ?? presets.icon)
-    
+    const mColor = computed(() => props.color ?? presets.color)
     const iIsEditing = inject('isEditing', () => ref(false), true)
     const mIsEditing = computed(() => props.isEditing ?? presets.isEditing ?? iIsEditing.value)
 

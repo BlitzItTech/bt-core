@@ -40,7 +40,9 @@ export interface TableColumn {
     textFilter?: string
     textFunction?: Function
     title?: string
+    truncate?: boolean
     value?: string
+    width?: string
 }
 
 export interface CustomFilterParam {

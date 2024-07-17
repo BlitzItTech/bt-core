@@ -22,13 +22,26 @@
               </template>
               <template #second>
                 <bt-blade-items
+                  bladeName="list"
+                  :bladeStartShowing="true"
+                  :headers="[
+                    { title: 'b', value: 'text', truncate: true },
+                    { title: 'a', value: 'id' }]"
+                  :items="items"
+                  label="Test"
+                  truncate />
+                <!-- <bt-blade-items
                   addBladeName="single"
                   bladeName="list"
                   :bladeStartShowing="true"
                   :canDelete="false"
                   :canUnselect="false"
+                  :headers="[
+                    { title: 'a', value: 'id' },
+                    { title: 'b', value: 'text' }]"
                   itemBladeName="single"
                   :items="items"
+                  itemText="text"
                   itemValue="id"
                   label="Test"
                   selectSingle
@@ -36,7 +49,7 @@
                   showSearch
                   transparent
                   width="400"
-                  v-model:selected="selected.sub" />
+                  v-model:selected="selected.sub" /> -->
               </template>
               <template #thi-d>
                 Third
@@ -138,8 +151,9 @@
   const se = ref('1')
 
   const items = ref([
-    { id: '1', text: 'test' },
-    { id: '2', text: 'blah' }])
+    { id: '1', text: 'test a very very very long statement' },
+    { id: '2', text: 'blah test a very very very long statement test a very very very long statement test a very very very long statement test a very very very long statement' }])
+  
   const selected = ref({ sub: undefined })
   const testSelect = ref({ id: '2' })
 

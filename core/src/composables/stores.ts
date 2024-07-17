@@ -1,5 +1,5 @@
 import { defineStore, Store, StoreDefinition } from 'pinia'
-import { ref, type Ref } from 'vue'
+import { ref, toRaw, type Ref } from 'vue'
 import { type ApiError, type PathOptions, type BTApi } from './api.ts'
 import { DateTime } from 'luxon'
 import { toValue } from 'vue'
@@ -46,6 +46,7 @@ export interface StoreGetReturn<T> {
 
 export interface StorePathOptions extends PathOptions {
     /**will store this request in session as a special memory in the pinia store */
+    localOnly?: boolean
     storeKey?: string
 }
 
@@ -248,13 +249,14 @@ export function createSessionStoreDefinition(options: UseSessionStoreOptions): B
             buildPath(dOptions)
             const key = getKey(dOptions) // `${options.storeName}_${options.auth?.credentials.value.userID ?? 'no-user-id'}_${path}`
             const refresh = dOptions.refresh
+            const localDb = useLocalDb()
 
             if (!refresh && searchMemory.value[key] !== undefined)
                 return searchMemory.value[key]
 
             if (!refresh && cacheLocally == true) {
                 //attempt to get locally
-                const localRes = await useLocalDb().getItem<LocallyStoredItem>(key)
+                const localRes = await localDb.getItem<LocallyStoredItem>(key)
 
                 if (localRes != null && 
                     (options.api == null || parseFloat(localRes.meta.storedOn) > (currentTimeStampDays - 7))) {
@@ -264,7 +266,7 @@ export function createSessionStoreDefinition(options: UseSessionStoreOptions): B
             }
 
             //nothing exists in session so far so load from api
-            if (options.api == null) {
+            if (options.api == null || dOptions.localOnly) {
                 return searchMemory.value[key]
             }
 
@@ -284,7 +286,7 @@ export function createSessionStoreDefinition(options: UseSessionStoreOptions): B
                             }
 
                             if (cacheLocally == true) {
-                                await useLocalDb().setItem(key, res)
+                                await localDb.setItem(key, res)
                             }
                             
                             resolve(res)
@@ -322,13 +324,14 @@ export function createSessionStoreDefinition(options: UseSessionStoreOptions): B
             buildPath(dOptions)
             const key = getKey(dOptions)
             const refresh = dOptions.refresh
+            const localDb = useLocalDb()
 
             if (!refresh && searchMemory.value[key] !== undefined)
                 return searchMemory.value[key]
 
             if (!refresh && cacheLocally == true ) {
                 //attempt to get locally
-                const localRes = await useLocalDb().getItem<LocallyStoredItem>(key)
+                const localRes = await localDb.getItem<LocallyStoredItem>(key)
 
                 if (localRes != null && 
                     (options.api == null || parseFloat(localRes.meta?.storedOn ?? '0') > (currentTimeStampDays - 7))) {
@@ -338,7 +341,7 @@ export function createSessionStoreDefinition(options: UseSessionStoreOptions): B
             }
 
             //nothing exists in session so far so load from api
-            if (options.api == null) {
+            if (options.api == null || dOptions.localOnly) {
                 return searchMemory.value[key]
             }
 
@@ -356,7 +359,7 @@ export function createSessionStoreDefinition(options: UseSessionStoreOptions): B
                             }
 
                             if (cacheLocally == true) {
-                                await useLocalDb().setItem(key, res)
+                                await localDb.setItem(key, res)
                             }
                             
                             resolve(res)
@@ -390,9 +393,10 @@ export function createSessionStoreDefinition(options: UseSessionStoreOptions): B
             buildPath(dOptions)
             const key = getKey(dOptions)
             let patchedObject: any
+            const localDb = useLocalDb()
 
             //patch api
-            if (options.api != null) {
+            if (options.api != null && dOptions.localOnly !== true) {
                 //do not bother saving the promise
                 try {
                     let apiRes = await options.api.patch<StoreGetReturn<T>>(dOptions)
@@ -418,7 +422,7 @@ export function createSessionStoreDefinition(options: UseSessionStoreOptions): B
                 
                 //override local cache
                 if (cacheLocally == true) {
-                    await useLocalDb().setItem(key, existingItem)
+                    await localDb.setItem(key, toRaw(existingItem))
                 }
 
                 if (patchedObject.id != null && patchedObject.rowVersion != null) {
@@ -456,9 +460,10 @@ export function createSessionStoreDefinition(options: UseSessionStoreOptions): B
             buildPath(dOptions)
             const key = getKey(dOptions)
             let postedObject: any
+            const localDb = useLocalDb()
 
             //patch api
-            if (options.api != null) {
+            if (options.api != null && dOptions.localOnly !== true) {
                 //do not bother saving the promise
                 try {
                     let apiRes = await options.api.post<StoreGetReturn<T>>(dOptions)
@@ -479,7 +484,7 @@ export function createSessionStoreDefinition(options: UseSessionStoreOptions): B
                 }
 
                 if (cacheLocally == true)
-                    await useLocalDb().setItem(key, existingItem)
+                    await localDb.setItem(key, toRaw(existingItem))
 
                 searchMemory.value[key] = existingItem
 
@@ -496,7 +501,7 @@ export function createSessionStoreDefinition(options: UseSessionStoreOptions): B
             const key = getKey(dOptions)
 
             //delete api
-            if (options.api != null) {
+            if (options.api != null && dOptions.localOnly !== true) {
                 //do not bother saving the promise
                 try {
                      let res = await options.api.deleteItem(dOptions)
@@ -513,6 +518,7 @@ export function createSessionStoreDefinition(options: UseSessionStoreOptions): B
 
             //delete any other versions in other saved requests
             const id = dOptions.data?.id ?? dOptions.id
+            const cachedKeysToFind: string[] = []
 
             if (id != null) {
                 //update other session stored items
@@ -524,6 +530,7 @@ export function createSessionStoreDefinition(options: UseSessionStoreOptions): B
                             for (let i = 0; i < entryVal.length; i++) {
                                 const listItem = entryVal[i];
                                 if (listItem.id == id) {
+                                    cachedKeysToFind.push(entry[0])
                                     entryVal.splice(i, 1)
                                 }
                             }
@@ -536,7 +543,29 @@ export function createSessionStoreDefinition(options: UseSessionStoreOptions): B
             }
             
             if (cacheLocally == true) {
-                await useLocalDb().removeItem(key)
+                const localDb = useLocalDb()
+                await localDb.removeItem(key)
+
+                //remove from local caches
+                if (id != null) {
+                    for (let i = 0; i < cachedKeysToFind.length; i++) {
+                        const cacheKey = cachedKeysToFind[i];
+                        const cache = await localDb.getItem<LocallyStoredItem>(cacheKey)
+                        if (cache != null) {
+                            if (Array.isArray(cache.data)) {
+                                const ind = cache.data.findIndex((z: any) => z.id == id)
+                                if (ind >= 0) {
+                                    cache.data.splice(ind, 1)
+                                    await localDb.setItem(cacheKey, cache)
+                                }
+                            }
+                            else {
+                                if (cache.data.id == id)
+                                    await localDb.removeItem(cacheKey)
+                            }
+                        }
+                    }
+                }
             }
 
             return undefined
@@ -548,7 +577,7 @@ export function createSessionStoreDefinition(options: UseSessionStoreOptions): B
             buildPath(dOptions)
 
             //patch api
-            if (options.api != null) {
+            if (options.api != null && dOptions.localOnly !== true) {
                 //do not bother saving the promise
                 try {
                     let apiRes = await options.api.patch<StoreGetReturn<T>>(dOptions)
@@ -713,7 +742,7 @@ export function createWholeLastUpdateStoreDefinition(options: UseWholeLastUpdate
             }
 
             //nothing exists in session so far so load from api
-            if (options.api == null) {
+            if (options.api == null || dOptions.localOnly) {
                 // console.log('no api')
                 return {
                     count: dataItems.value?.length,
@@ -773,7 +802,7 @@ export function createWholeLastUpdateStoreDefinition(options: UseWholeLastUpdate
                 }
             }
 
-            if (options.api == null) {
+            if (options.api == null || dOptions.localOnly) {
                 return {
                     data: dataItems.value?.find(x => x.id == dOptions.id)
                 }
@@ -800,7 +829,7 @@ export function createWholeLastUpdateStoreDefinition(options: UseWholeLastUpdate
             let patchedObject: any
 
             //patch api
-            if (options.api != null) {
+            if (options.api != null && dOptions.localOnly !== true) {
                 //do not bother saving the promise
                 try {
                     let apiRes = await options.api.patch<StoreGetReturn<T>>(dOptions)
@@ -834,7 +863,7 @@ export function createWholeLastUpdateStoreDefinition(options: UseWholeLastUpdate
             let postedObject: any
 
             //post api
-            if (options.api != null) {
+            if (options.api != null && dOptions.localOnly !== true) {
                 //do not bother saving the promise
                 try {
                     let apiRes = await options.api.post<StoreGetReturn<T>>(dOptions)
@@ -864,7 +893,7 @@ export function createWholeLastUpdateStoreDefinition(options: UseWholeLastUpdate
             // dOptions.nav ??= options.storeName
 
             //delete api
-            if (options.api != null) {
+            if (options.api != null && dOptions.localOnly !== true) {
                 //do not bother saving the promise
                 try {
                     let res = await options.api.deleteItem(dOptions)
@@ -895,7 +924,7 @@ export function createWholeLastUpdateStoreDefinition(options: UseWholeLastUpdate
             // dOptions.nav ??= options.storeName
             
             //patch api
-            if (options.api != null) {
+            if (options.api != null && dOptions.localOnly !== true) {
                 //do not bother saving the promise
                 try {
                     await options.api.patch<StoreGetReturn<T>>(dOptions)

@@ -11,8 +11,13 @@
             :itemID="nestedValue(data, option.value)"
             :nav="option.nav"
             :isSingle="true"
-            :textFilter="option.textFilter" />
-        <span v-else>{{ displayText(data) }}</span>
+            :textFilter="option.textFilter"
+            :truncate="option.truncate == true" />
+        <span v-else
+            :class="{ 'text-truncate': option.truncate == true }"
+            :style="mStyle">
+            {{ displayText(data) }}
+        </span>
     </v-slide-x-transition>
 </template>
 
@@ -34,6 +39,15 @@ import { computed } from 'vue';
         let v = nestedValue(item, props.option.value)
         v = props.option.textFunction != null ? props.option.textFunction(v) : v
         return props.option.textFilter != null ? filters.findFilter(props.option.textFilter)(v) : v
+    })
+    const mStyle = computed(() => {
+        if (props.option.truncate == true && props.option.width != null) {
+            const width = (props.option.width.includes('px') || props.option.width.includes('%')) ? props.option.width : `${props.option.width}px`
+
+            return `display: inline-block; width: ${width};`
+        }
+        
+        return ''
     })
     
 </script>

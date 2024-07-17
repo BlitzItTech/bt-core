@@ -4,7 +4,9 @@
             <div v-if="inline && ui.isLoading.value" class="align-center justify-center text-center">
                 <v-progress-circular indeterminate size="20" />
             </div>
-            <div v-else-if="ui.asyncItem.value != null" key="1" :class="inline ? 'd-inline' : ''">
+            <div v-else-if="ui.asyncItem.value != null" key="1"
+                :class="{ 'd-inline': inline, 'text-truncate': truncate }"
+                :style="truncate == true ? 'display: inline-block;' : ''">
                 <slot name="prepend" v-bind:item="ui.asyncItem.value">
                     {{ prefix }}
                 </slot>
@@ -49,6 +51,7 @@ import { useNavigation } from '../composables/navigation.ts';
         label?: string
         prefix?: string
         textFilter?: string
+        truncate?: boolean
     }
 
     const props = withDefaults(defineProps<BTEntityProps>(), {

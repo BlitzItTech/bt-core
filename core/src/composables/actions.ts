@@ -79,9 +79,11 @@ export interface BTActions {
     actionLoadingMsg: ShallowRef<string | undefined>
     actionErrorMsg: ShallowRef<string | undefined>
     apiGet: (doOptions: ApiActionOptions) => Promise<any>
+    apiPatch: (doOptions: ApiActionOptions) => Promise<any>
     apiPost: (doOptions: ApiActionOptions) => Promise<any>
     clearErrors: () => void
     deleteItem: (doOptions: DeleteOptions) => Promise<any>
+    // deleteLocalItem: (doOptions: DeleteOptions) => Promise<any>
     doAction: (action: any, options?: DoActionOptions) => Promise<any>
     getAllItems: (doOptions: GetOptions) => Promise<any>
     getItem: (doOptions: GetOptions) => Promise<any>
@@ -166,6 +168,70 @@ export function useActions(options?: UseActionsOptions): BTActions {
             throwError: doOptions.throwError ?? options?.throwError
         })
     }
+
+    // function deleteLocalItem(doOptions: DeleteOptions) {
+    //     doOptions.nav ??= options?.nav
+    //     doOptions.proxyID ??= options?.proxyID
+    //     doOptions.refresh ??= options?.refresh
+    //     doOptions.storeKey ??= options?.storeKey
+    //     doOptions.throwError ??= options?.throwError
+    //     doOptions.url ??= options?.url
+    //     doOptions.confirmationMsg ??= doOptions.requireConfirmation === true ? 'Are you sure you want to delete this item?' : undefined
+
+    //     let store = null // createStoreDefinition({ nav: doOptions.nav })
+        
+    //     const items = options?.items ?? []
+
+    //     if (store == null && doOptions.nav != null) {
+    //         store = createStoreDefinition({ nav: doOptions.nav })
+    //     }
+
+    //     if (store != null) {
+    //         doOptions.onDeleteAsync ??= () => {
+    //             return store().deleteItem(doOptions)
+    //         }
+    //     }
+    //     else {
+    //         doOptions.onDeleteAsync ??= () => {
+    //             const id = doOptions.id ?? doOptions.data?.id
+    //             if (id == null)
+    //                 return Promise.resolve('No id found in delete action')
+
+    //             const ind = items.findIndex(x => x.id == id)
+    //             if (ind >= 0)
+    //                 items.splice(ind, 1)
+
+    //             return Promise.resolve(undefined)
+    //         }
+    //     }
+
+    //     return doAction(async () => {
+    //         let err: string | undefined
+
+    //         if (doOptions.onCanDeleteAsync != null)
+    //             err = await doOptions.onCanDeleteAsync(doOptions.data)
+
+    //         if (err == undefined && doOptions.onDeleteAsync != null)
+    //             err = await doOptions.onDeleteAsync(doOptions.data)
+
+    //         if (err == undefined && doOptions.onDeleteSuccessAsync != null) {
+    //             await doOptions.onDeleteSuccessAsync(doOptions.data)
+    //         }
+
+    //         logError(err)
+
+    //         return undefined
+    //     }, {
+    //         ...options,
+    //         ...doOptions,
+    //         completionMsg: doOptions.completionMsg ?? options?.completionMsg,
+    //         confirmationMsg: doOptions.confirmationMsg ?? options?.confirmationMsg,
+    //         errorMsg: doOptions.errorMsg ?? options?.errorMsg,
+    //         loadingMsg: doOptions.loadingMsg ?? options?.loadingMsg ?? 'Deleting',
+    //         requireConfirmation: doOptions.requireConfirmation ?? options?.requireConfirmation,
+    //         throwError: doOptions.throwError ?? options?.throwError
+    //     })
+    // }
 
     function getItem(doOptions: GetOptions) {
         doOptions.nav ??= options?.nav
@@ -438,14 +504,33 @@ export function useActions(options?: UseActionsOptions): BTActions {
             return await api.post(doOptions)
         }, { ...options, ...doOptions })
     }
+
+    /**
+     * Patch to api (no extra '/patch' url or anything)
+     * @param options 
+     */
+    function apiPatch(doOptions: ApiActionOptions) {
+        doOptions.nav ??= options?.nav
+        doOptions.proxyID ??= options?.proxyID
+        doOptions.storeKey ??= options?.storeKey
+        doOptions.throwError ??= options?.throwError
+        doOptions.url ??= options?.url
+        
+        return doAction(async () => {
+            const api = doOptions.api ?? useApi()
+            return await api.patch(doOptions)
+        }, { ...options, ...doOptions })
+    }
     
     return {
         actionLoadingMsg,
         actionErrorMsg,
         apiGet,
+        apiPatch,
         apiPost,
         clearErrors,
         deleteItem,
+        // deleteLocalItem,
         doAction,
         getAllItems,
         getItem,

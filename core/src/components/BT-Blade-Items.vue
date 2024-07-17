@@ -188,13 +188,13 @@
                                         </v-list-item-subtitle>
                                     </slot>
                                     <template v-slot:append>
-                                        <v-row no-gutters class="actionButtons">
-                                            <slot name="itemActions" :item="fItem" :index="fInd" :items="ui.asyncItems.value" :size="size" />
+                                        <v-row no-gutters :class="fadingActions ? 'actionButtons' : null">
+                                            <slot name="itemActions" :item="fItem" :index="fInd" :items="ui.asyncItems.value" :size="mActionButtonSize" />
                                             <v-slide-x-transition group hide-on-leave>
                                                 <v-icon v-if="fItem.errorMsg != null"
                                                     color="warning"
                                                     key="1"
-                                                    :size="size"
+                                                    :size="mActionButtonSize"
                                                     :title="fItem.errorMsg">$alert-circle</v-icon>
 
                                                 <v-btn v-if="canDelete && ui.isDeletable.value(fItem)"
@@ -204,7 +204,7 @@
                                                     icon="$delete"
                                                     key="1"
                                                     :loading="fItem.loadingCount > 0"
-                                                    :size="size"
+                                                    :size="mActionButtonSize"
                                                     variant="text" />
 
                                                 <v-btn v-if="canRestore && ui.isRestorable.value(fItem)"
@@ -212,7 +212,7 @@
                                                     key="1"
                                                     icon="$eraser-variant"
                                                     :loading="fItem.loadingCount > 0"
-                                                    :size="size"
+                                                    :size="mActionButtonSize"
                                                     variant="text" />
                                             </v-slide-x-transition>
                                         </v-row>
@@ -234,7 +234,7 @@
                             <th v-for="header in ui.tableHeaders.value" :key="header.value" :class="`d-none d-${header.showSize ?? 'sm'}-table-cell`">
                                 {{ header.title }}
                             </th>
-                            <th v-if="!hideActions" key="itemActions">
+                            <th v-if="!hideActions" key="itemActions" >
                                 Actions
                             </th>
                         </tr>
@@ -250,12 +250,12 @@
                                 </td>
                                 <td v-if="!hideActions" :key="'itemActions' + tableRow.id" class="text-right">
                                     <v-fade-transition hide-on-leave>
-                                        <v-row no-gutters class="actionButtons flex-nowrap">
-                                            <slot name="itemActions" :item="tableRow" :allItems="ui.asyncItems.value" :items="ui.filteredItems.value" :size="size" :density="density" />
+                                        <v-row no-gutters :class="fadingActions ? 'actionButtons' : null" class="flex-nowrap">
+                                            <slot name="itemActions" :item="tableRow" :allItems="ui.asyncItems.value" :items="ui.filteredItems.value" :size="mActionButtonSize" :density="density" />
                                             <v-icon v-if="tableRow.errorMsg != null"
                                                 color="warning"
                                                 key="1"
-                                                :size="size"
+                                                :size="mActionButtonSize"
                                                 :title="tableRow.errorMsg">$alert-circle</v-icon>
                                             
                                             <v-btn v-if="canDelete && ui.isDeletable.value(tableRow)"
@@ -264,14 +264,14 @@
                                                 :disabled="!auth.canEdit(nav)"
                                                 icon="$delete"
                                                 key="2"
-                                                :size="size"
+                                                :size="mActionButtonSize"
                                                 variant="text" />
 
                                             <v-btn v-if="canRestore && ui.isRestorable.value(tableRow)"
                                                 :disabled="!auth.canEdit(nav)"
                                                 key="3"
                                                 icon="$eraser-variant"
-                                                :size="size"
+                                                :size="mActionButtonSize"
                                                 variant="text" />
                                         </v-row>
                                     </v-fade-transition>
@@ -310,6 +310,7 @@
      }
 
     interface PageProps extends ListProps {
+        actionButtonSize?: string
         activeClass?: string
         actualHeight?: string
         actualUsedHeight?: string
@@ -325,6 +326,7 @@
         canShowInactive?: boolean
         density?: BladeDensity
         dividers?: boolean
+        fadingActions?: boolean
         fixedHeader?: boolean
         flat?: boolean
         hideColumns?: boolean
@@ -354,6 +356,7 @@
     const emit = defineEmits<PageEvents>()
 
     const props = withDefaults(defineProps<PageProps>(), {
+        actionButtonSize: 'x-small',
         canAdd: true,
         canDelete: true,
         canSearchServer: true,
@@ -362,6 +365,7 @@
         density: 'compact',
         dividers: true,
         eager: true,
+        fadingActions: true,
         fixedHeader: true,
         hideSubtoolbarSettings: false,
         itemsPerPage: 75,
@@ -404,6 +408,7 @@
     // })
     const { focused } = useFocus(searchEl, { initialValue: props.showSearch })
 
+    const mActionButtonSize = computed(() => props.actionButtonSize ?? props.size)
     const mCanAdd = computed(() => (presets.canAdd as boolean ?? props.canAdd))
     const mHideColumns = computed(() => (presets.hideColumns as boolean ?? props.hideColumns))
     const mHideFilters = computed(() => (presets.hideFilters as boolean ?? props.hideFilters))

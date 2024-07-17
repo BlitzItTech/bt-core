@@ -1,6 +1,7 @@
 export { useActionsTracker } from './composables/actions-tracker.ts'
 export type { BTActions, GetOptions, DeleteOptions, RestoreOptions, SaveOptions, ActionOptions, UseActionsOptions } from './composables/actions.ts'
 export { useActions } from './composables/actions.ts'
+export { useLocalActions } from './composables/actions-local.ts'
 export type { BTApi, CreateApiOptions as UseApiOptions, PathOptions, QueryParams } from './composables/api.ts'
 export { createApi, useApi } from './composables/api.ts'
 export type { BTAuth, AuthItem, AuthSubscription, BaseAuthCredentials, CreateAuthOptions } from './composables/auth.ts'
