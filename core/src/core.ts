@@ -111,17 +111,18 @@ export function createCore(options: CreateCoreOptions): CoreApp {
             createCosmetics(options.cosmetics)
 
             const demo = createDemo()
-
+            
             const navigation = createNavigation(options.navigation ?? {})
+            
+            const menu = createMenu(options.menu)
             
             createPresets(options)
 
+            options.auth.menu ??= menu
             options.auth.demo ??= demo
             options.auth.getAuthItem = navigation.findItem
 
             const auth = createAuth(options.auth)
-
-            createMenu(options.menu)
 
             const api = createApi({
                 auth: auth,
@@ -134,7 +135,9 @@ export function createCore(options: CreateCoreOptions): CoreApp {
             })
 
             createFilters({
-                dates: dates
+                auth: auth,
+                dates: dates,
+                demo: demo
             })
 
             createPWA()

@@ -82,6 +82,7 @@ export interface ListProps {
     bladeGroup?: string
     bladeName?: string
     bladeStartShowing?: boolean
+    // canSearch?: boolean
     canSelect?: boolean
     canUnselect?: boolean
     confirmOnDelete?: boolean
@@ -133,11 +134,15 @@ export interface ListProps {
     selectProps?: string[]
     // sortBy?: string
     // sortOrder?: 'Ascending' | 'Descending'
-    showSearch?: boolean
+    //showSearch?: boolean
     startShowingInactive?: boolean
+    startShowingSearch?: boolean
     storeKey?: string
     storeMode?: StoreMode
     storageMode?: StorageMode
+    /**usually used for last-updated configs or large quantities of local items */
+    useLocalPagination?: boolean
+    /**uses pagination from server */
     useServerPagination?: boolean
     useBladeSrc?: boolean
     useRouteSrc?: boolean,
@@ -293,7 +298,7 @@ export function useList<T extends BaseIDModel>(props: ListProps, emit?: ListEven
     const loadingMsg = computed(() => props.loadingMsg ?? actionLoadingMsg.value)
     const isLoading = computed(() => loadingMsg.value != null)
     const showError = shallowRef(false)
-    const showSearch = shallowRef(props.showSearch ?? true)
+    const showSearch = shallowRef(props.startShowingSearch == true)
     const totalPages = ref(0)
     const filterParams = computed(() => {
         let query: string | undefined
@@ -407,7 +412,6 @@ export function useList<T extends BaseIDModel>(props: ListProps, emit?: ListEven
         return returnList.sort(firstBy(x => x.position))
     })
     const displayHeaders = computed(() => {
-        // return []
         return tableHeaders.value.filter(x => (x.nav != null && x.itemText != null) || x.textFilter != null || x.display != null || x.bool != null)
     })
 
@@ -576,7 +580,7 @@ export function useList<T extends BaseIDModel>(props: ListProps, emit?: ListEven
     async function refresh(options?: ListRefreshOptions) {
         showError.value = false
         if (options?.resetSearch === true) {
-            showSearch.value = props.showSearch ?? false
+            showSearch.value = false
             searchString.value = undefined
         }
         

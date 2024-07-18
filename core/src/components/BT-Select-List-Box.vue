@@ -82,11 +82,15 @@
                     @click="selectItem(null)"
                     subtitle="(Select None)" />
                 <v-slide-x-transition group hide-on-leave>
-                    <template v-for="(fItem, fInd) in ui.filteredItems.value">
-                        <slot name="item" :items="fItem" :index="fInd" :size="mSize">
+                    <template v-for="(fItem, fInd) in ui.filteredItems.value" :key="`${fItem.id ?? fInd}-list-item`">
+                        <slot name="item" 
+                            :item="fItem"
+                            :index="fInd"
+                            :size="mSize"
+                            :isActive="isActive(fItem)"
+                            :selectItem="selectItem">
                             <v-list-item
                                 :active="isActive(fItem)"
-                                :key="`${fItem.id ?? fInd}-list-item`"
                                 :value="fItem"
                                 @click="selectItem(fItem)">
                                 <slot :item="fItem" :index="fInd" :size="mSize">

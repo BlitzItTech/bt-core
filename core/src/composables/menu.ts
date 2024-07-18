@@ -15,7 +15,7 @@ export interface MenuGroup {
     requiresAuth?: boolean
     sortNumber?: number
     subscriptions?: string[],
-    subFilters?: string[],
+    subFilters?: string[] | 'All',
     routeName?: string
 }
 
@@ -36,7 +36,7 @@ export interface BTCreateMenu {
     useRoutes?: boolean
 }
 
-export interface BTUseMenu extends BTCreateMenu {
+export interface BTMenu extends BTCreateMenu {
     sidebarNavItems: ComputedRef<MenuGroup[]>
 }
 
@@ -57,7 +57,7 @@ export function createMenu(options?: CreateMenuOptions): BTCreateMenu {
     return current
 }
 
-export function useMenu(): BTUseMenu {
+export function useMenu(): BTMenu {
     const router = useRouter()
     const navigation = useNavigation()
     const auth = useAuth()
@@ -95,11 +95,11 @@ export function useMenu(): BTUseMenu {
                         subOptions = [routeMeta.subFilters as string]
                 }
                 
-                if (navMeta != null && !isLengthyArray(subOptions)) {
-                    subOptions = navMeta.subFilters ?? []
+                if (navMeta?.subFilters != null && !isLengthyArray(subOptions)) {
+                    subOptions = Array.isArray(navMeta.subFilters) ? navMeta.subFilters : [navMeta.subFilters]
                 }
                 
-                if (current.currentView.value == null || subOptions == null || subOptions.some((subOption: string) => current.currentView.value == subOption)) {
+                if (current.currentView.value == null || subOptions == null || subOptions.some((subOption: string) => subOption == 'All' || current.currentView.value == subOption)) {
                     existingGroup.items?.push({
                         displayName: routeMeta?.displayName as string ?? navigation.findDisplay(navMeta ?? undefined),
                         icon: routeMeta?.icon as string ?? navigation.findIcon(navMeta ?? undefined),

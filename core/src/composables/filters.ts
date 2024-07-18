@@ -1,12 +1,16 @@
 import { getLocationLine, isMinDate } from '../composables/helpers.ts'
+import { BTAuth } from './auth.ts'
 import { BTDates } from './dates.ts'
+import { BTDemo } from './demo.ts'
 
 export interface BTFilters {
     findFilter: (mFilter: string | undefined) => Function
 }
 
 export interface UseFiltersOptions {
+    auth: BTAuth,
     dates: BTDates,
+    demo: BTDemo,
     filters?: any
 }
 
@@ -136,6 +140,44 @@ export function createFilters(options: UseFiltersOptions): BTFilters {
         return options.dates.utcString(val, format);
     }
 
+    function toFamiliarLocationLine(val: any): string {
+        if (!val)
+            return ''
+
+        if (typeof val !== 'object')
+            return val
+
+        let companyID: string = options.demo.isDemoing.value ? 'comp1' : options.auth.credentials.value.companyAccountID
+
+        if (val.companyAccountID == companyID)
+            return val.locationName
+
+        let rStr = ''
+
+        if (val.companyAccount != null)
+            rStr = `${rStr}${val.companyAccount.companyName} | `
+
+        if (val.addressLineOne != null)
+            rStr = `${rStr}${val.addressLineOne} `
+
+        if (val.streetNumber != null)
+            rStr = `${rStr}${val.streetNumber} `
+
+        if (val.streetName != null)
+            rStr = `${rStr}${val.streetName}, `
+
+        if (val.suburb != null)
+            rStr = `${rStr}${val.suburb} `
+
+        if (val.state != null)
+            rStr = `${rStr}${val.state} `
+
+        if (val.postcode != null)
+            rStr = `${rStr}${val.postcode}`
+
+        return rStr
+    }
+
     function toLocationLine(val: any): string {
         return getLocationLine(val, false);
     }
@@ -235,6 +277,7 @@ export function createFilters(options: UseFiltersOptions): BTFilters {
         toDisplayNumber,
         toDisplayNumberOver,
         toDisplayNumberSigned,
+        toFamiliarLocationLine,
         toFormat,
         toLocationLine,
         toLocationLineNoCommas,
@@ -268,4 +311,4 @@ export function createFilters(options: UseFiltersOptions): BTFilters {
     return current
 }
 
-// export type Textfilter = 'toLocationLine' | 'toLocationLineNoCommas' | 'toLongDate' | 'toLongDateAndTime' | 'toPercent' | 'toPrettyCSV' | 'toShortDate' | 'toShortDateAndTime' | 'toTime' | 'toTimeOfDay' | 'toCompanyNameAndLocationLine' | 'toCurrency' | 'toDayDate' | 'toDayMonth' | 'toDayOfWeek' | 'toDayShortDate' | 'toDayShortDateAndTime' | 'toDisplayNumber' | 'toDisplayNumberOver' | 'toDisplayNumberSigned' | 'toFormat'
+// export type Textfilter = 'toFamiliarLocationLine' | 'toLocationLine' | 'toLocationLineNoCommas' | 'toLongDate' | 'toLongDateAndTime' | 'toPercent' | 'toPrettyCSV' | 'toShortDate' | 'toShortDateAndTime' | 'toTime' | 'toTimeOfDay' | 'toCompanyNameAndLocationLine' | 'toCurrency' | 'toDayDate' | 'toDayMonth' | 'toDayOfWeek' | 'toDayShortDate' | 'toDayShortDateAndTime' | 'toDisplayNumber' | 'toDisplayNumberOver' | 'toDisplayNumberSigned' | 'toFormat'

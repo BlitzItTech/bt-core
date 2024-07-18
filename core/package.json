@@ -1,6 +1,6 @@
 {
   "name": "bt-core-app",
-  "version": "1.4.259",
+  "version": "1.4.271",
   "description": "Core app tools for some basic features like navigation, authentication, server apis, and cosmetics",
   "homepage": "https://github.com/BlitzItTech/bt-core",
   "bugs": {

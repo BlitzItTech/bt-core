@@ -4,6 +4,44 @@ export function sum(array: number[]): number {
     return array.reduce((sum, v) => sum += v, 0)
 }
 
+export function orderBy(arr: any[], prop: string | ((item: any) => boolean | number | string) | undefined, asc: true | false = true) {
+    return arr.sort(function (a, b) {
+        if (!prop) {
+            if (a > b) {
+                return asc === true ? 1 : -1;
+            }
+            else if (a < b) {
+                return asc === true ? -1 : 1;
+            }
+            else {
+                return 0;
+            }
+        }
+        else if (typeof(prop) === 'string') {            
+            if (nestedValue(a, prop) > nestedValue(b, prop)) {
+                return asc === true ? 1 : -1;
+            }
+            else if (nestedValue(a, prop) < nestedValue(b, prop)) {
+                return asc === true ? -1 : 1;
+            }
+            else {
+                return 0;
+            }
+        }
+        else {
+            if (prop(a) > prop(b)) {
+                return asc === true ? 1 : -1;
+            }
+            else if (prop(a) < prop(b)) {
+                return asc === true ? -1 : 1;
+            }
+            else {
+                return 0;
+            }
+        }
+    })
+}
+
 export function appendUrl(originalVal?: string, additionalVal?: string) {
     let original = originalVal ?? ''
     let additional = additionalVal ?? ''

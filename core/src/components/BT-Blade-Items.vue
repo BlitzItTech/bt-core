@@ -63,14 +63,19 @@
                         <slot name="settings" 
                             :items="ui.filteredItems.value"
                             :allItems="ui.asyncItems.value"
-                            :size="size" />
+                            :size="size"></slot>
                     </v-list>
                 </v-menu>
                 
-                <v-btn v-if="showSearch !== false && !ui.showSearch.value && (canSearchServer || isLengthyArray(searchProps))" icon="$magnify" :size="size" @click="ui.toggleSearch" />
-                <v-slide-x-transition>
+                <v-slide-y-transition group hide-on-leave>
+                    <v-btn v-if="(canSearch !== false || isLengthyArray(searchProps)) && !ui.showSearch.value"
+                        icon="$magnify"
+                        key="11"
+                        :size="size"
+                        @click="ui.toggleSearch" />
+
                     <v-text-field
-                        v-if="ui.showSearch.value"
+                        v-if="(canSearch !== false || isLengthyArray(searchProps)) && ui.showSearch.value"
                         @click:appendInner="ui.refresh"
                         @click:prependInner="ui.toggleSearch"
                         @keyup.native.enter="ui.refresh"
@@ -79,10 +84,13 @@
                         :density="density"
                         flat
                         hide-details
+                        ref="searchEl"
+                        key="12"
                         placeholder="Find"
                         variant="outlined"
                         v-model="ui.searchString.value" />
-                </v-slide-x-transition>
+                </v-slide-y-transition>
+
                 <slot name="actions" :allItems="ui.asyncItems.value" :size="size" />
                 <v-spacer v-if="variant != 'inline'" />
                 <slot name="actions-right" :allItems="ui.asyncItems.value" :size="size" />
@@ -128,15 +136,16 @@
                     <v-btn :icon="ui.showSearch.value ? '$close' : '$magnify'" :size="size" @click="ui.toggleSearch" variant="text" />
                     <v-slide-x-reverse-transition>
                         <v-text-field
-                            id="searchEl"
                             v-if="ui.showSearch.value"
                             @click.append-inner-icon="ui.refresh"
                             @keyup.native.enter="ui.refresh"
                             append-inner-icon="$magnify"
+                            autofocus
                             :density="density"
                             flat
                             hide-details
                             placeholder="Find"
+                            ref="inlineSearchEl"
                             variant="solo"
                             v-model="ui.searchString.value" />
                     </v-slide-x-reverse-transition>
@@ -300,9 +309,8 @@
     import { useNavigation } from '../composables/navigation.ts'
     import { useNested } from '../composables/nested.ts'
     import { usePresets } from '../composables/presets.ts'
-    import { computed, ref, watch, onMounted } from 'vue'
+    import { computed, ref, watch, onMounted, ComponentPublicInstance, nextTick } from 'vue'
     import { useRoute } from 'vue-router'
-    import { useFocus } from '@vueuse/core'
 
     interface PageEvents extends ListEvents {
         // (e: 'mouse-over-item', item: any): void
@@ -315,14 +323,12 @@
         actualHeight?: string
         actualUsedHeight?: string
         archiveBladeName?: string
-        // bladeGroup?: string
-        // bladeStartShowing?: boolean
         canAdd?: boolean
         canDelete?: boolean
         canEdit?: boolean
         canExportCSV?: boolean
         canRestore?: boolean
-        canSearchServer?: boolean
+        canSearch?: boolean
         canShowInactive?: boolean
         density?: BladeDensity
         dividers?: boolean
@@ -359,7 +365,7 @@
         actionButtonSize: 'x-small',
         canAdd: true,
         canDelete: true,
-        canSearchServer: true,
+        canSearch: true,
         canSelect: true,
         canUnselect: true,
         density: 'compact',
@@ -379,7 +385,8 @@
         variant: 'page'
     })
 
-    const searchEl = ref()
+    const searchEl = ref<ComponentPublicInstance | null>(null)
+    const inlineSearchEl = ref<ComponentPublicInstance | null>(null)
     const { getValue } = useNested()
     const route = useRoute()
     const presets = usePresets(props.preset)
@@ -394,20 +401,7 @@
             }
         }
     })
-    // const bladeUI = useBladeEvents({
-    //     bladeName: props.bladeName,
-    //     bladeGroup: props.bladeGroup,
-    //     bladeStartShowing: props.bladeStartShowing,
-    //     bladeBasic: false,
-    //     onOpen: (data) => {
-    //         console.log(data)
-    //     },
-    //     onUpdate: (data) => {
-    //         console.log(data)
-    //     }
-    // })
-    const { focused } = useFocus(searchEl, { initialValue: props.showSearch })
-
+    
     const mActionButtonSize = computed(() => props.actionButtonSize ?? props.size)
     const mCanAdd = computed(() => (presets.canAdd as boolean ?? props.canAdd))
     const mHideColumns = computed(() => (presets.hideColumns as boolean ?? props.hideColumns))
@@ -415,7 +409,7 @@
     const mHideRefresh = computed(() => (presets.hideRefresh as boolean ?? props.hideRefresh))
     const mHideSubtoolbarSettings = computed(() => (presets.hideSubToolbarSettings as boolean ?? props.hideSubtoolbarSettings))
     const mLabel = computed(() => props.label ?? (props.variant == 'page' ? route?.meta?.displayName as string : undefined) ?? findDisplay(props.nav ?? props.bladeName ?? ''))
-    const showInlineSearch = computed(() => props.variant == 'inline' && (props.canSearchServer || isLengthyArray(props.searchProps)))
+    const showInlineSearch = computed(() => props.variant == 'inline' && (props.canSearch || isLengthyArray(props.searchProps)))
     const showPagination = computed(() => props.useServerPagination && ui.totalPages.value > 1)
     const contentStyle = computed(() => {
         if (props.actualHeight != null) {
@@ -501,13 +495,26 @@
         }
     })
 
+    function focusSearch() {
+        nextTick(() => {
+            let el: any
+            if (showInlineSearch.value) {
+                el = inlineSearchEl.value?.$el.querySelector("input:not([type=hidden]),textarea:not([type=hidden])")
+            }
+            else if (ui.showSearch.value) {
+                el = searchEl.value?.$el.querySelector("input:not([type=hidden]),textarea:not([type=hidden])")
+            }
+
+            el?.focus()
+        })
+    }
+
     watch(ui.showSearch, () => {
-        focused.value = true
+        focusSearch()
     })
 
     onMounted(() => {
-        if (showInlineSearch.value)
-            focused.value = true
+        focusSearch()
     })
 </script>
 

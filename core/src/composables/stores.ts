@@ -221,6 +221,7 @@ export function createSessionStoreDefinition(options: UseSessionStoreOptions): B
         // const promiseMemory: Ref<{ [key: string]: Promise<StoreGetAllReturn<any>> }> = ref({})
         // const promiseMemory: Ref<any> = ref({})
         const cacheLocally = options.storageMode == 'local-cache'
+        const localDb = useLocalDb()
         
         const buildPath = options.buildUrl ?? options.api?.buildUrl ?? defaultPathBuilder
         // const authData = useAuthData()
@@ -249,7 +250,7 @@ export function createSessionStoreDefinition(options: UseSessionStoreOptions): B
             buildPath(dOptions)
             const key = getKey(dOptions) // `${options.storeName}_${options.auth?.credentials.value.userID ?? 'no-user-id'}_${path}`
             const refresh = dOptions.refresh
-            const localDb = useLocalDb()
+            // const localDb = useLocalDb()
 
             if (!refresh && searchMemory.value[key] !== undefined)
                 return searchMemory.value[key]
@@ -324,7 +325,7 @@ export function createSessionStoreDefinition(options: UseSessionStoreOptions): B
             buildPath(dOptions)
             const key = getKey(dOptions)
             const refresh = dOptions.refresh
-            const localDb = useLocalDb()
+            // const localDb = useLocalDb()
 
             if (!refresh && searchMemory.value[key] !== undefined)
                 return searchMemory.value[key]
@@ -393,7 +394,7 @@ export function createSessionStoreDefinition(options: UseSessionStoreOptions): B
             buildPath(dOptions)
             const key = getKey(dOptions)
             let patchedObject: any
-            const localDb = useLocalDb()
+            // const localDb = useLocalDb()
 
             //patch api
             if (options.api != null && dOptions.localOnly !== true) {
@@ -460,7 +461,7 @@ export function createSessionStoreDefinition(options: UseSessionStoreOptions): B
             buildPath(dOptions)
             const key = getKey(dOptions)
             let postedObject: any
-            const localDb = useLocalDb()
+            // const localDb = useLocalDb()
 
             //patch api
             if (options.api != null && dOptions.localOnly !== true) {
@@ -543,7 +544,7 @@ export function createSessionStoreDefinition(options: UseSessionStoreOptions): B
             }
             
             if (cacheLocally == true) {
-                const localDb = useLocalDb()
+                // const localDb = useLocalDb()
                 await localDb.removeItem(key)
 
                 //remove from local caches

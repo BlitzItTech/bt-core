@@ -76,7 +76,7 @@ export interface NavigationItem extends AuthItem {
     /**this nav item is restricted to these subscriptions.  So the user needs to have at least one of these subscription codes. */
     subscriptions?: string[]
     /**this nav item is preferred in this subscription codes. */
-    subFilters?: string[]
+    subFilters?: string[] | 'All'
 }
 
 export interface BTNavigation {

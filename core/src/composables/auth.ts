@@ -2,6 +2,7 @@ import { appendUrl, isLengthyArray } from '../composables/helpers.ts'
 import { DateTime } from 'luxon'
 import { type RemovableRef, useStorage } from '@vueuse/core'
 import { type BTDemo } from '../composables/demo.ts'
+import { BTCreateMenu } from '../composables/menu.ts'
 import { Router } from 'vue-router'
 import { computed, ref, toValue } from 'vue'
 import type { Ref, ComputedRef } from 'vue'
@@ -51,6 +52,7 @@ export interface CreateAuthOptions {
     getTokenUrl?: (code: string, redirect_uri: string, grant_type: string, client_id: string) => string
     /**OVERRIDES DEFAULT.  */
     getToken?: (code?: string, state?: string) => Promise<void>
+    menu?: BTCreateMenu
     oauthGrantType?: string
     oauthClientID?: string
     /**sets current credentials on top of default function
@@ -105,6 +107,9 @@ export function createAuth(options: CreateAuthOptions): BTAuth {
 
     // const authState = useStorage<string>('auth-credentials-state', (Math.random().toString(36).substring(4, 19) + Math.random().toString(12).substring(1, 11)))
     const state = useStorage<BaseAuthCredentials>('auth-credentials', {})
+
+    if (options.menu != null)
+        options.menu.currentView.value = state.value.subscriptionCode
 
     /**can edit if navName is undefined, isGlobalAdmin, not suspended, or user permissions allow editing of this navItem */
     function canEdit(navName?: string): boolean {
@@ -398,6 +403,9 @@ export function createAuth(options: CreateAuthOptions): BTAuth {
         v.isLoggedIn = true
         v.permissions = d.Permissions
         v.subscriptionCode = d.Subscription
+        
+        if (options?.menu != null)
+            options.menu.currentView.value = v.subscriptionCode
         
         // v.subscriptionsInUse = d.SubscriptionsInUse
         v.timeZone ??= (options.defaultTimeZone ?? defaultTimeZone)
