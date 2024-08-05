@@ -92,6 +92,7 @@ export interface BTApi {
     getAll: <T>(pathOptions: PathOptions) => Promise<T | undefined>
     post: <T>(pathOptions: PathOptions) => Promise<T | undefined>
     patch: <T>(pathOptions: PathOptions) => Promise<T | undefined>
+    uploadImage: (pathOptions: PathOptions) => Promise<string | undefined>
 }
 
 let current: BTApi
@@ -604,6 +605,80 @@ export function createApi(options?: CreateApiOptions): BTApi {
         }
     }
 
+    /**data as a blob */
+    async function uploadImage(pathOptions: PathOptions): Promise<string | undefined> {
+        const throwError = pathOptions.throwError ?? options?.defaultThrowError ??  true
+        // const returnJson = pathOptions.returnJson ?? options?.defaultReturnJson ?? true
+        // const returnText = pathOptions.returnText ?? options?.defaultReturnText ?? false
+
+        let url = pathOptions.finalUrl
+        let headers = pathOptions.headers
+
+        if (url == null)
+            url = buildUrl(pathOptions)
+
+        if (pathOptions.overrideHeaders !== true) {
+            // pathOptions.contentType = 'multipart/form-data'
+            headers = buildHeaders(pathOptions)
+        }
+
+        if (demo?.isDemoing.value) {
+            console.log(`DEMO: Uploading image to ${url}`)
+            return demo.post(pathOptions)
+        }
+        
+        console.log(`Upload image to ${url}`)
+        
+        let res: Response | undefined
+        
+        try {
+            const files = new FormData();
+            // const file = DataURIToBlob(pathOptions.data);
+            files.append('file', pathOptions.data);
+
+            //remove headers content type
+            const headersObj: any = { ...headers }
+            delete headersObj['Content-Type']
+            headers = new Headers(headersObj)
+
+            res = await fetch(url, {
+                method: 'POST',
+                mode: 'cors',
+                cache: 'no-cache',
+                headers,
+                body: files
+            })
+
+            if (res.status == 401) {
+                throw {
+                    code: res.status,
+                    name: 'Unauthorized',
+                    message: res.statusText
+                }
+            }
+
+            if (res.status == 200)
+                return undefined
+
+            return res.statusText
+        }
+        catch (err: any) {
+            if (res!.status == 200 || !throwError)
+                return undefined
+
+            const errMsg = `${res?.status ?? ''} ${res?.statusText ?? ''} ${err.message}`
+
+            if (err.code == 401)
+                throw err
+
+            throw {
+                code: res?.status ?? err?.code ?? undefined,
+                name: 'Upload error',
+                message: errMsg
+            }
+        }
+    }
+
     current = {
         buildHeaders,
         buildQuery,
@@ -612,7 +687,8 @@ export function createApi(options?: CreateApiOptions): BTApi {
         get,
         getAll,
         patch,
-        post
+        post,
+        uploadImage
     }
 
     return current

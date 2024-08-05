@@ -82,6 +82,11 @@ export interface UseItemOptions {
     useBladeSrc?: boolean
 }
 
+export interface ItemEvents {
+    (e: 'fetched', item: any): void
+    (e: 'saved', item: any): void
+}
+
 /**
  * 
  * @param props 
@@ -90,7 +95,7 @@ export interface UseItemOptions {
  * @param options 
  * @returns 
  */
-export function useItem(props: ItemProps, options?: UseItemOptions) {
+export function useItem(props: ItemProps, emit?: ItemEvents, options?: UseItemOptions) {
     const useBladeSrc = options?.useBladeSrc ?? props.useBladeSrc ?? props.variant == 'blade'
     const useRouteSrc = options?.useRouteSrc ??props.useRouteSrc ?? props.variant == 'page'
 
@@ -146,20 +151,15 @@ export function useItem(props: ItemProps, options?: UseItemOptions) {
     
     const id = computed(() => {
         let cID: string | undefined = props.itemID
-        if (cID == null && useBladeSrc) {
-            console.log(useBladeSrc);
+        if (cID == null && useBladeSrc)
             cID = bladeEvents.bladeData.data.id as string | undefined
-        }
-            
 
         if (cID == null && useRouteSrc)
-
             cID = route?.query?.id as string | undefined ?? route?.params?.id as string | undefined
 
         return cID
     })
 
-    // const id = ref(props.itemID ?? (useRouteSrc ? route?.params?.id : undefined))
     const mode = ref<BladeMode>(id.value == 'new' ? 'new' : (props.startEditing ? 'edit' : 'view'))
 
     const showError = shallowRef(false)
@@ -274,7 +274,6 @@ export function useItem(props: ItemProps, options?: UseItemOptions) {
         showError.value = false
 
         if (props.item != null) {
-            console.log('a')
             asyncItem.value = props.item
         }
         else if (props.variant == 'blade' && bladeEvents.bladeData.data.data != null) {
@@ -309,6 +308,9 @@ export function useItem(props: ItemProps, options?: UseItemOptions) {
         }
         
         restartTracker()
+
+        if (emit)
+            emit('fetched', asyncItem.value)
     }
 
     function mSaveItem(dItem: MaybeRefOrGetter<any>, options?: SaveItemOptions) {
@@ -331,6 +333,9 @@ export function useItem(props: ItemProps, options?: UseItemOptions) {
                     restartTracker()
                     mode.value = 'view'
                 }
+
+                if (emit)
+                    emit('saved', dItem)
 
                 return Promise.resolve(undefined)
             }
@@ -366,6 +371,10 @@ export function useItem(props: ItemProps, options?: UseItemOptions) {
 
     watch(() => props.refreshToggle, () => {
         refresh({ deepRefresh: true })
+    })
+
+    watch(() => props.itemID, () => {
+        refresh()
     })
     
     onMounted(async () => {

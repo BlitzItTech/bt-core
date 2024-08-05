@@ -38,10 +38,10 @@
 
 <script setup lang="ts">
     import { computed, toValue } from 'vue'
-    import { type ItemProps, useItem } from '../composables/item.ts'
+    import { ItemEvents, type ItemProps, useItem } from '../composables/item.ts'
     import { useFilters } from '../composables/filters.ts'
     import { nestedValue } from '../composables/helpers.ts'
-import { useNavigation } from '../composables/navigation.ts';
+    import { useNavigation } from '../composables/navigation.ts';
     
     interface BTEntityProps extends ItemProps {
         alternateText?: string
@@ -51,21 +51,27 @@ import { useNavigation } from '../composables/navigation.ts';
         label?: string
         prefix?: string
         textFilter?: string
+        textFunction?: (item: any) => string
         truncate?: boolean
     }
+
+    const emit = defineEmits<ItemEvents>()
 
     const props = withDefaults(defineProps<BTEntityProps>(), {
         eager: true
     })
 
     const filters = useFilters()
-    const ui = useItem(props)
+    const ui = useItem(props, emit)
     const nav = useNavigation()
 
     const mItemText = props.itemText ?? (props.nav != null ? nav.findItemText(props.nav) : undefined) ?? undefined
     const displayText = computed(() => {
         var t = toValue(ui.asyncItem);
 
+        if (props.textFunction != null)
+            t = props.textFunction(t)
+        
         if (mItemText != null) {
             t = nestedValue(ui.asyncItem.value, mItemText);
         }

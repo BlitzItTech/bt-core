@@ -1,6 +1,5 @@
 <template>
     <v-select
-        v-if="!ui.isLoading.value"
         :append-icon="canRefresh ? '$refresh' : undefined"
         :clearable="canSelectNone"
         @click:append-icon="ui.refresh({ deepRefresh: true })"
@@ -9,7 +8,8 @@
         :item-title="mItemText"
         :item-value="itemValue"
         :loading="ui.isLoading.value"
-        :variant="fieldVariant">
+        :variant="fieldVariant"
+        v-bind="$attrs">
         <template #item="data">
             <slot name="item" v-bind="data">
                 <v-list-item v-bind="data.props" />
@@ -20,8 +20,6 @@
                 <v-list-item v-bind="data.item.props" />
             </slot>
         </template>
-        <!-- :item-title="mItemText"
-                    :value="data" /> -->
     </v-select>
 </template>
 

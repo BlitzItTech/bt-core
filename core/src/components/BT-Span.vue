@@ -9,6 +9,7 @@
     interface Props {
         customFilter?: any
         filter?: string
+        format?: string
         prefix?: string
         suffix?: string
         value: any
@@ -18,6 +19,6 @@
     const { findFilter } = useFilters()
     const displayText = computed(() => {
         const func = props.filter != null ? findFilter(props.filter) : props.customFilter
-        return func(props.value)
+        return func != null ? func(props.value, props.format) : props.value
     })
 </script>

@@ -70,7 +70,7 @@ const setupItem = (props: ItemProps, options?: UseItemOptions) => {
             router,
             auth,
             navigation,
-            item: useItem(props, options)
+            item: useItem(props, null, options)
         }
     })
 }

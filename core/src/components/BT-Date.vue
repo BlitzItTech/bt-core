@@ -9,7 +9,19 @@
         :timezone="auth.timeZone.value"
         utc
         v-bind="$attrs"
-        v-model="value" />
+        v-model="value">
+    </VueDatePicker>
+    <!-- <VueDatePicker
+        auto-apply
+        :dark="theme.global.current.value.dark"
+        :enable-time-picker="useTime"
+        inline
+        :is-24="false"
+        :time-picker-inline="useTime"
+        :timezone="auth.timeZone.value"
+        utc
+        v-bind="$attrs"
+        v-model="value" /> -->
 </template>
 
 <script setup lang="ts">

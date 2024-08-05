@@ -25,11 +25,12 @@ import { isLengthyArray } from '../composables/helpers.ts'
 
     interface FieldProps {
         cols?: string | boolean
+        isArray?: boolean
         isEditing?: boolean
         isMobile?: boolean
         lg?: string | boolean
         md?: string | boolean
-        modelValue: string | undefined
+        modelValue?: any
         rules?: any
         sm?: string | boolean
     }
@@ -46,10 +47,16 @@ import { isLengthyArray } from '../composables/helpers.ts'
 
     const value = computed({
         get() {
-            return props.modelValue?.split(',')
+            if (props.isArray)
+                return props.modelValue
+            else
+                return props.modelValue?.split(',')
         },
         set(value) {
-            emit('update:modelValue', isLengthyArray(value) ? value!.toString() : null)
+            if (props.isArray)
+                emit('update:modelValue', value)
+            else
+                emit('update:modelValue', isLengthyArray(value) ? value!.toString() : null)
         }
     })
 

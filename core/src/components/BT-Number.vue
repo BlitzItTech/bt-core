@@ -1,5 +1,6 @@
 <template>
     <v-text-field
+        :class="{ 'centered-input': textCenter }"
         :dark="theme.global.current.value.dark"
         type="number"
         v-bind="$attrs"
@@ -19,6 +20,7 @@ import { computed } from 'vue'
         max?: number
         onSelect?: (item: any) => void
         modelValue?: any
+        textCenter?: boolean
     }
 
     const theme = useTheme()
@@ -39,3 +41,12 @@ import { computed } from 'vue'
     })
 
 </script>
+
+<style scoped>
+    .centered-input >>> input {
+      text-align: center;
+      padding: 0px;
+      margin: 0px;
+    }
+
+</style>

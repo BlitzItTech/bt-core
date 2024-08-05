@@ -81,6 +81,7 @@ export interface BTActions {
     apiGet: (doOptions: ApiActionOptions) => Promise<any>
     apiPatch: (doOptions: ApiActionOptions) => Promise<any>
     apiPost: (doOptions: ApiActionOptions) => Promise<any>
+    apiUpload: (doOptions: ApiActionOptions) => Promise<any>
     clearErrors: () => void
     deleteItem: (doOptions: DeleteOptions) => Promise<any>
     // deleteLocalItem: (doOptions: DeleteOptions) => Promise<any>
@@ -408,14 +409,17 @@ export function useActions(options?: UseActionsOptions): BTActions {
         }
         
         if (store != null) {
-            doOptions.onSaveAsync ??= async () => { //item: any
-                doOptions.mode ??= doOptions.data?.id == null ? 'new' : 'edit'
-                if (doOptions.mode == 'new') {
+            doOptions.onSaveAsync ??= async (item: any) => { //item: any
+                if (item == null)
+                    return null
+
+                doOptions.mode ??= item.id == null ? 'new' : 'edit'
+                doOptions.data = item
+
+                if (doOptions.mode == 'new')
                     return await store().post(doOptions)
-                }
-                else {
+                else
                     return await store().patch(doOptions)
-                }
             }
         }
         else {
@@ -451,8 +455,8 @@ export function useActions(options?: UseActionsOptions): BTActions {
 
             let res: any
             if (doOptions.onSaveAsync != null) {
-                res = await doOptions.onSaveAsync!(itemToSave)
-                res = res.data != null ? res.data : res
+                res = await doOptions.onSaveAsync(itemToSave)
+                res = res?.data != null ? res.data : res
             }
 
             if (doOptions.onSaveSuccessAsync != null) {
@@ -506,6 +510,23 @@ export function useActions(options?: UseActionsOptions): BTActions {
     }
 
     /**
+     * Post to api (no extra '/post' url or anything)
+     * @param options 
+     */
+    function apiUpload(doOptions: ApiActionOptions) {
+        doOptions.nav ??= options?.nav
+        doOptions.proxyID ??= options?.proxyID
+        doOptions.storeKey ??= options?.storeKey
+        doOptions.throwError ??= options?.throwError
+        doOptions.url ??= options?.url
+        
+        return doAction(async () => {
+            const api = doOptions.api ?? useApi()
+            return await api.uploadImage(doOptions)
+        }, { ...options, ...doOptions })
+    }
+
+    /**
      * Patch to api (no extra '/patch' url or anything)
      * @param options 
      */
@@ -528,6 +549,7 @@ export function useActions(options?: UseActionsOptions): BTActions {
         apiGet,
         apiPatch,
         apiPost,
+        apiUpload,
         clearErrors,
         deleteItem,
         // deleteLocalItem,

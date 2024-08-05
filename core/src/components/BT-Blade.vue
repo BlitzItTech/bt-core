@@ -1,11 +1,12 @@
 <template>
-    <v-slide-x-transition>
+    <!-- <v-slide-x-transition> -->
         <!-- v-if="variant != 'blade' || bladeUI.bladeData.show" -->
         <v-card
             :class="mBladeClass"
             :color="transparent ? 'transparent' : undefined"
             :density="density"
             :flat="ui.variant.value == 'inline' || ui.variant.value == 'pure'"
+            key="1"
             :min-height="minHeight"
             ref="blade"
             :rounded="(ui.variant.value == 'blade') ? '2' : '0'"
@@ -13,23 +14,21 @@
             <v-toolbar v-if="!mHideToolbar"
                 color="primary"
                 :density="density"
-                key="1"
                 ref="handle">
                 <slot name="blade-toolbar">
                     <v-fade-transition hide-on-leave>
                         <v-btn
                             v-if="!mHideNavigation"
                                 icon="$arrow-left"
-                                key="1"
                                 :size="size"
                                 title="Back"
                                 @click="() => navBack()" />
                     </v-fade-transition>
                     <slot name="blade-title-left"></slot>
-                    <v-toolbar-title key="2">{{ label }}</v-toolbar-title>
+                    <v-toolbar-title>{{ label }}</v-toolbar-title>
                     
                     <slot name="blade-title-right"></slot>
-                    <v-spacer key="3" />
+                    <v-spacer />
                     <slot name="blade-toolbar-right"></slot>
                 </slot>
                 <!-- <v-btn
@@ -68,11 +67,10 @@
             <v-toolbar v-if="!mHideSubtoolbar"
                 color="primary"
                 :density="density"
-                tile
-                key="2">
+                tile>
                 <slot name="subtoolbar" />
             </v-toolbar>
-            <v-row v-if="ui.variant.value == 'inline'" no-gutters>
+            <v-row v-if="!hideToolbar && ui.variant.value == 'inline'" no-gutters>
                 <v-list-subheader>{{ label }}</v-list-subheader>
                 <v-spacer />
                 <slot name="blade-toolbar-right" />
@@ -98,7 +96,7 @@
                 </v-card>
             </v-overlay>
         </v-card>
-    </v-slide-x-transition>
+    <!-- </v-slide-x-transition> -->
 </template>
 
 <script setup lang="ts">
@@ -123,6 +121,7 @@
         label?: string
         loadingMsg?: string
         minHeight?: string
+        noMargins?: boolean
         preset?: string
         size?: string | number
         transparent?: boolean
@@ -193,6 +192,9 @@
     const mHideToolbarSettings = computed(() => (presets.hideToolbarSettings as boolean ?? props.hideToolbarSettings) || ui.variant.value == 'inline' || ui.variant.value == 'pure')
     const showError = ref(false)
     const mBladeClass = computed(() => {
+        if (props.noMargins)
+            return ''
+        
         if (ui.variant.value == 'blade') {
             return ui.bladeData.show ? 'ma-1 mr-0' : 'ma-1 mr-0'
         }

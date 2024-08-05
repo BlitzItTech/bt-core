@@ -36,9 +36,18 @@ import { computed } from 'vue';
     const props = defineProps<Props>()
     const filters = useFilters()
     const displayText = computed(() => (item: any) => {
-        let v = nestedValue(item, props.option.value)
-        v = props.option.textFunction != null ? props.option.textFunction(v) : v
-        return props.option.textFilter != null ? filters.findFilter(props.option.textFilter)(v) : v
+        let v = item
+
+        if (props.option.value != null)
+            v = nestedValue(item, props.option.value)
+
+        if (props.option.textFunction != null)
+            v = props.option.textFunction(v)
+
+        if (props.option.textFilter != null)
+            v = filters.findFilter(props.option.textFilter)(v)
+
+        return v
     })
     const mStyle = computed(() => {
         if (props.option.truncate == true && props.option.width != null) {

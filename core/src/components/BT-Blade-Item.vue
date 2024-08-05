@@ -26,26 +26,40 @@
             <slot name="body" 
                 :bladeData="bladeData"
                 :density="density" 
+                :isChanged="ui.isChanged.value"
                 :isEditing="ui.isEditing.value" 
                 :isMobile="isMobile" 
                 :item="ui.asyncItem.value" 
                 :mode="ui.mode.value" 
+                :save="save"
                 :size="mSize"
                 :style="contentStyle">
-                <div v-if="ui.asyncItem.value == null && !ui.isLoading.value" :style="contentStyle">
-                    <slot name="notFound" :bladeData="bladeData" :refresh="ui.refresh" :density="density" :isEditing="ui.isEditing.value" :isMobile="isMobile" :mode="ui.mode.value" :size="mSize"></slot>
+                <div v-if="ui.asyncItem.value == null && !ui.isLoading.value" class="overflow-y-auto" :style="contentStyle">
+                    <slot 
+                        :bladeData="bladeData"
+                        :density="density"
+                        :isChanged="ui.isChanged.value"
+                        :isEditing="ui.isEditing.value"
+                        :isMobile="isMobile"
+                        :mode="ui.mode.value"
+                        name="notFound"
+                        :refresh="ui.refresh"
+                        :save="save"
+                        :size="mSize"></slot>
                 </div>
-                <v-card v-else-if="ui.asyncItem.value != null" :flat="flat" :style="contentStyle">
+                <v-card v-else-if="ui.asyncItem.value != null" class="overflow-y-auto" :flat="flat" :style="contentStyle">
                     <v-card-text class="pa-0">
                         <v-form ref="form">
                             <slot
                                 :bladeData="bladeData"
                                 :density="density" 
+                                :isChanged="ui.isChanged.value"
                                 :isEditing="ui.isEditing.value" 
                                 :isMobile="isMobile" 
                                 :item="ui.asyncItem.value" 
                                 :mode="ui.mode.value" 
                                 name="default"
+                                :save="save"
                                 :size="mSize"></slot>
                         </v-form>
                     </v-card-text>
@@ -55,7 +69,7 @@
                             <v-btn v-if="mCanSave && ui.isSaveable.value && (ui.isChanged.value || ui.mode.value == 'new')" @click="save(false)" :size="mSize" class="mr-4">
                                 <v-icon :size="mSize" start icon="$content-save" />Save
                             </v-btn>
-                            <v-btn v-if="mCanSave && ui.isSaveable.value && (ui.isChanged.value || ui.mode.value == 'new')" @click="save(true)" :size="mSize" class="mr-4">
+                            <v-btn v-if="canClose && mCanSave && ui.isSaveable.value && (ui.isChanged.value || ui.mode.value == 'new')" @click="save(true)" :size="mSize" class="mr-4">
                                 <v-icon :size="mSize" start icon="$content-save" />Save And Close
                             </v-btn>
                         </v-slide-x-transition>
@@ -69,7 +83,7 @@
 
 <script setup lang="ts">
     import { type BladeDensity } from '../composables/blade.ts'
-    import { ItemProps, useItem } from '../composables/item.ts'
+    import { ItemEvents, ItemProps, useItem } from '../composables/item.ts'
     import { useAuth } from '../composables/auth.ts'
     import { useNavigation } from '../composables/navigation.ts'
     import { usePresets } from '../composables/presets.ts'
@@ -80,6 +94,7 @@
         // bladeStartShowing?: boolean
         actualHeight?: string
         actualUsedHeight?: string
+        canClose?: boolean
         canDelete?: boolean
         canEdit?: boolean
         canRestore?: boolean
@@ -92,6 +107,8 @@
         otherUsedHeight?: number
         preset?: string
     }
+
+    const emit = defineEmits<ItemEvents>()
 
     const props = withDefaults(defineProps<PageProps>(), {
         canDelete: false,
@@ -116,7 +133,7 @@
     const { findSingleDisplay } = useNavigation()
     const auth = useAuth()
     const mSize = inject('size', () => ref('small'), true)
-    const ui = useItem(props)
+    const ui = useItem(props, emit)
     
     provide('isEditing', ui.isEditing)
 
@@ -131,7 +148,7 @@
             return `height: calc(${props.actualHeight})`
         }
         else if (props.actualUsedHeight != null) {
-            return `height: calc(100vh - ${props.actualUsedHeight}px)`
+            return `height: calc(100vh - ${props.actualUsedHeight}px);`
         }
         else {
             let mUsedHeight = 207
@@ -143,9 +160,12 @@
     })
 
     async function save(navBack: boolean) {
-        const { valid } = await form.value.validate()
-
-        if (valid) {
+        if (form.value != null) {
+            const { valid } = await form.value.validate()
+            if (valid)
+                await ui.saveItem(ui.asyncItem.value, { navBack })
+        }
+        else {
             await ui.saveItem(ui.asyncItem.value, { navBack })
         }
     }

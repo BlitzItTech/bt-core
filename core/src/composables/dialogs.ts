@@ -2,19 +2,18 @@ import { useConfirm } from 'vuetify-use-dialog'
 import BTBladeItems from '../components/BT-Blade-Items.vue'
 import BTDate from '../components/BT-Date.vue'
 import BTNumber from '../components/BT-Number.vue'
-
-// import BTBladeItems from '@/components/BT-Blade-Items.vue'
-// import BTDate from '../components/BT-Date.vue'
-// import BTNumber from '../components/BT-Number.vue'
+import { TableColumn } from './list.ts'
 
 export interface UseSelectItemOptions {
-    itemText: string
+    itemText?: string
     itemValue?: string
-    nav: string
+    items?: any[]
+    nav?: string
     params?: any
     required?: boolean
     searchProps?: string[]
     showSearch?: boolean
+    textFunction?: Function
     title?: string
 }
 
@@ -26,25 +25,43 @@ export function useSelectItem() {
         const resolve = (item: any) => {
             res = item
         }
+
+        const headers: TableColumn[] = []
+
+        if (options.itemText != null || options.itemValue != null) {
+            headers.push({
+                level: 1,
+                searchable: true,
+                textFunction: options.textFunction,
+                value: options.itemText ?? options.itemValue,
+            })
+        }
         
         const isConfirmed = await createConfirm({
+            cardProps: {
+                class: 'ma-0 pa-0'
+            },
             contentComponent: BTBladeItems,
             contentComponentProps: {
+                actualHeight: '350px',
                 canAdd: false,
                 canDelete: false,
                 canSearch: true,
-                headers: [{ value: options.itemText, level: 1, searchable: true }],
+                flat: true,
+                headers: [{ value: options.itemText, level: 1, searchable: true, textFunction: options.textFunction }],
+                items: options.items,
                 modelValue: res,
                 nav: options.nav,
                 onSelect: resolve,
                 params: options.params,
                 searchProps: options.searchProps,
+                showListOnly: true,
                 showSearch: options.showSearch,
                 variant: 'inline',
                 useServerPagination: false
             },
             dialogProps: {
-                height: '600',
+                maxHeight: '600',
                 width: '450',
                 persistent: options.required ?? false
             },

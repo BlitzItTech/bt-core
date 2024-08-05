@@ -21,6 +21,7 @@ import BTBlade from './components/BT-Blade.vue'
 import BTBtn from './components/BT-Btn.vue'
 import BTCol from './components/BT-Col.vue'
 import BTCosmeticsMenu from './components/BT-Cosmetics-Menu.vue'
+import BTCron from './components/BT-Cron.vue'
 import BTDate from './components/BT-Date.vue'
 import BTEntity from './components/BT-Entity.vue'
 import BTFieldCheckbox from './components/BT-Field-Checkbox.vue'
@@ -33,10 +34,12 @@ import BTFieldTags from './components/BT-Field-Tags.vue'
 import BTFieldTextarea from './components/BT-Field-Textarea.vue'
 import BTFieldTrigger from './components/BT-Field-Trigger.vue'
 import BTHeaderOption from './components/BT-Header-Option.vue'
+import BTImageSelect from './components/BT-Image-Select.vue'
 import BTJson from './components/BT-Json.vue'
 import BTLoader from './components/BT-Loader.vue'
 import BTNavSidebar from './components/BT-Nav-Sidebar.vue'
 import BTNumber from './components/BT-Number.vue'
+import BTSelectInline from './components/BT-Select-Inline.vue'
 import BTSelectListBox from './components/BT-Select-List-Box.vue'
 import BTSelect from './components/BT-Select.vue'
 import BTSlider from './components/BT-Slider.vue'
@@ -78,6 +81,7 @@ export function createCore(options: CreateCoreOptions): CoreApp {
                 app.component('bt-btn', BTBtn)
                 app.component('bt-col', BTCol)
                 app.component('bt-cosmetics-menu', BTCosmeticsMenu)
+                app.component('bt-cron', BTCron)
                 app.component('bt-date', BTDate)
                 app.component('bt-entity', BTEntity)
                 app.component('bt-field-checkbox', BTFieldCheckbox)
@@ -90,10 +94,12 @@ export function createCore(options: CreateCoreOptions): CoreApp {
                 app.component('bt-field-text-area', BTFieldTextarea)
                 app.component('bt-field-trigger', BTFieldTrigger)
                 app.component('bt-header-option', BTHeaderOption)
+                app.component('bt-image-uploader', BTImageSelect)
                 app.component('bt-json', BTJson)
                 app.component('bt-loader', BTLoader)
                 app.component('bt-nav-sidebar', BTNavSidebar)
                 app.component('bt-number', BTNumber)
+                app.component('bt-select-inline', BTSelectInline)
                 app.component('bt-select-list-box', BTSelectListBox)
                 app.component('bt-select', BTSelect)
                 app.component('bt-slider', BTSlider)

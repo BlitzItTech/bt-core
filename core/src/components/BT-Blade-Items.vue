@@ -11,6 +11,7 @@
         :label="mLabel"
         :loadingMsg="ui.loadingMsg.value"
         :preset="preset"
+        :size="size"
         :transparent="transparent"
         :variant="variant">
         <template #blade-toolbar-right>
@@ -150,13 +151,13 @@
                             v-model="ui.searchString.value" />
                     </v-slide-x-reverse-transition>
                 </div>
-                <div v-if="!isLengthyArray(ui.asyncItems.value)" :style="contentStyle">
+                <div v-if="!isLengthyArray(ui.asyncItems.value)" class="overflow-y-auto" :style="contentStyle">
                     <slot name="notFound" :bladeData="bladeData" :refresh="ui.refresh" :size="size" />
                 </div>
                 <v-list
                     v-else-if="selectSingle || selectMulti || showListOnly === true || isMobile"
                     :active-class="activeClass"
-                    class="pt-0"
+                    class="pt-0 overflow-y-auto"
                     :bg-color="transparent ? 'transparent' : undefined"
                     flat
                     :density="density"
@@ -211,14 +212,14 @@
                                                     class="text-error"
                                                     :disabled="!auth.canEdit(nav)"
                                                     icon="$delete"
-                                                    key="1"
+                                                    key="2"
                                                     :loading="fItem.loadingCount > 0"
                                                     :size="mActionButtonSize"
                                                     variant="text" />
 
                                                 <v-btn v-if="canRestore && ui.isRestorable.value(fItem)"
                                                     :disabled="!auth.canEdit(nav)"
-                                                    key="1"
+                                                    key="3"
                                                     icon="$eraser-variant"
                                                     :loading="fItem.loadingCount > 0"
                                                     :size="mActionButtonSize"
@@ -233,7 +234,7 @@
                     </v-slide-x-transition>
                 </v-list>
                 <v-table v-else-if="showTableOnly === true || !isMobile"
-                    class="text-body-2"
+                    class="text-body-2 overflow-y-auto"
                     :density="density"
                     :fixed-header="fixedHeader"
                     hover
@@ -243,14 +244,14 @@
                             <th v-for="header in ui.tableHeaders.value" :key="header.value" :class="`d-none d-${header.showSize ?? 'sm'}-table-cell`">
                                 {{ header.title }}
                             </th>
-                            <th v-if="!hideActions" key="itemActions" >
+                            <th v-if="!hideActions" key="itemActions" class="text-right" >
                                 Actions
                             </th>
                         </tr>
                     </thead>
                     <tbody>
                         <v-slide-x-transition group hide-on-leave>
-                            <tr v-for="tableRow in ui.filteredItems.value" :key="tableRow.id"
+                            <tr v-for="(tableRow, tableRowInd) in ui.filteredItems.value" :key="`${tableRow.id}${tableRowInd}`"
                                 @click="ui.selectItem(tableRow, variant)">
                                 <td v-for="tableCol in ui.tableHeaders.value" :key="'1' + tableCol.value" :class="`d-none d-${tableCol.showSize ?? 'sm'}-table-cell`">
                                     <slot :name="tableCol.value" :item="tableRow" :options="tableCol">
@@ -260,6 +261,7 @@
                                 <td v-if="!hideActions" :key="'itemActions' + tableRow.id" class="text-right">
                                     <v-fade-transition hide-on-leave>
                                         <v-row no-gutters :class="fadingActions ? 'actionButtons' : null" class="flex-nowrap">
+                                            <v-spacer />
                                             <slot name="itemActions" :item="tableRow" :allItems="ui.asyncItems.value" :items="ui.filteredItems.value" :size="mActionButtonSize" :density="density" />
                                             <v-icon v-if="tableRow.errorMsg != null"
                                                 color="warning"
@@ -410,7 +412,7 @@
     const mHideSubtoolbarSettings = computed(() => (presets.hideSubToolbarSettings as boolean ?? props.hideSubtoolbarSettings))
     const mLabel = computed(() => props.label ?? (props.variant == 'page' ? route?.meta?.displayName as string : undefined) ?? findDisplay(props.nav ?? props.bladeName ?? ''))
     const showInlineSearch = computed(() => props.variant == 'inline' && (props.canSearch || isLengthyArray(props.searchProps)))
-    const showPagination = computed(() => props.useServerPagination && ui.totalPages.value > 1)
+    const showPagination = computed(() => (props.useServerPagination || props.useLocalPagination) && ui.totalPages.value > 1)
     const contentStyle = computed(() => {
         if (props.actualHeight != null) {
             return `height: calc(${props.actualHeight})`

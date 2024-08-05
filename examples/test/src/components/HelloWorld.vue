@@ -1,5 +1,22 @@
 <template>
-  <v-container class="pa-0" fluid>
+  <div>
+    test
+    <bt-image-uploader />
+    <!-- <bt-image-uploader :canEdit="false" /> -->
+  </div>
+
+  <!-- <bt-blade-items
+    bladeName="list"
+    :bladeStartShowing="true"
+    :headers="[
+      { title: 'b', value: 'text', truncate: true },
+      { title: 'a', value: 'id' }]"
+    :items="items"
+    :itemsPerPage="50"
+    label="Test"
+    truncate
+    useLocalPagination /> -->
+  <!-- <v-container class="pa-0" fluid>
     <v-toolbar color="primary" density="compact">
       <bt-cosmetics-menu />
     </v-toolbar>
@@ -30,26 +47,6 @@
                   :items="items"
                   label="Test"
                   truncate />
-                <!-- <bt-blade-items
-                  addBladeName="single"
-                  bladeName="list"
-                  :bladeStartShowing="true"
-                  :canDelete="false"
-                  :canUnselect="false"
-                  :headers="[
-                    { title: 'a', value: 'id' },
-                    { title: 'b', value: 'text' }]"
-                  itemBladeName="single"
-                  :items="items"
-                  itemText="text"
-                  itemValue="id"
-                  label="Test"
-                  selectSingle
-                  showListOnly
-                  showSearch
-                  transparent
-                  width="400"
-                  v-model:selected="selected.sub" /> -->
               </template>
               <template #thi-d>
                 Third
@@ -58,7 +55,7 @@
         </template>
       </bt-blade>
     </v-container>
-  </v-container>
+  </v-container> -->
   
   <!-- <v-container
     class="pa-0 d-flex flex-nowrap overflow-x-auto overflow-y-hidden no-gutters"
@@ -135,9 +132,8 @@
 </template>
 
 <script setup lang="ts">
-  import { ref } from 'vue'
+  import { computed, ref } from 'vue'
   import { useActions } from '../../../../core/src/composables/actions'
-  // import { useBladeEvents } from '../../../../core/src/composables/blade';
 
   const selectItems = ref([
     { id: '1', one: 'a', two: 'b' },
@@ -150,9 +146,21 @@
 
   const se = ref('1')
 
-  const items = ref([
-    { id: '1', text: 'test a very very very long statement' },
-    { id: '2', text: 'blah test a very very very long statement test a very very very long statement test a very very very long statement test a very very very long statement' }])
+  const items = computed(() => {
+    const e: any[] = []
+    for (let i = 0; i < 200; i++) {
+      e.push({
+        id: `${i}`,
+        text: `${i}`
+      })
+    }
+
+    return e
+  })
+
+  // const items = ref([
+  //   { id: '1', text: 'test a very very very long statement' },
+  //   { id: '2', text: 'blah test a very very very long statement test a very very very long statement test a very very very long statement test a very very very long statement' }])
   
   const selected = ref({ sub: undefined })
   const testSelect = ref({ id: '2' })

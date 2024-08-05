@@ -42,23 +42,23 @@ export function orderBy(arr: any[], prop: string | ((item: any) => boolean | num
     })
 }
 
-export function appendUrl(originalVal?: string, additionalVal?: string) {
+export function appendUrl(originalVal?: string, additionalVal?: string, splittingChar: string = '/') {
     let original = originalVal ?? ''
     let additional = additionalVal ?? ''
 
-    if (original.endsWith('/')) {
+    if (original.endsWith(splittingChar)) {
         do {
             original = original.slice(0, original.length - 1)
-        } while (original.endsWith('/'));
+        } while (original.endsWith(splittingChar));
     }
 
-    if (additional.startsWith('/')) {
+    if (additional.startsWith(splittingChar)) {
         do {
             additional = additional.slice(1, additional.length)
-        } while (additional.startsWith('/'));
+        } while (additional.startsWith(splittingChar));
     }
 
-    return `${original}/${additional}`
+    return `${original}${splittingChar}${additional}`
 }
 
 export function checkImage(
@@ -491,6 +491,13 @@ export function getMinDateString() {
     return '0001-01-01T00:00:00Z'
 }
 
+export function isSameDownToHour(firstDate?: string, secondDate?: string) {
+    if (firstDate == null || secondDate == null)
+        return false
+
+    return firstDate.split(':')[0] == secondDate.split(':')[0]
+}
+
 /**
  * rounds the given value to a certain number of decimal places
  * @param v
@@ -722,6 +729,20 @@ export function nestedValue(obj: any, path?: string) {
     }
 
     return r;
+}
+
+export function splitArray<T>(arr: T[], chunkSize: number, fill: boolean = true): (T | null)[][] {
+    const res = []
+  
+    for (let i = 0; i < arr.length; i += chunkSize) {
+      const slice: (T | null)[] = arr.slice(i, i + chunkSize)
+      while (fill && slice.length < chunkSize) {
+        slice.push(null)
+      }
+      res.push(slice)
+    }
+  
+    return res
 }
 
 export function validEmail(email?: string) {

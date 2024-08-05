@@ -54,6 +54,7 @@ export interface CustomFilterParam {
 export interface ListEvents {
     (e: 'change', item: any): void
     (e: 'deleted', item: any): void
+    (e: 'fetched', item: any): void
     (e: 'input', item: any): void
     (e: 'select', item: any): void
     (e: 'confirm', item: any): void
@@ -132,7 +133,7 @@ export interface ListProps {
     searchKey?: string
     searchProps?: string[]
     selectProps?: string[]
-    // sortBy?: string
+    // sortBy?: stringg
     // sortOrder?: 'Ascending' | 'Descending'
     //showSearch?: boolean
     startShowingInactive?: boolean
@@ -563,6 +564,18 @@ export function useList<T extends BaseIDModel>(props: ListProps, emit?: ListEven
                 l = l.filter(x => hasSearch(x, searchString.value, sProps))
         }
 
+        if (props.useLocalPagination != null && props.useLocalPagination !== false) {
+            //locally paginate
+            if (props.itemsPerPage != null) {
+                let indFrom = (currentPage.value - 1) * props.itemsPerPage
+                let indTo = indFrom + props.itemsPerPage
+                if (indTo >= l.length)
+                    indTo = l.length - 1
+
+                l = l.slice(indFrom, indTo)
+            }
+        }
+
         filteredItems.value = l as T[]
     }
 
@@ -577,6 +590,24 @@ export function useList<T extends BaseIDModel>(props: ListProps, emit?: ListEven
         }
     }
 
+    function calculateTotalPages(list: any[], cnt?: number) {
+        if (props.itemsPerPage == null || list == null || list.length == 0)
+            return
+
+        const perPage = typeof props.itemsPerPage == 'string' ? Number.parseInt(props.itemsPerPage) : props.itemsPerPage
+
+        if (perPage <= 0)
+            return
+
+        if (props.useServerPagination) {
+            if (cnt != null)
+                totalPages.value = Math.ceil(cnt / perPage)
+        }
+        else if (props.useLocalPagination) {
+            totalPages.value = Math.ceil(list.length / perPage)
+        }
+    }
+
     async function refresh(options?: ListRefreshOptions) {
         showError.value = false
         if (options?.resetSearch === true) {
@@ -586,8 +617,16 @@ export function useList<T extends BaseIDModel>(props: ListProps, emit?: ListEven
         
         if (props.items != null) {
             asyncItems.value = props.onGetSuccessAsync != null ? await props.onGetSuccessAsync(props.items) : props.items
+            
+            calculateTotalPages(asyncItems.value, asyncItems.value.length)
+
+            refreshFilteredList()
+            
             if (props.onFinished)
                 props.onFinished()
+
+            if (emit)
+                emit('fetched', asyncItems.value)
 
             return
         }
@@ -618,18 +657,8 @@ export function useList<T extends BaseIDModel>(props: ListProps, emit?: ListEven
                 ...getOptions,
                 onGetSuccessAsync: async (gRes, opt) => {
                     let dataRes = gRes?.data
-                    // if (!filtersLoaded) {
-                        serverFilters.value = gRes?.filters ?? []
-                        // filtersLoaded = true
-                    // }
-
-                    if (storeMode != 'whole-last-updated' &&
-                        props.useServerPagination === true &&
-                        props.itemsPerPage &&
-                        gRes.count) {
-                            totalPages.value = Math.ceil(gRes.count / props.itemsPerPage)
-                        }
-
+                    serverFilters.value = gRes?.filters ?? []
+                    calculateTotalPages(dataRes, gRes.count)
                     if (props.onGetSuccessAsync != null)
                         dataRes = await props.onGetSuccessAsync(dataRes, opt)
 
@@ -643,6 +672,14 @@ export function useList<T extends BaseIDModel>(props: ListProps, emit?: ListEven
         }
 
         refreshFilteredList()
+        
+        if (props.onFinished)
+            props.onFinished()
+
+        
+        if (emit)
+            emit('fetched', asyncItems.value)
+
     }
 
     function selectItem(rItem: any, variant: BladeVariant) {
