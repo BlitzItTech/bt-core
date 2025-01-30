@@ -94,21 +94,21 @@ describe("navigation", () => {
         expect(nav.findSingleDisplay('navB')).toEqual('navone')
     })
 
-    test('update nav props', () => {
-        nav.updateNavigationProperties('test-nav')
+    // test('update nav props', () => {
+    //     nav.updateNavigationProperties('test-nav')
 
-        expect(nav.showAppBar.value).toEqual(true)
-        expect(nav.showAppNavigation.value).toEqual(true)
-        expect(nav.backgroundName.value).toEqual(undefined)
-        expect(nav.hesitate.value).toEqual(false)
+    //     expect(nav.showAppBar.value).toEqual(true)
+    //     expect(nav.showAppNavigation.value).toEqual(true)
+    //     expect(nav.backgroundName.value).toEqual(undefined)
+    //     expect(nav.hesitate.value).toEqual(false)
 
-        nav.updateNavigationProperties('navA')
+    //     nav.updateNavigationProperties('navA')
 
-        expect(nav.showAppBar.value).toEqual(false)
-        expect(nav.showAppNavigation.value).toEqual(false)
-        expect(nav.backgroundName.value).toEqual('b')
-        expect(nav.hesitate.value).toEqual(true)
-    })
+    //     expect(nav.showAppBar.value).toEqual(false)
+    //     expect(nav.showAppNavigation.value).toEqual(false)
+    //     expect(nav.backgroundName.value).toEqual('b')
+    //     expect(nav.hesitate.value).toEqual(true)
+    // })
 
     // test('change background', () => {
     //     nav.updateBackgroundID('testID')

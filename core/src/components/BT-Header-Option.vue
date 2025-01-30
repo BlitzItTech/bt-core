@@ -38,12 +38,11 @@ import { computed } from 'vue';
     const displayText = computed(() => (item: any) => {
         let v = item
 
-        if (props.option.value != null)
-            v = nestedValue(item, props.option.value)
-
         if (props.option.textFunction != null)
             v = props.option.textFunction(v)
-
+        else if (props.option.value != null)
+            v = nestedValue(item, props.option.value)
+        
         if (props.option.textFilter != null)
             v = filters.findFilter(props.option.textFilter)(v)
 

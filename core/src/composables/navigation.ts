@@ -1,9 +1,9 @@
 //nav item needs to have a 'ignore Suspension' prop
 import { useDataUrl } from '../composables/urls.ts'
 import { appendUrl, capitalizeWords, checkImage, deepSelect, singularize } from '../composables/helpers.ts'
-import { ref, type Ref } from 'vue'
+import { computed, ref, type Ref } from 'vue'
 import { type AuthItem } from './auth.ts'
-import type { StorageMode, StoreMode } from './stores.ts'
+import type { GetStorageKeyOptions, StorageMode, StoreMode } from './stores.ts'
 import { RouteLocation, RouteLocationNormalized, useRouter } from 'vue-router'
 
 export interface ExternalParty {
@@ -35,6 +35,8 @@ export interface NavigationItem extends AuthItem {
     cacheExpiryHours?: number
     /**any children of this nav item */
     children?: NavigationItem[]
+    /**only applies if connecting to store */
+    deleteStrat?: 'soft' | undefined
     /**the name that will be displayed in the navigation menu */
     displayName?: string
     /**where credentials can be found for external parties*/
@@ -43,12 +45,18 @@ export interface NavigationItem extends AuthItem {
     externalParties?: ExternalParty[]
     /**possible external party navigation items and how to connect/sync */
     externalNavigations?: ExternalNavigation[]
+    /**custom override for getting the key to store */
+    getStorageKey?: (dOptions: GetStorageKeyOptions) => string
     /**will hide app bar if set to true when the route opens this nav */
     hideAppBar?: boolean
+    /**hide bottom navigation even when xs */
+    hideBottomNavigation?: boolean
     /**will hide the nav sidebar if set to true when the route opens this nav */
     hideNavigation?: boolean
     /**will open a dialog box to confirm navigating away from this route */
     hesitate?: boolean
+    /**how many minutes until WLU Store clears all data. Undefined means it won't happen */
+    minutesToClear?: number
     /**the mdi icon that goes with this nav item.  Will show in places like the nav menu */
     icon?: string
     /**default to false. True will mean that even is account is suspended, this will still allow navigation */
@@ -65,6 +73,12 @@ export interface NavigationItem extends AuthItem {
     path?: string
     /**permissions that are required for this navItem.  All these permissions must be met. */
     permissions?: string[]
+    /**for PLU stores only - defining what prop to cal window */
+    pluWindowProp?: string
+    /**for PLU stores only - defining how many days to bunch requests in */
+    pluDays?: number
+    /**whether to search for list locally or server first */
+    priority?: 'server' | 'local'
     /**default to true.  When false will allow universal access regardless of permission */
     requiresAuth?: boolean
     /**the name of the route to access individual items */
@@ -82,10 +96,11 @@ export interface NavigationItem extends AuthItem {
 export interface BTNavigation {
     showAppBar: Ref<boolean>
     showAppNavigation: Ref<boolean>
+    showBottomNavigation: Ref<boolean>
     backgroundName: Ref<string | undefined>
     backgroundURL: Ref<string | undefined>
     hesitate: Ref<boolean>
-    navHistory: RouteLocation[]
+    navHistory: Ref<RouteLocation[]>
     navigationItems: NavigationItem[],
     findArchiveName: (navName?: string | NavigationItem) => string | undefined
     findCacheHours: (navName?: string | NavigationItem) => number
@@ -122,12 +137,12 @@ export function useNavBack() {
     const navigation = useNavigation()
 
     function navBack() {
-        const navLength = navigation.navHistory.length
-        if (navLength > 1) {
-            navigation.navHistory.pop()
-            const n = navigation.navHistory[navLength - 1]
-            navigation.navHistory.pop()
-            router.push(n)
+        if (navigation.navHistory.value.length > 1) {
+            navigation.navHistory.value.pop()
+            const n = navigation.navHistory.value[navigation.navHistory.value.length - 1]
+            navigation.navHistory.value.pop()
+            if (n != null)
+                router.push(n)
         }
         else {
             router.back()
@@ -135,16 +150,19 @@ export function useNavBack() {
     }
 
     return {
+        canNavBack: computed(() => navigation.navHistory.value.length > 1),
         navBack
     }
 }
 
 export function createNavigation(options: UseNavigationOptions): BTNavigation {
     const cacheExpiryHours = options.defaultCacheExpiryHours ?? 7
-    const navHistory: RouteLocation[] = []
+    const navHistory = ref<RouteLocation[]>([])
 
     const appBar = ref(true)
     const appNavigation = ref(false)
+    const bottomNavigation = ref(false)
+
     const backgroundURL: Ref<string | undefined> = ref()
     const backgroundID: Ref<string | undefined> = ref()
     const backgroundName: Ref<string | undefined> = ref()
@@ -277,11 +295,13 @@ export function createNavigation(options: UseNavigationOptions): BTNavigation {
     }
 
     function updateNavigationChange(to: RouteLocationNormalized, from?: RouteLocationNormalized) {
-        if (from != null && to.name == from.name && (from.params.id == 'new' || from.query.id == 'new'))
-            navHistory.pop()
 
-        if (to != null && (to.params == null || to.params.navIgnore != 'true'))
-            navHistory.push(to)
+        //if moving from new blade to item blade, remove previous 'new' nav
+        if (to.name == from?.name && (from?.params.id == 'new' || from?.query.id == 'new'))
+            navHistory.value.pop()
+
+        if (to.params.navIgnore !== 'true')
+            navHistory.value.push(to)
 
         const navName = (to.meta.nav ?? to.name) as string
         const navItem = findItem(navName)
@@ -294,14 +314,15 @@ export function createNavigation(options: UseNavigationOptions): BTNavigation {
                 updateBackgroundURL()
         }
 
-        appNavigation.value = to.meta.hideNavigation as string !== 'true' && navItem?.hideNavigation !== true 
-        appBar.value = to.meta.hideAppBar as string !== 'true' && navItem?.hideAppBar !== true
-
+        appNavigation.value = to.meta.hideNavigation !== true && navItem?.hideNavigation !== true
+        bottomNavigation.value = to.meta.hideBottomNavigation !== true && navItem?.hideBottomNavigation !== true
+        appBar.value = to.meta.hideAppBar !== true && navItem?.hideAppBar !== true
     }
 
     current = {
         showAppBar: appBar,
         showAppNavigation: appNavigation,
+        showBottomNavigation: bottomNavigation,
         backgroundName,
         backgroundURL,
         hesitate,

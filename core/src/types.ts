@@ -16,6 +16,10 @@ export interface BaseModel {
     id?: string
 }
 
+export interface BaseInactiveModel {
+    inactive?: boolean
+}
+
 const navigationKey = Symbol()
 const urlsKey = Symbol()
 const demoKey = Symbol()

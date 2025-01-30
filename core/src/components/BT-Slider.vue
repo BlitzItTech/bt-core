@@ -1,27 +1,38 @@
 <template>
-    <v-window v-model="panel" :style="sliderStyle">
+    <v-window v-model="lastPanel" :style="sliderStyle">
         <v-window-item>
             <v-list>
                 <v-list-item
-                    v-for="(setting, index) in cOptions"
+                    v-for="setting in listItemOptions"
                     append-icon="$arrow-right"
-                    @click="panel = (index + 1)"
+                    @click="navTo(setting.index)"
                     :disabled="setting.disabled"
                     :key="setting.value ?? setting.title"
                     :title="setting.title" />
             </v-list>
         </v-window-item>
         <v-window-item
-            v-for="(setting) in cOptions"
-            :key="setting.value ?? setting.title">
-            <v-slide-x-transition hide-on-leave>
-                <v-toolbar v-if="!hideHeader && !setting.hideHeader" density="compact" flat tile>
-                    <v-btn icon="$arrow-left" @click="panel = 0" />
-                    <v-toolbar-title>{{ setting.title }}</v-toolbar-title>
-                </v-toolbar>
-            </v-slide-x-transition>
-            <slot :name="(setting.value ?? setting.title).replaceAll(' ', '').toLowerCase()">
+            v-for="(setting) in paneOptions"
+            :key="setting.value ?? setting.title"
+            :value="setting.index">
+            <slot :name="`${setting.value}-top`">
+                <v-slide-x-transition hide-on-leave>
+                    <v-toolbar v-if="!hideHeader && !setting.hideHeader" density="compact" flat tile>
+                        <slot :name="`${setting.value}-toolbar`"
+                            :back="() => navBack()"
+                            :title="setting.title">
+                            <v-btn icon="$arrow-left" @click="navBack" />
+                            <v-toolbar-title>{{ setting.title }}</v-toolbar-title>
+                            <v-spacer />
+                            <slot :name="`${setting.value}-toolbar-right`">
 
+                            </slot>
+                        </slot>
+                    </v-toolbar>
+                </v-slide-x-transition>
+            </slot>
+            <slot :name="setting.value">
+                
             </slot>
         </v-window-item>
     </v-window>
@@ -29,41 +40,102 @@
 
 <script setup lang="ts">
     import { useRoute } from 'vue-router'
-    import { computed, onMounted, ref } from 'vue'
+    import { computed, onMounted, ref, watch } from 'vue'
 
     interface SliderOption {
         disabled?: boolean
+        hide?: boolean
         hideHeader?: boolean
+        navHistory?: boolean
         title?: string
         value: any
+    }
+
+    interface SliderData extends SliderOption {
+        index: number
     }
 
     interface SliderProps {
         hideHeader?: boolean
         options: SliderOption[]
+        modelValue?: number
         width?: number
     }
 
+    const emit = defineEmits(['update:modelValue'])
     const props = defineProps<SliderProps>()
-    const panel = ref(0)
     const route = useRoute()
     const sliderStyle = computed(() => props.width != null ? `width: ${props.width}px` : '')
+    const history = ref<number[]>([])
 
-    const cOptions = computed(() => {
+    watch(() => route.query, q => {
+        if (q.slide != null)
+            navToSlide(q.slide as string)
+    })
+    
+    const lastPanel = computed(() => history.value.length > 0 ? history.value[history.value.length - 1] : 0)
+
+    const paneOptions = computed<SliderData[]>(() => {
         const e = props.options ?? []
-        return e.map((x: any) => {
-            if (typeof x == 'string')
-                return { title: x, value: x.replaceAll(' ', '').toLowerCase() }
-            else
-                return { ...x, value: x.value ?? x.title.replaceAll(' ', '').toLowerCase() }
+        
+        return e.map((x: SliderOption | string, index: number) => {
+            var r: SliderData = { value: '', index: index + 1 }
+
+            if (typeof x == 'string') {
+                r.hide = false
+                r.title = x as string
+                r.value = r.title.replaceAll(' ', '').toLowerCase()
+            }
+            else {
+                var s = x as SliderOption
+                r = {
+                    ...s,
+                    index: index + 1,
+                    value: s.value ?? s.title?.replaceAll(' ', '').toLowerCase()
+                }
+            }
+
+            return r
         })
+    })
+
+    const listItemOptions = computed<SliderData[]>(() => paneOptions.value.filter(x => x.hide !== true))
+
+    function navBack() {
+        history.value.pop()
+        emit('update:modelValue', -2)
+    }
+
+    function navTo(panelIndex: number) {
+        var ind = panelIndex
+        if (ind == 0) {
+            history.value = [ind]
+        }
+        else if (lastPanel.value != ind) {
+            history.value.push(ind)
+        }
+    }
+
+    function navToSlide(slide?: string) {
+        if (slide == null)
+            return
+
+        const paneData = paneOptions.value.find(x => x.value == slide)
+        if (paneData != null)
+            navTo(paneData.index)
+    }
+
+    watch(() => props.modelValue, v => {
+        if (v != null && v != -2)
+            navTo(v + 1)
     })
 
     onMounted(() => {
         if (route?.query.slide != null) {
-            const ind = props.options.findIndex(x => x.value == route?.query.slide)
-            if (ind >= 0)
-                panel.value = ind + 1
+            navToSlide(route?.query.slide as string)
+            // const paneData = paneOptions.value.find(x => x.value == route?.query.slide)
+            // if (paneData != null)
+            //     navTo(paneData.index)
         }
     })
 </script>

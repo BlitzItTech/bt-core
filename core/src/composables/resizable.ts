@@ -320,7 +320,6 @@ export function useResizable(
     }
 
     function applyToElementStyle(s: ElementPosition) {
-        console.log('applying style')
         const t = toValue(target)
         if (!t) return
         const el = t.$el

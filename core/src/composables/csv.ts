@@ -1,5 +1,7 @@
 import { TableColumn } from "./list.ts"
-import { isLengthyArray, fromCamelCase, nestedValue } from "../composables/helpers.ts"
+import { isLengthyArray, fromCamelCase, nestedValue, toCompareString, toCamelCase } from "../composables/helpers.ts"
+import { useFileDialog } from "@vueuse/core"
+import { computed, ComputedRef, ref } from "vue"
 
 export interface CSVProps {
     canExportCSV?: boolean
@@ -11,6 +13,8 @@ export const csvDefaults = {
 
 export interface UseCSVPropsReturn {
     exportToCSV: Function
+    importFromCSV: Function
+    loadingMsg: ComputedRef<string | undefined>
 }
 
 export interface CSVItem {
@@ -32,7 +36,19 @@ export interface ExportToCSVOptions {
     format: 'array' | 'file'
 }
 
-export function useCSV(): UseCSVPropsReturn {
+export interface UseCSVOptions<T> {
+    onImport?: (items: T[]) => void
+}
+
+export function useCSV<T>(options?: UseCSVOptions<T>): UseCSVPropsReturn {
+    options ??= { }
+
+    const loadingMessage = ref<string | undefined>()
+
+    const { open, onChange } = useFileDialog({
+        accept: '.csv',
+        multiple: false
+    });
 
     function exportToCSV(options: ExportToCSVOptions) {
         const {
@@ -41,7 +57,7 @@ export function useCSV(): UseCSVPropsReturn {
             fileName = 'data.csv',
             format = 'file'
         } = options
-        
+        console.log(items)
         if (!isLengthyArray(items)) {
             return;
         }
@@ -50,41 +66,21 @@ export function useCSV(): UseCSVPropsReturn {
 
         if (headers != null) {
             dnaArray = headers?.filter(y => (y.csv ?? y.csvText ?? y.csvFilter ?? y.csvArray) != null)
-                        .map(z => {
-                            return {
-                                header: z.title ?? z.value ?? '',
-                                itemText: z.itemText,
-                                value: z.value
-                            }
-                        })
-        }
-        else {
-            dnaArray = Object.keys(items[0]).map(x => { return { header: fromCamelCase(x) ?? '', value: x }; });
+                .map(z => {
+                    return {
+                        header: z.title ?? z.value ?? '',
+                        itemText: z.itemText,
+                        value: z.value
+                    }
+                })
         }
 
+        if (!isLengthyArray(dnaArray))
+            dnaArray = Object.keys(items[0]).map(x => { return { header: fromCamelCase(x) ?? '', value: x }; });
+        
         dnaArray = dnaArray.filter(z => z.header.length > 0)
 
         var lineArray: any[] = [];
-
-        // var increments = [];
-        // if (dnaArray.some(y => y.breakdown === true)) {
-        //     try {
-        //         increments = await BlitzIt.store.getAll('stock-increments');
-        //     }
-        //     catch (err) {
-        //         console.log('generating csv file could not pull increments for breakdown');
-        //         console.log(this.extractErrorDescription(err));
-        //     }
-        // }
-
-        // if (docTitle != null) {
-        //     lineArray.push(docTitle);
-        // }
-
-        // dnaArray = dnaArray.filter(x => x.header != null);
-
-        //print header row
-        // lineArray.push(dnaArray.map(x => x.header))
 
         for (let i = 0; i < items.length; i++) {
             const d = items[i];
@@ -100,56 +96,14 @@ export function useCSV(): UseCSVPropsReturn {
                 }
                 else if (typeof(dna.value) == 'string') {
                     v = nestedValue(d, dna.value);
-
-                    // if (dna.navigation != null && v != null) {
-                    //     //search from local storage
-                    //     try {
-                    //         var res = await BlitzIt.store.get(dna.navigation, v, null, false, null, null, true);
-                    //         if (res != null) {
-                    //             v = res;
-                    //         }
-                    //     }
-                    //     catch (err) {
-                    //         console.log(err);
-                    //     }
-                    // }
                 }
 
-                // if (v != null && dna.valueFilter != null) {
-                //     console.log('aa');
-                //     v = this.$options.filters[dna.valueFilter](v);
-                //     console.log(v);
-                // }
-
-                // if (dna.csvArray) {
-                //     if (this.isLengthyArray(v)) {
-                //         v.forEach(w => {
-                //             var otherNewItem = {};
-                //             // otherNewItem[dna.header] = w.toString();
-                //             // extraLines.push(otherNewItem);
-                //             if (dna.breakdown && w.productID != null) {
-                //                 otherNewItem[dna.header] = `${getBreakdown(w.quantity, measurements, increments, w.productID)}, ${w.product?.productName}`;
-                //                 extraLines.push(otherNewItem);
-                //             }
-                //             else {
-                //                 otherNewItem[dna.header] = w.toString();
-                //                 extraLines.push(otherNewItem);
-                //             }
-                //         })
-                //     }
-                // }
-                // else {
-                    // if (dna.breakdown) {
-                    //     var prodProp = dna.csvProductIDProp || 'productID';
-                    //     newItem[dna.header] = getBreakdown(v, measurements, increments, d[prodProp]);
-                    // }
-                    if (dna.itemText != null) {
-                        newItem[dna.header] = nestedValue(v, dna.itemText);
-                    }
-                    else {
-                        newItem[dna.header] = v;
-                    }
-                // }
+                if (dna.itemText != null) {
+                    newItem[dna.header] = nestedValue(v, dna.itemText);
+                }
+                else {
+                    newItem[dna.header] = v;
+                }
             }
 
             lineArray.push(newItem);
@@ -164,10 +118,6 @@ export function useCSV(): UseCSVPropsReturn {
         }
 
         var resArray = [];
-
-        // if (docTitle != null) {
-        //     resArray.push(docTitle);
-        // }
 
         //print header row
         resArray.push(dnaArray.map(x => x.header).toString())
@@ -210,7 +160,144 @@ export function useCSV(): UseCSVPropsReturn {
         }
     }
 
+    interface ImportFromCSVOptions {
+        headers?: Array<TableColumn | string>
+    }
+
+    interface csvInd {
+        headerName: string
+        propName: string
+        csvInd?: number
+    }
+
+    function translateValue(v: string) {
+        if (v == null)
+            return v
+
+        var e = v.replaceAll('\n', '').replaceAll('\r', '')
+
+        var boolV = toCompareString(e)
+
+        if (boolV == 'true')
+            return true
+        else if (boolV == 'false')
+            return false
+
+        return e
+    }
+
+    function refinePropName(p: string) {
+        return toCamelCase(p.replaceAll(' ', '')
+            .replaceAll('\n', '')
+            .replaceAll('\r', ''))
+    }
+
+    function refineHeader(v: string) {
+        return toCompareString(v.replaceAll(' ', '')
+            .replaceAll('\n', '')
+            .replaceAll('\r', '')) ?? ''
+    }
+
+    function importFromCSV(importOptions?: ImportFromCSVOptions) {
+        onChange((files) => {
+            if (files?.length == 1) {
+                const file = files[0]
+                loadingMessage.value = 'Importing from CSV file.'
+                const reader = new FileReader()
+                reader.onload = (e) => {
+                    var newItems: T[] = []
+                    const txt = e.target?.result as string
+                    
+                    if (txt != null) {
+                        let items = txt.split('\n');
+                        
+                        if (isLengthyArray(items)) {
+                            var props: csvInd[] = []
+                            
+                            if (isLengthyArray(importOptions?.headers)) {
+                                props = importOptions!.headers!.map(x => {
+                                    var r: csvInd
+                                    if (typeof x == 'string') {
+                                        r = {
+                                            headerName: refineHeader(x),
+                                            propName: refinePropName(x),
+                                            csvInd: undefined
+                                        }
+                                    }
+                                    else {
+                                        r = {
+                                            headerName: refineHeader(x.title ?? x.value ?? ''),
+                                            propName: refinePropName((x.value ?? x.title ?? '')),
+                                            csvInd: undefined
+                                        }
+                                    }
+                                    return r
+                                })
+                            }
+                            else {
+                                const headerNames = items[0].split(',');
+                                props = headerNames.map(x => {
+                                    return {
+                                        headerName: refineHeader(x),
+                                        propName: refinePropName(x),
+                                        csvInd: undefined
+                                    }
+                                })
+                            }
+
+                            const headers = items[0].split(',')
+
+                            props.forEach(p => {
+                                p.csvInd = headers.findIndex(x => x == p.headerName || x == p.propName || toCompareString(x) == toCompareString(p.headerName) || toCompareString(x) == toCompareString(p.propName))
+                            })
+                            
+                            props = props.filter(p => p.csvInd != null && p.csvInd > -1)
+                            
+                            //remove the header line
+                            // items.splice(0, 1)
+
+                            if (items.length > 1) {
+                                for (var i = 1; i < items.length; i++) {
+                                    const newItem: any = {}
+                                    var line = items[i].split(',')
+                                    var isSomething = false
+
+                                    //check for final null
+                                    if (line.length == 1 && line[0].length == 0)
+                                        break;
+
+                                    if (line.length > 0) {
+                                        props.forEach(prop => {
+                                            if (line.length > (prop.csvInd! - 1)) {
+                                                newItem[prop.propName] = translateValue(line[prop.csvInd!])
+                                                isSomething = true
+                                            }
+                                        })
+                                    }
+
+                                    if (isSomething)
+                                        newItems.push(newItem)
+                                }
+                            }
+                        }
+                    }
+    
+                    if (options?.onImport != null)
+                        options.onImport(newItems)
+                    
+                    loadingMessage.value = undefined
+                }
+    
+                reader.readAsText(file)
+            }
+        })
+
+        open()
+    }
+
     return {
-        exportToCSV
+        exportToCSV,
+        importFromCSV,
+        loadingMsg: computed(() => loadingMessage.value)
     }
 }

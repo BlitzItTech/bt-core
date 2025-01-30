@@ -5,6 +5,7 @@ import { http, HttpResponse } from 'msw'
 import { createAuth } from '../src/composables/auth'
 import { createDemo, useDemo } from '../src/composables/demo'
 
+
 const handlers = [
     http.get('https://test-api/get/1', () => {
         return HttpResponse.json({

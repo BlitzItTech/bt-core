@@ -4,7 +4,7 @@
         :dark="theme.global.current.value.dark"
         type="number"
         v-bind="$attrs"
-        v-model.number="value" />
+        v-model="value" />
 </template>
 
 <script setup lang="ts">
@@ -34,6 +34,12 @@ import { computed } from 'vue'
             return props.modelValue
         },
         set(value: any) {
+            if (props.min != null && value != null && value < props.min)
+                return
+
+            if (props.max != null && value != null && value > props.max)
+                return
+
             emit('update:modelValue', value)
             if (props.onSelect)
                 props.onSelect(value)

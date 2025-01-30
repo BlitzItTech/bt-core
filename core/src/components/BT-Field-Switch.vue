@@ -6,7 +6,7 @@
         :cols="cols">
         <v-list-item>
             <v-list-item-subtitle>{{ label }}</v-list-item-subtitle>
-            <v-list-item-title>{{ modelValue }}</v-list-item-title>
+            <!-- <v-list-item-title>{{ modelValue }}</v-list-item-title> -->
             <template #append>
                 <v-switch
                     v-bind="$attrs"

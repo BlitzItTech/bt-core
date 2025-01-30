@@ -21,7 +21,7 @@ export function useLists(options: UseListsOptions) {
         }
     }
 
-    function registerList(listOptions: ListProps) {
+    function registerList(listOptions: ListProps<any, any, any>) {
         const waiter = {
             nav: listOptions.nav ?? listOptions.bladeName ?? '',
             loaded: false

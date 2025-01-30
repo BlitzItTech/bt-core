@@ -45,6 +45,7 @@ const handlers = [
     })
 ]
 
+
 const server = setupServer(...handlers)
 
 beforeAll(() => server.listen({ onUnhandledRequest: 'error' }))
@@ -55,7 +56,7 @@ afterEach(() => {
     server.resetHandlers()
 })
 
-const setupList = (props: ListProps, events?: ListEvents, options?: UseListOptions) => {
+const setupList = (props: ListProps<any, any, any>, events?: ListEvents, options?: UseListOptions) => {
     return withSetup(() => {
         const api = createApi({
 
@@ -129,9 +130,9 @@ describe.sequential('default list no api', () => {
         //headers options include item actions
         expect(list.headerOptions.value.length).toEqual(4)
         //defaults
-        expect(list.showSearch.value).toEqual(true)
+        expect(list.showSearch.value).toEqual(false)
         expect(list.showInactive.value).toEqual(false)
-        // expect(list.totalPages.value).toEqual(2)
+        expect(list.showError.value).toEqual(false)
     })
 
     test('change to items updates', () => {
@@ -193,7 +194,7 @@ describe.sequential('can/cannot list no api', () => {
         //headers options include item actions
         expect(list.headerOptions.value.length).toEqual(4)
         //defaults
-        expect(list.showSearch.value).toEqual(true)
+        expect(list.showSearch.value).toEqual(false)
         expect(list.showInactive.value).toEqual(true)
         // expect(list.totalPages.value).toEqual(2)
     })
@@ -211,7 +212,7 @@ describe.sequential('can/cannot list no api', () => {
 
 })
 
-const setupListAndStuff = (props: ListProps, navOptions?: UseNavigationOptions, path?: string) => {
+const setupListAndStuff = (props: ListProps<any, any, any>, navOptions?: UseNavigationOptions, path?: string) => {
     return withSetup(() => {
         const api = createApi({
             findPath() {
@@ -244,6 +245,7 @@ const setupListAndStuff = (props: ListProps, navOptions?: UseNavigationOptions, 
     })
 }
 
+
 describe.sequential('list with api and filters', async () => {
     const [{ list }, app] = setupListAndStuff({
         defaultFilters: ['test', 'test three'],
@@ -272,7 +274,6 @@ describe.sequential('list with api and filters', async () => {
         list.filters.value.splice(0, 1)
         expect(list.filters.value).toEqual(['test three', 'test two'])
         await list.refresh({})
-
     })
 })
 

@@ -15,7 +15,7 @@ import { useLocalCosmetics } from '../../../../core/src/composables/cosmetics.ts
 import { createVuetify } from 'vuetify'
 
 const theme = useLocalCosmetics({
-  defaultTheme: 'dark',
+  defaultTheme: 'light',
   dark: {
     primary: '#1d5474',
     secondary: '#192233',

@@ -1,7 +1,41 @@
-import { nestedValue, toCompareString, hasSearch, deepSelect, containsSearch, copyItemByAlphabet, copyDeep, csvContains, toggleCSV, roundTo, isArrayOfLength, isLengthyArray, addWeekday, removeWeekday, appendUrl, distinct, getAreaAround, getAreaToLeft, getAreaToRight, getLocationLine, capitalizeWords, fromCamelCase, toCamelCase, weekdayValue, weekdayShortName, containsWeekday, validEmail } from '../src/composables/helpers'
+import { group, orderBy, sum, nestedValue, toCompareString, hasSearch, deepSelect, containsSearch, copyItemByAlphabet, copyDeep, csvContains, toggleCSV, roundTo, isArrayOfLength, isLengthyArray, addWeekday, removeWeekday, appendUrl, distinct, getAreaAround, getAreaToLeft, getAreaToRight, getLocationLine, capitalizeWords, fromCamelCase, toCamelCase, weekdayValue, weekdayShortName, containsWeekday, validEmail, isNullOrEmpty, jwtEncrypt, jwtDecrypt } from '../src/composables/helpers'
 import { describe, expect, test } from 'vitest'
 
 describe("helpers", () => {
+
+    test('decrypt encrypt', () => {
+        const token = {
+            test: '1'
+        }
+
+        const encryptedToken = jwtEncrypt(token)
+
+        const decrypted = jwtDecrypt(encryptedToken)
+
+        expect(decrypted).toEqual(token)
+    })
+
+    test('sum', () => {
+        expect(sum([1,2,3])).toEqual(6)
+    })
+
+    test('order by', () => {
+        const e = orderBy(['b', 'd', 'a'])
+        expect(e).toEqual(['a', 'b', 'd'])
+
+        const a = orderBy([
+            { a: 'a', b: 'b' },
+            { a: 'd', b: 'q' },
+            { a: 'c', b: 'b' }
+        ], x => x.a)
+
+        expect(a).toEqual([
+            { a: 'a', b: 'b' },
+            { a: 'c', b: 'b' },
+            { a: 'd', b: 'q' }
+        ])
+    })
+
 
     test('append url', () => {
         expect(appendUrl('https://test.com/', '/test')).toEqual('https://test.com/test')
@@ -15,7 +49,29 @@ describe("helpers", () => {
         expect(distinct(['list', 'list'])).toEqual(['list'])
         expect(distinct(['one', 'one', 'two'])).toEqual(['one','two'])
     })
+    
+    const itemOne = { id: '1', other: 'a' }
+    const itemTwo = { id: '2', other: 'a' }
+    const itemThree = { id: '3', other: 'a' }
+    const itemFour = { id: '1', other: 'a' }
+    
+    test('distinct prop compare', () => {
+        expect(distinct([itemOne, itemTwo, itemThree], 'id')).toEqual([itemOne, itemTwo, itemThree])
+        expect(distinct([itemOne, itemTwo, itemThree, itemFour], 'id')).toEqual([itemOne, itemTwo, itemThree])
+        expect(distinct([itemOne, itemFour, itemThree, itemFour], 'id')).toEqual([itemOne, itemThree])
+        expect(distinct([itemOne, itemFour, itemThree, itemFour], 'other')).toEqual([itemOne])
+    })
 
+    test('distinct func compare', () => {
+        expect(distinct([itemOne, itemTwo, itemThree], x => x.id)).toEqual([itemOne, itemTwo, itemThree])
+        expect(distinct([itemOne, itemTwo, itemThree, itemFour], x => x.id)).toEqual([itemOne, itemTwo, itemThree])
+        expect(distinct([itemOne, itemFour, itemThree, itemFour], x => x.id)).toEqual([itemOne, itemThree])
+    })
+
+    // test('group', () => {
+    //     expect(group([]))
+    // })
+    
     test('get area around', () => {
         //starts with top left and goes anti-clockwise
         expect(getAreaAround({ lat: 0, lng: 0 }, 1)).toEqual([{ lat: -1, lng: 1 },{ lat: -1, lng: -1 },{ lat: 1, lng: -1 },{ lat: 1, lng: 1 }])
@@ -112,6 +168,12 @@ describe("helpers", () => {
         expect(isLengthyArray([1,1], 3)).toEqual(false)
     })
 
+    test('isNullOrEmpty', () => {
+        expect(isNullOrEmpty('')).toEqual(true)
+        expect(isNullOrEmpty(undefined)).toEqual(true)
+        expect(isNullOrEmpty('a')).toEqual(false)
+    })
+
     test('rounding decimal places', () => {
         expect(roundTo(1, 0)).toEqual(1)
         expect(roundTo(1.1, 0)).toEqual(1)
@@ -120,9 +182,13 @@ describe("helpers", () => {
         expect(roundTo(2.22547, 3)).toEqual(2.225)
     })
 
+    
     test('toggle csv', () => {
         expect(toggleCSV('one,two,three', 'two')).toEqual('one,three')
         expect(toggleCSV('two', 'two')).toEqual(null)
+
+        expect(toggleCSV(['one','two','three'], 'two')).toEqual('one,three')
+        expect(toggleCSV(['two'], 'two')).toEqual(null)
     })
 
     test('csv contains', () => {

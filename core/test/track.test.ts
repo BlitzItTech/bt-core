@@ -2,6 +2,7 @@ import { describe, expect, test } from "vitest"
 import { withSetup } from './utils'
 import { useTracker } from '../src/composables/track'
 import { twiddleThumbs } from "../src/composables/helpers"
+import { ref } from 'vue'
 
 describe("track", () => {
     test('tracker test', async () => {
@@ -26,4 +27,13 @@ describe("track", () => {
         
     })
     
+    test('undefined succeeds', () => {
+        const j = ref(undefined)
+        const [tracker] = withSetup(() => useTracker(j, {
+            propsToTrack: ['test']
+        }))
+
+
+        expect(tracker.isChanged.value).toEqual(false)
+    })
 })

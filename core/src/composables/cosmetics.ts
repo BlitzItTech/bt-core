@@ -1,6 +1,6 @@
 import type { ThemeInstance } from 'vuetify'
-import { ref, watch } from 'vue'
-import type { Ref } from 'vue'
+import { computed, ref, watch } from 'vue'
+import type { ComputedRef, Ref } from 'vue'
 
 interface CosmeticData {
     dark?: BaseCosmeticTheme,
@@ -51,11 +51,14 @@ export interface UseCosmeticsOptions<T extends BaseCosmeticTheme> {
 
 export interface BTCosmetics {
     state: Ref<CosmeticData>
+    currentSet: ComputedRef<BaseCosmeticTheme>
     resetCosmetics: (toDefault: boolean) => void
+    saveState: () => void
     setTemporaryColor: (color: string) => void
     toggleDrawer: () => void
     toggleDrawerStick: () => void
     toggleLightDark: () => void
+    updateDrawer: (isOpen: boolean) => void
     undoTemporaryColor: () => void
 }
 
@@ -117,7 +120,6 @@ export function createCosmetics<T extends BaseCosmeticTheme>(options: UseCosmeti
     }
 
     function save() {
-        console.log('saving')
         localStorage.setItem('cosmetics', JSON.stringify(state.value))
     }
 
@@ -125,7 +127,8 @@ export function createCosmetics<T extends BaseCosmeticTheme>(options: UseCosmeti
     function resetCosmetics(toDefault: boolean) {
         if (themeManager != null) {
             themeManager.global.name.value = state.value.theme!
-    
+            let color
+
             if (themeManager.global.name.value == 'dark') {
                 //dark
                 if (toDefault)
@@ -138,6 +141,8 @@ export function createCosmetics<T extends BaseCosmeticTheme>(options: UseCosmeti
                         ...state.value.dark
                     }
                 }
+
+                color = themeManager.themes.value.dark.colors.primary
             }
             else {
                 //light
@@ -151,8 +156,11 @@ export function createCosmetics<T extends BaseCosmeticTheme>(options: UseCosmeti
                         ...state.value.light
                     }
                 }
+
+                color = themeManager.themes.value.light.colors.primary
             }
 
+            document.querySelector('meta[name="theme-color"]')?.setAttribute("content", color)
             save()
         }
     }
@@ -172,6 +180,11 @@ export function createCosmetics<T extends BaseCosmeticTheme>(options: UseCosmeti
 
     function toggleDrawer() {
         state.value.drawer = !state.value.drawer
+        save()
+    }
+
+    function updateDrawer(isOpen: boolean) {
+        state.value.drawer = isOpen
         save()
     }
 
@@ -208,11 +221,14 @@ export function createCosmetics<T extends BaseCosmeticTheme>(options: UseCosmeti
 
     current = {
         state: state,
+        currentSet: computed(() => state.value.theme == 'dark' ? state.value.dark as BaseCosmeticTheme : state.value.light as BaseCosmeticTheme),
         resetCosmetics,
+        saveState: save,
         setTemporaryColor,
         toggleDrawer,
         toggleDrawerStick,
         toggleLightDark,
+        updateDrawer,
         undoTemporaryColor
     }
 

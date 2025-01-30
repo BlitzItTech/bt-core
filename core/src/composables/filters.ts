@@ -1,4 +1,4 @@
-import { getLocationLine, isMinDate } from '../composables/helpers.ts'
+import { getLocationLine, getLocationLineOne, getLocationLineTwo, isMinDate } from '../composables/helpers.ts'
 import { BTAuth } from './auth.ts'
 import { BTDates } from './dates.ts'
 import { BTDemo } from './demo.ts'
@@ -182,6 +182,14 @@ export function createFilters(options: UseFiltersOptions): BTFilters {
         return getLocationLine(val, false);
     }
 
+    function toLocationLineOne(val: any): string {
+        return getLocationLineOne(val);
+    }
+
+    function toLocationLineTwo(val: any): string {
+        return getLocationLineTwo(val);
+    }
+
     function toLocationLineNoCommas(value: any): string {
         if (!value) {
             return '';
@@ -280,6 +288,8 @@ export function createFilters(options: UseFiltersOptions): BTFilters {
         toFamiliarLocationLine,
         toFormat,
         toLocationLine,
+        toLocationLineOne,
+        toLocationLineTwo,
         toLocationLineNoCommas,
         toLongDate,
         toLongDateAndTime,

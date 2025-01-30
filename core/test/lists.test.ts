@@ -9,7 +9,7 @@ import { createAuth } from '../src/composables/auth'
 import { createNavigation } from '../src/composables/navigation'
 import { createRouter, createWebHistory } from 'vue-router'
 
-const setupList = (listOne: ListProps, listTwo: ListProps) => {
+const setupList = (listOne: ListProps<any, any, any>, listTwo: ListProps<any, any, any>) => {
     return withSetup(() => {
         const api = createApi({
 

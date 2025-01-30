@@ -33,6 +33,7 @@ const handlers = [
     })
 ]
 
+
 const server = setupServer(...handlers)
 
 beforeAll(() => server.listen({ onUnhandledRequest: 'error' }))
@@ -118,3 +119,51 @@ describe('use session store with api no caching', () => {
     })
 
 })
+
+
+// describe('use session store with api and caching', () => {
+//     const [api, app] = withSetup(() => createApi({
+//         findPath: () => 'https://test-api/',
+//         defaultThrowError: false
+//     }))
+
+//     const pinia = createPinia()
+//     app.use(pinia)
+//     setActivePinia(pinia)
+
+//     const store = createSessionStoreDefinition({
+//         storageMode: 'session',
+//         api: api,
+//         storeName: 'local-test'
+//     })()
+
+//     test('get', async () => {
+//         const res = await store.get<any>({ nav: 'local-test', id: '1' })
+//         expect(res).toEqual({ data: { test: 'a' }})
+//     })
+
+//     test('get all', async () => {
+//         const res = await store.getAll<any>({ nav: 'local-test' })
+//         expect(res).toEqual({
+//             data: [{test: 'a' },{test: 'b'}],
+//             count: 2,
+//             filters: ['test', 'test two']
+//         })
+//     })
+
+//     test('post', async () => {
+//         const res = await store.post<any>({ nav: 'local-test', data: { test: 'a', id: '11' }})
+//         expect(res).not.toBeNull()
+        
+//         //gets api post return
+//         let getRes = await store.get<any>({ nav: 'local-test', id: '11' })
+//         expect(getRes.data).toEqual({ test: 'd', id: '11' })
+//     })
+
+//     test('patch', async () => {
+//         const res = await store.patch<any>({ nav: 'local-test', data: { test: 'a', id: '1', rowVersion: 1 }})
+//         let getRes = await store.get<any>({ id: '1', nav: 'local-test' })
+//         expect(getRes.data.rowVersion).toEqual(2)
+//     })
+
+// })

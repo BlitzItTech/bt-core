@@ -16,7 +16,7 @@ export interface MenuGroup {
     sortNumber?: number
     subscriptions?: string[],
     subFilters?: string[] | 'All',
-    routeName?: string
+    routeName?: any
 }
 
 export interface CreateMenuOptions {
@@ -81,7 +81,8 @@ export function useMenu(): BTMenu {
                         displayName: routeMeta.menuGroup as string,
                         icon: optionMeta?.icon ?? routeMeta?.icon as string | undefined ?? navMeta?.icon,
                         isGroup: true,
-                        items: []
+                        items: [],
+                        routeName: ''
                     }
 
                     groupItems.push(existingGroup)

@@ -69,7 +69,7 @@
                         nav
                         prepend-icon="$logout"
                         title="Logout"
-                        @click="() => logout('/', router)" />
+                        @click="() => logout('/')" />
                 </v-list>
             </slot>
         </template>
@@ -80,7 +80,6 @@
 import { useCosmetics } from '../composables/cosmetics.ts'
 import { useAuth } from '../composables/auth.ts'
 import { useMenu } from '../composables/menu.ts'
-import { useRouter } from 'vue-router'
 
 interface SidebarProps {
     iconSrc?: string
@@ -90,7 +89,6 @@ interface SidebarProps {
 defineProps<SidebarProps>()
 const { state, toggleDrawerStick } = useCosmetics()
 const { isLoggedIn, logout } = useAuth()
-const router = useRouter()
 const menu = useMenu()
 
 </script>

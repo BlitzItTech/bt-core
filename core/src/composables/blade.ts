@@ -15,7 +15,7 @@ export type BladeDensity = 'default' | 'comfortable' | 'compact'
     Free-moving: show blade as draggable and resizable with minimize, maximize, and close and pinning
  */
 // export type BladeVariant = 'page' | 'blade' | 'freestyle' | 'inline'
-export type BladeVariant = 'page' | 'blade' | 'freestyle' | 'inline' | 'pane' | 'pure'
+export type BladeVariant = 'page' | 'blade' | 'freestyle' | 'inline' | 'pane' | 'pure' | 'dialog'
 
 export type BladeMode = 'new' | 'view' | 'edit'
 
@@ -35,7 +35,7 @@ export interface UseBladeOptions {
     variant?: BladeVariant
 }
 
-export interface BTBlade<T extends GetOptions> {
+export interface BTBlade<T extends GetOptions<any, any>> {
     blades: Ref<BladeData[]>
     bladeData: BladeData
     // bladeStyle: ComputedRef<string>,
@@ -48,7 +48,7 @@ export interface BTBlade<T extends GetOptions> {
 
 const blades = ref<InternalBladeData[]>([])
 
-export function useBlade<T extends GetOptions>(options?: UseBladeOptions): BTBlade<T> {
+export function useBlade<T, TReturn>(options?: UseBladeOptions): BTBlade<GetOptions<T,TReturn>> {
     const blade = options?.blade ?? ref(null)
     const bladeBasic = options?.bladeBasic == true
     const bladeData = ref<InternalBladeData>()
@@ -98,7 +98,7 @@ export function useBlade<T extends GetOptions>(options?: UseBladeOptions): BTBla
         return blades.value.findIndex(blade => blade.bladeGroup == groupName && blade.bladeName == bladeName)
     }
 
-    function update(updateOptions: UpdateBladeData<T>) {
+    function update(updateOptions: UpdateBladeData<GetOptions<T, TReturn>>) {
         // console.log('updating')
         // console.log(updateOptions)
         if (updateOptions.bladeName == null)
@@ -219,7 +219,7 @@ export interface InternalBladeData extends BladeData {
     // onUpdate?: (data: BladeData) => void
 }
 
-export interface UpdateBladeData<T extends GetOptions> {
+export interface UpdateBladeData<T extends GetOptions<any, any>> {
     // bladeID?: string
     bladeName?: string
     data?: T

@@ -1,6 +1,6 @@
 {
   "name": "bt-core-app",
-  "version": "1.4.306",
+  "version": "1.4.618",
   "description": "Core app tools for some basic features like navigation, authentication, server apis, and cosmetics",
   "homepage": "https://github.com/BlitzItTech/bt-core",
   "bugs": {
@@ -37,7 +37,7 @@
     "@datasert/cronjs-matcher": "^1.4.0",
     "@mdi/js": "^7.4.47",
     "@vuepic/vue-datepicker": "^8.8.1",
-    "chart.js": "^4.4.3",
+    "chart.js": "^4.4.6",
     "defu": "^6.1.4",
     "localforage": "^1.10.0",
     "luxon": "^3.4.4",
@@ -45,9 +45,9 @@
     "vue-chartjs": "^5.3.1",
     "vue-draggable-resizable": "^3.0.0",
     "vue-picture-cropper": "^0.7.0",
+    "vue-signature-pad": "^3.0.2",
     "vue-use-spring": "^0.3.3",
-    "vuetify": "^3.6.7",
-    "vuetify-use-dialog": "^0.6.11"
+    "vuetify": "^3.7.7"
   },
   "peerDependencies": {
     "@vueuse/core": "^10.4.1",

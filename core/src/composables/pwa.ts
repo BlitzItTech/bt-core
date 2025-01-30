@@ -14,12 +14,14 @@ const canInstallApp = ref(false)
 const canUpdateApp = ref(false)
 const prompt: Ref<any> = ref()
 const sWorker: Ref<any> = ref()
+const showIOSPrompt = ref(false)
 
 export interface BTPWA {
     canInstallApp: Ref<boolean>
     canUpdateApp: Ref<boolean>
     installApp: () => void
     isInstalled: () => boolean
+    showIOSPrompt: Ref<boolean>
     updateApp: () => void
 }
 
@@ -30,6 +32,39 @@ export function usePWA(): BTPWA {
 }
 
 export function createPWA(): BTPWA {
+
+    // const isIOS = computed(() => {
+    //     const userAgent = window.navigator.userAgent.toLowerCase()
+    //     return /iphone|ipad|ipod/.test(userAgent)
+    // })
+
+    // function isBrowserIOSIPadSafari() {
+    //     return !!(
+    //       userAgent.match(/Macintosh/) &&
+    //       navigator.maxTouchPoints &&
+    //       navigator.maxTouchPoints > 1
+    //     );
+    //   }
+
+    function isDesktopSafari() {
+        const isSafari =
+          userAgent.includes("Safari") &&
+          !userAgent.includes("Chrome") &&
+          !userAgent.includes("Edg");
+        const isDesktop =
+          userAgent.includes("Macintosh") || userAgent.includes("Windows");
+    
+        return isSafari && isDesktop;
+      }
+
+    function isDeviceIOS() {
+        return matchesUserAgent(/iPhone|iPad|iPod/) || isDesktopSafari(); // || isBrowserIOSIPadSafari()
+    }
+
+    const userAgent = window.navigator.userAgent;
+    function matchesUserAgent(regex: RegExp): boolean {
+        return !!userAgent.match(regex);
+    }
 
     function notifyUpdateAvailable(e: any) {
         sWorker.value = e.detail
@@ -43,19 +78,21 @@ export function createPWA(): BTPWA {
     }
 
     function installApp() {
-        prompt.value?.prompt()
-        canInstallApp.value = false
+        if (prompt.value != null) {
+            prompt.value?.prompt()
+            canInstallApp.value = false
+        }
+        else if (isDeviceIOS()) {
+            showIOSPrompt.value = true
+        }
     }
 
     function isInstalled() {
         // For iOS
-        // if (window.navigator.standalone) return true
-
         // For Android
-        if (window.matchMedia('(display-mode: standalone)').matches) return true
-
-        // If neither is true, it's not installed
-        return false
+        return (
+        !!("standalone" in window.navigator && window.navigator.standalone) ||
+        !!(window.matchMedia('(display-mode: standalone)').matches))
     }
 
     function storePrompt(e: Event) {
@@ -83,6 +120,9 @@ export function createPWA(): BTPWA {
     
         if (promptListener == null)
             promptListener = window.addEventListener('beforeinstallprompt', storePrompt)
+
+        if (isDeviceIOS() && !isInstalled())
+            canInstallApp.value = true
     })
 
     current = {
@@ -90,6 +130,7 @@ export function createPWA(): BTPWA {
         canUpdateApp,
         installApp,
         isInstalled,
+        showIOSPrompt,
         updateApp
     }
 

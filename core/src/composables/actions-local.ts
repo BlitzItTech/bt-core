@@ -7,7 +7,7 @@ export interface DeleteOptions extends StorePathOptions, DoActionOptions {
 }
 
 export function useLocalActions() {
-    const { actionErrorMsg, actionLoadingMsg, clearErrors, isLoading, doAction, logError } = useActionsTracker(
+    const { actionErrorMsg, actionLoadingMsg, clearErrors, isLoading, doAction } = useActionsTracker(
     {
         stringifyError: (err: any) => {
             if (typeof err == 'object') {
@@ -23,9 +23,9 @@ export function useLocalActions() {
         const store = useStoreDefinition({ nav: doOptions.nav })
 
         return doAction(async () => {
-            const err = await store().deleteItem(doOptions)
+            await store().deleteItem<any>(doOptions)
 
-            logError(err)
+            //logError(err)
 
             return undefined
         }, doOptions)

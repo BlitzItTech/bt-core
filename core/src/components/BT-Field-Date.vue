@@ -20,7 +20,7 @@
             </template>
             <VueDatePicker
                 auto-apply
-                dark
+                :dark="theme.global.current.value.dark"
                 :enable-time-picker="useTime"
                 inline
                 :is-24="false"
@@ -39,6 +39,7 @@
     import { computed, inject, ref } from 'vue'
     import { useAuth } from '../composables/auth.ts'
     import { useDates } from '../composables/dates.ts'
+    import { useTheme } from 'vuetify'
 
     defineOptions({
         inheritAttrs: false
@@ -51,6 +52,7 @@
         format?: string
         fromNow?: boolean
         horizontal?: boolean
+        ignoreMinDate?: boolean
         isEditing?: boolean
         isMobile?: boolean
         label?: string
@@ -60,6 +62,8 @@
         sm?: string | boolean
         useTime?: boolean
     }
+
+    const theme = useTheme()
 
     const props = withDefaults(defineProps<FieldProps>(), {
         isEditing: undefined,
@@ -72,21 +76,23 @@
     })
 
     const emit = defineEmits(['update:modelValue'])
-    const { tzString } = useDates()
+    const { btString, tzString } = useDates()
     const auth = useAuth()
 
     const value = computed({
         get() {
+            if (props.modelValue == '0001-01-01T00:00:00' && props.ignoreMinDate)
+                return btString()
+
             return props.modelValue
         },
         set(value) {
-            emit('update:modelValue', value)
+            emit('update:modelValue', value == null ? value : `${value.split('.')[0]}Z`)
         }
     })
 
     const displayValue = computed(() => props.modelValue ? tzString(props.modelValue, props.format) : undefined)
 
-    // const modal = ref(false)
     const startDate = ref()
     const mIsEditing = inject('isEditing', () => ref(false), true)
     const cIsEditing = computed(() => props.isEditing ?? mIsEditing.value)

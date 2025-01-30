@@ -15,6 +15,7 @@ describe.sequential('default demo', () => {
         plate: 'def'
     }
 
+    
     const demo = createDemo({
         apis: [
         {
@@ -54,9 +55,19 @@ describe.sequential('default demo', () => {
             data: [{ id: '1', treat: true }]
         },
         {
-
             path: '/sub',
             data: ['test one two three']
+        },
+        {
+            nav: 'treaty',
+            getActions: {
+                send: (list: any[], options, id) => {
+                    if (id == '1')
+                        return 'y'
+                    else
+                        return 'n'
+                }
+            }
         }]
     })
 
@@ -80,9 +91,27 @@ describe.sequential('default demo', () => {
         expect(res).toEqual({ data: { test: true }})
     })
 
+    test('custom get actions block', async () => {
+        let res = await demo.get({ 
+            additionalUrl: '/send?id=5',
+            nav: 'treaty', 
+            id: '1' 
+        })
+
+        expect(res).toEqual({ data: 'y' })
+
+        let nextRes = await demo.get({ 
+            additionalUrl: '/send?id=5',
+            nav: 'treaty', 
+            id: '2' 
+        })
+
+        expect(nextRes).toEqual({ data: 'n' })
+    })
+
     test('get by path', async () => {
         let res = await demo.get({ additionalUrl: '/sub' })
-        expect(res).toEqual({ data: 'test one two three' })
+        expect(res).toEqual({ data: ['test one two three'] })
     })
 
     test('get all', async () => {

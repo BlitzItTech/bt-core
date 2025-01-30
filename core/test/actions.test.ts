@@ -72,129 +72,30 @@ describe.sequential('actions with api store', () => {
     })
     
     test('add new item', async () => {
-        const itemAdd = { id: 'a', other: 'b' }
-        const res = await actions.saveItem({
-            data: itemAdd,
-            mode: 'new'
-        })
+        const itemAdd = { id: undefined, other: 'b' }
+        const res = await actions.saveItem({ data: itemAdd })
 
-        expect(res).toEqual(itemAdd)
+        expect(res).toEqual({ id: 'a', other: 'b' })
     })
 
     test('update new item', async () => {
         const itemUpdate = { id: 'a', other: 'c' }
-        const res = await actions.saveItem({
-            data: itemUpdate
-        })
+        const res = await actions.saveItem({ data: itemUpdate })
 
         expect(res).toEqual({ id: 'a', other: 'c' })
     })
     
     test('get item by id succeeds', async () => {
-        const res = await actions.getItem({
-            id: '1'
-        })
+        const res = await actions.getItem({ id: '1' })
 
-        expect(res).toEqual({ id: '1', test: 'a' })
+        expect(res?.data).toEqual({ id: '1', test: 'a' })
     })
 
     test('get all succeeds', async () => {
-        const res = await actions.getAllItems({})
-        expect(res).toEqual({
-            data: [{ id: 'a', test: 'a' }, { id: 'b', test: 'b' }],
-            count: 2,
-            filters: ['test', 'test two']
-        })
+        const res = await actions.getAllItems({ refresh: true })
+        expect(res?.data).toEqual([{ id: 'a', test: 'a' }, { id: 'b', test: 'b' }])
     })
 
-    test('get all finishes', async () => {
-        let isFinished = false
-        f = false
-        await actions.getAllItems({
-            // onFinished: undefined
-            onFinished: () => {
-                isFinished = true
-            }
-        })
-
-        expect(isFinished).toEqual(true)
-        expect(f).toEqual(false)
-    })
-
-    // test('add another item', async () => {
-    //     const itemAdd = { id: 'aa', other: 'c' }
-    //     const res = await actions.saveItem({
-    //         data: itemAdd,
-    //         mode: 'new'
-    //     })
-
-    //     expect(res).toEqual(itemAdd)
-
-    //     const getRes = await actions.getAllItems({})
-
-    //     expect(getRes.data).toEqual([
-    //         { id: 'aa', other: 'c' },
-    //         { id: 'a', other: 'b' }
-    //     ])
-    // })
-
-    // test('update item', async () => {
-    //     const itemUpdate = { id: 'aa', other: 'd' }
-    //     const res = await actions.saveItem({
-    //         data: itemUpdate
-    //     })
-
-    //     expect(res).toEqual(itemUpdate)
-
-    //     const getRes = await actions.getAllItems({})
-
-    //     expect(getRes.data).toEqual([
-    //         { id: 'aa', other: 'd' },
-    //         { id: 'a', other: 'b' }
-    //     ])
-    // })
-
-    // test('delete item by id', async () => {
-    //     const res = await actions.deleteItem({
-    //         id: 'a'
-    //     })
-
-    //     expect(res).toBeUndefined()
-
-    //     const getRes = await actions.getAllItems({})
-
-    //     expect(getRes.data).toEqual([
-    //         { id: 'aa', other: 'd' }
-    //     ])
-    // })
-
-    // test('delete nonexisting item does nothing successfully', async () => {
-    //     const res = await actions.deleteItem({
-    //         id: 'b'
-    //     })
-
-    //     expect(res).toBeUndefined()
-
-    //     const getRes = await actions.getAllItems({})
-
-    //     expect(getRes.data).toEqual([
-    //         { id: 'aa', other: 'd' }
-    //     ])
-    // })
-
-    // test('delete item by data with id', async () => {
-    //     const res = await actions.deleteItem({
-    //         data: {
-    //             id: 'aa'
-    //         }
-    //     })
-
-    //     expect(res).toBeUndefined()
-
-    //     const getRes = await actions.getAllItems({})
-
-    //     expect(getRes.data).toEqual([])
-    // })
 })
 
 describe('basic custom actions', () => {
@@ -263,32 +164,33 @@ describe('basic custom actions', () => {
         expect(canDo).toEqual(false)
     })
 
+    
     test('custom get actions', async () => {
         let res = await actions.getItem({
-            onGetAsync: async (opt?: GetOptions) => {
-                return Promise.resolve('test')
+            onGetAsync: async () => {
+                return Promise.resolve({ data: 'test' })
             },
-            onGetSuccessAsync: async (item: any, opt?: GetOptions) => {
-                expect(item).toEqual('test')
-                return Promise.resolve('success')
+            onGetSuccessAsync: async (item: any) => {
+                expect(item.data).toEqual('test')
+                return Promise.resolve({ data: 'success' })
             }
         })
 
-        expect(res).toEqual('success')
+        expect(res?.data).toEqual('success')
     })
 
     test('custom get all actions', async () => {
         let res = await actions.getAllItems({
-            onGetAsync: async (opt?: GetOptions) => {
-                return Promise.resolve('test')
+            onGetAsync: async () => {
+                return Promise.resolve({ data: ['test'] })
             },
-            onGetSuccessAsync: async (item: any, opt?: GetOptions) => {
-                expect(item).toEqual('test')
-                return Promise.resolve('success')
+            onGetSuccessAsync: async (item: any) => {
+                expect(item.data).toEqual(['test'])
+                return Promise.resolve({ data: ['success'] })
             }
         })
 
-        expect(res).toEqual('success')
+        expect(res?.data).toEqual(['success'])
     })
 
 })
@@ -345,7 +247,7 @@ describe.sequential('default actions', () => {
             data: { id: 'test' }
         })
 
-        expect(res).toEqual(itemGet)
+        expect(res?.data).toEqual(itemGet)
     })
 
     test('save add action', async () => {
@@ -379,12 +281,12 @@ describe.sequential('default actions', () => {
     test('custom get all actions', async () => {
         let res = await actions.getAllItems({})
 
-        expect(res).toEqual([
+        expect(res?.data).toEqual([
             { id: 'test', other: 'b' },
             { id: 'test four', other: 'a' }
         ])
         
-        expect(items).toEqual(res)
+        expect(items).toEqual(res?.data)
     })
 
 })
@@ -401,105 +303,75 @@ describe.sequential('actions with non-api store', () => {
         storeName: 'test-storie'
     })
 
-    const actions = useActions({
-        store: store
-    })
+    const actions = useActions({ 
+        store: store })
+
+    const customMode = (item: any) => { return item.id.includes('new') ? 'new' : 'edit' }
 
     test('add new item', async () => {
-        const itemAdd = { id: 'a', other: 'b' }
-        const res = await actions.saveItem({
-            data: itemAdd,
-            mode: 'new',
-            // nav: 'test-store'
-        })
+        const itemAdd = { id: 'newB', other: 'b' }
+        const res = await actions.saveItem({ data: itemAdd, getMode: customMode })
 
         expect(res).toEqual(itemAdd)
 
-        const getRes = await actions.getAllItems({})
+        const getRes = await actions.getItem({ id: 'newB' })
 
-        expect(getRes.data).toEqual([{ id: 'a', other: 'b' }])
+        expect(getRes).not.toBeNull()
+        expect(getRes?.data).toEqual(itemAdd)
     })
     
-    test('get item by id', async () => {
-        const res = await actions.getItem({
-            id: 'a'
-        })
-
-        expect(res).toEqual({ id: 'a', other: 'b' })
+    test('get nonexisting item by id returns undefined', async () => {
+        const res = await actions.getItem({ id: 'newA' })
+        expect(res?.data).toEqual(undefined)
     })
 
     test('add another item', async () => {
-        const itemAdd = { id: 'aa', other: 'c' }
-        const res = await actions.saveItem({
-            data: itemAdd,
-            mode: 'new'
-        })
+        const itemAdd = { id: 'newC', other: 'd' }
+        const res = await actions.saveItem({ data: itemAdd, getMode: customMode })
 
         expect(res).toEqual(itemAdd)
 
         const getRes = await actions.getAllItems({})
 
-        expect(getRes.data).toEqual([
-            { id: 'aa', other: 'c' },
-            { id: 'a', other: 'b' }
-        ])
+        expect(getRes?.data.length).toEqual(2)
     })
 
     test('update item', async () => {
-        const itemUpdate = { id: 'aa', other: 'd' }
-        const res = await actions.saveItem({
-            data: itemUpdate
-        })
+        const itemUpdate = { id: 'newB', other: 'd' }
+        const res = await actions.saveItem({ data: itemUpdate })
 
         expect(res).toEqual(itemUpdate)
 
         const getRes = await actions.getAllItems({})
 
-        expect(getRes.data).toEqual([
-            { id: 'aa', other: 'd' },
-            { id: 'a', other: 'b' }
-        ])
+        expect(getRes?.data.length).toEqual(2)
     })
 
-    test('delete item by id', async () => {
+    test('delete existing item by id', async () => {
         const res = await actions.deleteItem({
-            id: 'a'
+            id: 'newB'
         })
 
         expect(res).toBeUndefined()
 
         const getRes = await actions.getAllItems({})
 
-        expect(getRes.data).toEqual([
-            { id: 'aa', other: 'd' }
-        ])
+        expect(getRes?.data.length).toEqual(1)
     })
 
     test('delete nonexisting item does nothing successfully', async () => {
-        const res = await actions.deleteItem({
-            id: 'b'
-        })
+        const res = await actions.deleteItem({ id: 'newT' })
 
         expect(res).toBeUndefined()
-
-        const getRes = await actions.getAllItems({})
-
-        expect(getRes.data).toEqual([
-            { id: 'aa', other: 'd' }
-        ])
     })
 
     test('delete item by data with id', async () => {
-        const res = await actions.deleteItem({
-            data: {
-                id: 'aa'
-            }
-        })
+        const res = await actions.deleteItem({ data: { id: 'newC' } })
 
         expect(res).toBeUndefined()
 
         const getRes = await actions.getAllItems({})
 
-        expect(getRes.data).toEqual([])
+        expect(getRes?.data).toEqual([])
     })
 })

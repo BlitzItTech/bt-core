@@ -24,6 +24,7 @@ export default defineConfig({
           vue: 'Vue',
           pinia: 'pinia',
           vuetify: 'Vuetify',
+          // html2pdf: 'html2pdf.js'
         }
       }
     }

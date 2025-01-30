@@ -12,13 +12,35 @@
         :loadingMsg="ui.loadingMsg.value"
         :preset="preset"
         :variant="variant">
+        <template #blade-toolbar>
+            <slot name="blade-toolbar"
+                :density="density" 
+                :isChanged="ui.isChanged.value"
+                :isEditing="ui.isEditing.value"
+                :item="ui.asyncItem.value" 
+                :mode="ui.mode.value" 
+                :save="save"
+                :size="mSize"
+                :refresh="ui.refresh">
+            </slot>
+        </template>
         <template #blade-toolbar-right>
-            <v-slide-y-transition group>
+            <v-slide-y-transition group hide-on-leave>
+                <div key="0">
+                    <slot name="toolbar-right"
+                        :density="density" 
+                        :isChanged="ui.isChanged.value"
+                        :isEditing="ui.isEditing.value"
+                        :item="ui.asyncItem.value" 
+                        :mode="ui.mode.value" 
+                        :save="save"
+                        :size="mSize"></slot>
+                </div>
                 <v-btn v-if="mCanSave && ui.isSaveable.value && (ui.isChanged.value || ui.mode.value == 'new')" @click="save(false)" icon="$content-save" :size="mSize" title="Save" key="1" variant="text" />
                 <v-btn v-if="!mHideRefresh" icon="$refresh" @click="ui.refresh({ deepRefresh: true })" :size="mSize" title="Refresh" key="2" variant="text" />
                 <v-btn v-if="mCanEdit && ui.isEditable.value" :icon="ui.mode.value == 'edit' ? '$pencil-off' : '$pencil'" @click="ui.toggleMode" :size="mSize" :disabled="!auth.canEdit(nav)" title="Edit" key="3" variant="text" />
                 <v-btn v-if="mCanDelete && ui.isDeletable.value" icon="$delete" @click="ui.deleteItem(ui.asyncItem.value)" :size="mSize" :disabled="!auth.canEdit(nav)" title="Delete" key="4" variant="text" />
-                <v-btn v-if="mCanRestore && ui.isRestorable.value" icon="$eraser-variant" :size="mSize" :disabled="!auth.canEdit(nav)" title="Restore" key="5" variant="text" />
+                <v-btn v-if="mCanRestore && ui.isRestorable.value" icon="$eraser-variant" @click="ui.restoreItem(ui.asyncItem.value)" :size="mSize" :disabled="!auth.canEdit(nav)" title="Restore" key="5" variant="text" />
             </v-slide-y-transition>
         </template>
         
@@ -34,6 +56,16 @@
                 :save="save"
                 :size="mSize"
                 :style="contentStyle">
+                <slot name="top"
+                    :density="density"
+                    :isChanged="ui.isChanged.value"
+                    :isEditing="ui.isEditing.value"
+                    :isMobile="isMobile"
+                    :item="ui.asyncItem.value" 
+                    :mode="ui.mode.value"
+                    :refresh="ui.refresh"
+                    :save="save"
+                    :size="mSize"></slot>
                 <div v-if="ui.asyncItem.value == null && !ui.isLoading.value" class="overflow-y-auto" :style="contentStyle">
                     <slot 
                         :bladeData="bladeData"
@@ -88,12 +120,13 @@
     import { useNavigation } from '../composables/navigation.ts'
     import { usePresets } from '../composables/presets.ts'
     import { computed, inject, provide, ref } from 'vue'
+    import { useHeights } from '../composables/heights.ts'
 
-    interface PageProps extends ItemProps {
+    interface PageProps extends ItemProps<any, any, any> {
         // bladeGroup?: string
         // bladeStartShowing?: boolean
         actualHeight?: string
-        actualUsedHeight?: string
+        actualUsedHeight?: number
         canClose?: boolean
         canDelete?: boolean
         canEdit?: boolean
@@ -104,7 +137,6 @@
         hideRefresh?: boolean
         hideToolbar?: boolean
         label?: string
-        otherUsedHeight?: number
         preset?: string
     }
 
@@ -118,7 +150,7 @@
         density: 'compact',
         eager: true,
         flat: true,
-        includeDetails: true,
+        // includeDetails: true,
         isSingle: true,
         // storeMode: 'session',
         // storageMode: 'local-cache',
@@ -132,6 +164,7 @@
     const form = ref()
     const { findSingleDisplay } = useNavigation()
     const auth = useAuth()
+    const heightCalc = useHeights()
     const mSize = inject('size', () => ref('small'), true)
     const ui = useItem(props, emit)
     
@@ -148,14 +181,14 @@
             return `height: calc(${props.actualHeight})`
         }
         else if (props.actualUsedHeight != null) {
-            return `height: calc(100vh - ${props.actualUsedHeight}px);`
+            return `height: calc(100vh - ${heightCalc.getUsedHeight(props.actualUsedHeight)}px);`
         }
         else {
-            let mUsedHeight = 207
+            let mUsedHeight = 48 //231 //207
             if (props.hideToolbar == true)
                 mUsedHeight -= 48
             
-            return `height: calc(100vh - ${mUsedHeight}px)`
+            return `height: calc(100vh - ${heightCalc.getUsedHeight(mUsedHeight)}px)`
         }
     })
 

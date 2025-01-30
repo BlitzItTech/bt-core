@@ -5,9 +5,10 @@ import { useLocalDb } from '../src/composables/forage'
 describe('foraging', () => {
     const [db] = withSetup(() => useLocalDb())
     
+
     test('local db exists', () => {
         expect(db).not.toBeNull()
-        expect(db._config.name).toEqual('test')
+        expect(db._config.name).toEqual('staging')
     })
 
 })

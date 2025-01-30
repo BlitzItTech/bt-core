@@ -19,11 +19,27 @@ function replacePattern(c: string) {
     return v.toString(16);
 }
 
+const _pattern = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx';
+
 export function useIds() {
-    const _pattern = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx';
     return {
         getID: () => {
             return _pattern.replace(/[xy]/g, replacePattern)
+        }
+    }
+}
+
+export function useIDMemory(prefix?: string) {
+    const ids: Record<string, string> = {}
+
+    return {
+        getID: (key?: string) => {
+            const keys = Object.keys(ids) ?? []
+            key ??= keys.length.toString() as string
+            if (ids[key] == null)
+                ids[key] = `${prefix ?? ''}id-${keys.length}`
+
+            return ids[key]
         }
     }
 }

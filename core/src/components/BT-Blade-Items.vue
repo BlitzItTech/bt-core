@@ -14,6 +14,34 @@
         :size="size"
         :transparent="transparent"
         :variant="variant">
+        <template #blade-toolbar>
+            <slot name="blade-toolbar"
+                :refresh="ui.refresh"
+                :searchString="ui.searchString"
+                :showSearch="ui.showSearch"
+                :toggleSearch="ui.toggleSearch">
+            </slot>
+        </template>
+        <template #blade-toolbar-left>
+            <div v-if="showDialogSearch" class="d-flex">
+                <v-btn :icon="ui.showSearch.value ? '$close' : '$magnify'" :size="size" @click="ui.toggleSearch" variant="text" />
+                <v-slide-x-reverse-transition>
+                    <v-text-field
+                        v-if="ui.showSearch.value"
+                        @click:appendInner="() => ui.refresh({ deepRefresh: true })"
+                        append-inner-icon="$magnify"
+                        autofocus
+                        :density="density"
+                        flat
+                        hide-details
+                        placeholder="Find"
+                        ref="inlineSearchEl"
+                        variant="solo"
+                        width="300"
+                        v-model="ui.searchString.value" />
+                </v-slide-x-reverse-transition>
+            </div>
+        </template>
         <template #blade-toolbar-right>
             <slot name="toolbar-right" />
             <v-btn v-if="!mHideRefresh" icon="$refresh" @click="ui.refresh({ deepRefresh: true })" :size="size" title="Refresh" variant="text" />
@@ -102,7 +130,6 @@
                     <template v-slot:activator="{ props }">
                         <v-btn icon="$filter" :size="size" v-bind="props" variant="text" />
                     </template>
-                    <!-- :items="ui.filters.value" -->
                     <v-list 
                         class="pa-0"
                         :density="density"
@@ -113,7 +140,7 @@
                             <v-list-item :subtitle="filter" :value="ind">
                                 <template v-slot:prepend="{ isActive }">
                                     <v-slide-x-transition>
-                                        <v-icon :size="size">{{ isActive ? '$check' : 'mdi' }}</v-icon>
+                                        <v-icon :size="size">{{ isActive ? '$check' : '' }}</v-icon>
                                     </v-slide-x-transition>
                                 </template>
                             </v-list-item>
@@ -132,7 +159,16 @@
             </slot>
         </template>
         <template #content="{ bladeData, isMobile }">
-            <slot name="body" :bladeData="bladeData" :items="ui.filteredItems.value" :allItems="ui.asyncItems.value" :size="size" :style="contentStyle">
+            <slot name="body" 
+                :bladeData="bladeData"
+                :items="ui.filteredItems.value"
+                :allItems="ui.asyncItems.value"
+                :refresh="ui.refresh"
+                :searchString="ui.searchString"
+                :showSearch="ui.showSearch"
+                :size="size"
+                :style="contentStyle"
+                :toggleSearch="ui.toggleSearch">
                 <div v-if="showInlineSearch" class="d-flex">
                     <v-btn :icon="ui.showSearch.value ? '$close' : '$magnify'" :size="size" @click="ui.toggleSearch" variant="text" />
                     <v-slide-x-reverse-transition>
@@ -151,13 +187,22 @@
                             v-model="ui.searchString.value" />
                     </v-slide-x-reverse-transition>
                 </div>
-                <div v-if="!isLengthyArray(ui.asyncItems.value)" class="overflow-y-auto" :style="contentStyle">
+                <slot name="top"
+                    :refresh="ui.refresh"
+                    :searchString="ui.searchString"
+                    :showSearch="ui.showSearch"
+                    :toggleSearch="ui.toggleSearch"
+                    :size="size"
+                    :allItems="ui.asyncItems.value"
+                    :items="ui.filteredItems.value"></slot>
+                <div v-if="!isLengthyArray(ui.asyncItems.value)" :class="scrollY ? 'overflow-y-auto' : ''" :style="contentStyle">
                     <slot name="notFound" :bladeData="bladeData" :refresh="ui.refresh" :size="size" />
                 </div>
                 <v-list
                     v-else-if="selectSingle || selectMulti || showListOnly === true || isMobile"
                     :active-class="activeClass"
-                    class="pt-0 overflow-y-auto"
+                    class="pt-0"
+                     :class="scrollY ? 'overflow-y-auto' : ''"
                     :bg-color="transparent ? 'transparent' : undefined"
                     flat
                     :density="density"
@@ -170,13 +215,19 @@
                     <v-slide-x-transition group hide-on-leave>
                         <template 
                             v-for="(fItem, fInd) in ui.filteredItems.value"
-                            :key="`${fItem.id ?? fInd}-table-list-item`">
-                            <slot name="listItem" :bladeData="bladeData" :item="fItem" :index="fInd" :size="size" :select="ui.selectItem">
+                            :key="`${fItem != null && fItem?.id != null ? fItem.id : fInd}-table-list-item`">
+                            <slot name="listItem" 
+                                :bladeData="bladeData"
+                                :deleteItem="() => ui.deleteItem(fItem)"
+                                :item="fItem"
+                                :index="fInd"
+                                :size="size"
+                                :select="ui.selectItem">
                                 <v-list-item
                                     class="mouse-item"
                                     :density="density"
                                     :ripple="ripple"
-                                    :value="fInd"
+                                    :value="fItem"
                                     @click="ui.selectItem(fItem, variant)"
                                     @mouseover="$emit('mouse-over-item', fItem)">
                                     <template #title>
@@ -197,8 +248,8 @@
                                             </span>
                                         </v-list-item-subtitle>
                                     </slot>
-                                    <template v-slot:append>
-                                        <v-row no-gutters :class="fadingActions ? 'actionButtons' : null">
+                                    <template v-if="!hideActions" v-slot:append>
+                                        <v-row no-gutters :class="mFadingActions ? 'actionButtons' : null">
                                             <slot name="itemActions" :item="fItem" :index="fInd" :items="ui.asyncItems.value" :size="mActionButtonSize" />
                                             <v-slide-x-transition group hide-on-leave>
                                                 <v-icon v-if="fItem.errorMsg != null"
@@ -218,6 +269,7 @@
                                                     variant="text" />
 
                                                 <v-btn v-if="canRestore && ui.isRestorable.value(fItem)"
+                                                    @click.stop="ui.restoreItem(fItem)"
                                                     :disabled="!auth.canEdit(nav)"
                                                     key="3"
                                                     icon="$eraser-variant"
@@ -260,7 +312,7 @@
                                 </td>
                                 <td v-if="!hideActions" :key="'itemActions' + tableRow.id" class="text-right">
                                     <v-fade-transition hide-on-leave>
-                                        <v-row no-gutters :class="fadingActions ? 'actionButtons' : null" class="flex-nowrap">
+                                        <v-row no-gutters :class="mFadingActions ? 'actionButtons' : null" class="flex-nowrap">
                                             <v-spacer />
                                             <slot name="itemActions" :item="tableRow" :allItems="ui.asyncItems.value" :items="ui.filteredItems.value" :size="mActionButtonSize" :density="density" />
                                             <v-icon v-if="tableRow.errorMsg != null"
@@ -279,6 +331,7 @@
                                                 variant="text" />
 
                                             <v-btn v-if="canRestore && ui.isRestorable.value(tableRow)"
+                                                @click.stop="ui.restoreItem(tableRow)"
                                                 :disabled="!auth.canEdit(nav)"
                                                 key="3"
                                                 icon="$eraser-variant"
@@ -293,7 +346,7 @@
                 </v-table>
                 <slot name="bottom" :size="size" :allItems="ui.asyncItems.value" :items="ui.filteredItems.value"></slot>
             </slot>
-            <div v-if="showPagination">
+            <div v-if="!isNullOrEmpty(paginate)">
                 <v-pagination
                     v-model="ui.currentPage.value"
                     :length="ui.totalPages.value" />
@@ -305,25 +358,27 @@
 <script setup lang="ts">
     import { type BladeDensity } from '../composables/blade.ts'
     import type { ListProps, ListEvents } from '../composables/list.ts'
-    import { isLengthyArray } from '../composables/helpers.ts'
+    import { isLengthyArray, isNullOrEmpty } from '../composables/helpers.ts'
     import { useAuth } from '../composables/auth.ts'
     import { useList } from '../composables/list.ts'
     import { useNavigation } from '../composables/navigation.ts'
     import { useNested } from '../composables/nested.ts'
     import { usePresets } from '../composables/presets.ts'
     import { computed, ref, watch, onMounted, ComponentPublicInstance, nextTick } from 'vue'
-    import { useRoute } from 'vue-router'
+    import { useRoute, useRouter } from 'vue-router'
+    import { useHeights } from '../composables/heights.ts'
+import { useDisplay } from 'vuetify'
 
     interface PageEvents extends ListEvents {
         // (e: 'mouse-over-item', item: any): void
         (e: 'update:selected', value: any): void
      }
 
-    interface PageProps extends ListProps {
+    interface PageProps extends ListProps<any, any, any> {
         actionButtonSize?: string
         activeClass?: string
         actualHeight?: string
-        actualUsedHeight?: string
+        actualUsedHeight?: number
         archiveBladeName?: string
         canAdd?: boolean
         canDelete?: boolean
@@ -347,11 +402,13 @@
         itemValue?: string
         label?: string
         lines?: 'one' | 'two' | 'three'
-        otherUsedHeight?: number
+        paginate?: 'server' | 'local'
         preset?: string
         returnCSV?: boolean
         returnIndex?: boolean
         ripple?: boolean
+        showCount?: boolean
+        scrollY?: boolean
         selectMulti?: boolean
         selectSingle?: boolean
         selected?: any
@@ -373,63 +430,77 @@
         density: 'compact',
         dividers: true,
         eager: true,
-        fadingActions: true,
+        fadingActions: undefined,
         fixedHeader: true,
         hideSubtoolbarSettings: false,
         itemsPerPage: 75,
-        // otherUsedHeight: 207,
         ripple: true,
+        selectMulti: false,
+        selectSingle: false,
+        showCount: false,
         size: 'small',
         sortOrder: 'Ascending',
         useBladeSrc: undefined,
         useRouteSrc: undefined,
-        useServerPagination: true,
         variant: 'page'
     })
 
     const searchEl = ref<ComponentPublicInstance | null>(null)
     const inlineSearchEl = ref<ComponentPublicInstance | null>(null)
     const { getValue } = useNested()
+    const { xs } = useDisplay()
     const route = useRoute()
     const presets = usePresets(props.preset)
     const { findDisplay } = useNavigation()
     const auth = useAuth()
-    const ui = useList<any>(props, emit, { 
+    const heightCalc = useHeights()
+    const ui = useList<any, any, any>(props, emit, { 
         hideActions: true,
         onError: (err: any) => {
             if (err.code == 401) {
                 auth.logout()
                 auth.login(location.pathname)
             }
-        }
+        },
+        router: useRouter(),
+        route: route
     })
     
     const mActionButtonSize = computed(() => props.actionButtonSize ?? props.size)
     const mCanAdd = computed(() => (presets.canAdd as boolean ?? props.canAdd))
+    const mFadingActions = computed(() => {
+        const res = (presets.fadingActions as boolean ?? props.fadingActions)
+        return res != null ? res : !xs.value
+    })
     const mHideColumns = computed(() => (presets.hideColumns as boolean ?? props.hideColumns))
     const mHideFilters = computed(() => (presets.hideFilters as boolean ?? props.hideFilters))
     const mHideRefresh = computed(() => (presets.hideRefresh as boolean ?? props.hideRefresh))
     const mHideSubtoolbarSettings = computed(() => (presets.hideSubToolbarSettings as boolean ?? props.hideSubtoolbarSettings))
-    const mLabel = computed(() => props.label ?? (props.variant == 'page' ? route?.meta?.displayName as string : undefined) ?? findDisplay(props.nav ?? props.bladeName ?? ''))
+    const mLabel = computed(() => {
+        let l = props.label ?? (props.variant == 'page' ? route?.meta?.displayName as string : undefined) ?? findDisplay(props.nav ?? props.bladeName ?? '')
+        if (props.showCount == true && ui.filteredItems.value?.length != null && ui.asyncItems.value?.length != null)
+            l = `${l} (${ui.filteredItems.value.length} of ${ui.asyncItems.value.length})`
+        return l
+    })
+    const showDialogSearch = computed(() => props.variant == 'dialog' && (props.canSearch || isLengthyArray(props.searchProps)))
     const showInlineSearch = computed(() => props.variant == 'inline' && (props.canSearch || isLengthyArray(props.searchProps)))
-    const showPagination = computed(() => (props.useServerPagination || props.useLocalPagination) && ui.totalPages.value > 1)
     const contentStyle = computed(() => {
         if (props.actualHeight != null) {
             return `height: calc(${props.actualHeight})`
         }
         else if (props.actualUsedHeight != null) {
-            return `height: calc(100vh - ${props.actualUsedHeight}px)`
+            return `height: calc(100vh - ${heightCalc.getUsedHeight(props.actualUsedHeight)}px)`
         }
         else {
-            let mUsedHeight = 231//207
+            let mUsedHeight = 154 //231
             if (props.hideSubtoolbar == true)
                 mUsedHeight -= 48
             if (props.hideToolbar == true)
                 mUsedHeight -= 48
-            if (!showPagination.value)
-                mUsedHeight -= 58 //63
+            if (isNullOrEmpty(props.paginate))
+                mUsedHeight -= 58
             
-            return `height: calc(100vh - ${mUsedHeight}px)`
+            return `height: calc(100vh - ${heightCalc.getUsedHeight(mUsedHeight)}px)`
         }
     })
 
@@ -442,24 +513,27 @@
             
             if (props.selectSingle && !Array.isArray(selectedList))
                 selectedList = [selectedList]
-            
-            if (props.returnIndex && props.returnCSV)
-                selectedList = selectedList.map((x: any) => Number.parseInt(x))
-            
-            let returnList: number[] = []
 
-            if (props.returnIndex)
-                return selectedList
-            
-            if (isLengthyArray(selectedList)) {
-                ui.filteredItems.value.forEach((itemOption: any, ind: number) => {
-                    if (selectedList.some((x: any) => x == getValue(itemOption, props.itemValue)))
-                        returnList.push(ind)
-                })
+            if (props.returnIndex && props.returnCSV) {
+                return selectedList.map((x: any) => Number.parseInt(x))
             }
 
+            //assuming the selection is already of type itemValue
+            let returnList: any[] = [] //selectedList
+            
+            if (props.itemValue != null && isLengthyArray(selectedList)) {
+                ui.filteredItems.value.forEach((itemOption: any) => { //, ind: number) => {
+                    const v = getValue(itemOption, props.itemValue)
+                    if (selectedList.some((x: any) => x == v))
+                        returnList.push(itemOption)
+                })
+            }
+            else if (props.itemValue == null) {
+                returnList.push(...selectedList)
+            }
+            
             if (props.selectSingle)
-                return isLengthyArray(returnList) ? [returnList[0]] : [-1]
+                return isLengthyArray(returnList) ? [returnList[0]] : [] //[-1]
 
             return returnList
         },
@@ -471,11 +545,14 @@
             else {
                 let r = value
                 if (props.returnIndex) {
-                    r = value
+                    r = value.map((x: any) => {
+                        return ui.filteredItems.value.indexOf((y: any) => y === x)
+                    })
                 }
-                else {
-                    r = value.map((x: number) => {
-                        return getValue(ui.filteredItems.value[x], props.itemValue)
+                else if (props.itemValue != null) {
+                    r = value.map((x: any) => { //actual object
+                        return getValue(x, props.itemValue)
+                        // return getValue(ui.filteredItems.value[x], props.itemValue)
                     })
                 }
 
@@ -489,10 +566,9 @@
 
                 if (props.returnCSV && r != null)
                     r = r.toString()
-                
+
                 emit('update:selected', r)
                 internalSelected.value = r
-                
             }
         }
     })

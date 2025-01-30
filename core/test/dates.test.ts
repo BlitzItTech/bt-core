@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest'
-import { createDates, useDates } from '../src/composables/dates'
+import { createDates, useDates, BTDateFormat } from '../src/composables/dates'
 import { DateTime } from 'luxon'
 
 describe.sequential('default dates', () => {
@@ -8,12 +8,13 @@ describe.sequential('default dates', () => {
         getUTC: () => DateTime.utc(2000, 1, 1, 0, 0, 0, 0)
     })
 
+
     test('default today is 11 hours after utc', () => {
-        expect(dates.getToday()).toEqual(DateTime.utc(2000, 1, 1, 0, 0, 0, 0).toString())
+        expect(dates.getToday()).toEqual(DateTime.utc(2000, 1, 1, 0, 0, 0, 0).toFormat(BTDateFormat))
     })
 
     test('default tomorrow', () => {
-        expect(dates.getTomorrow()).toEqual(DateTime.utc(2000, 1, 2, 0, 0, 0, 0).toString())
+        expect(dates.getTomorrow()).toEqual(DateTime.utc(2000, 1, 2, 0, 0, 0, 0).toFormat(BTDateFormat))
     })
 
     test('default tz', () => {
@@ -21,7 +22,7 @@ describe.sequential('default dates', () => {
     })
 
     test('default tz string', () => {
-        expect(dates.tzString()).toEqual('2000-01-01T00:00:00.000+00:00')
+        expect(dates.tzString()).toEqual('2000-01-01T00:00:00Z')
     })
 
     test('default utc', () => {
@@ -29,7 +30,7 @@ describe.sequential('default dates', () => {
     })
 
     test('default utc string', () => {
-        expect(dates.utcString()).toEqual(DateTime.utc(2000, 1, 1, 0, 0, 0, 0).toString())
+        expect(dates.utcString()).toEqual(DateTime.utc(2000, 1, 1, 0, 0, 0, 0).toFormat(BTDateFormat))
     })
 
     test('today in utc', () => {
@@ -38,11 +39,11 @@ describe.sequential('default dates', () => {
             getUTC: () => DateTime.utc(2000, 1, 1, 0, 0, 0, 0)
         })
         
-        expect(dates.getToday()).toEqual(DateTime.utc(1999, 12, 31, 13, 0, 0, 0).toString())
+        expect(dates.getToday()).toEqual(DateTime.utc(1999, 12, 31, 13, 0, 0, 0).toFormat(BTDateFormat))
     })
 
     test('tomorrow', () => {
-        expect(dates.getTomorrow()).toEqual(DateTime.utc(2000, 1, 1, 13, 0, 0, 0).toString())
+        expect(dates.getTomorrow()).toEqual(DateTime.utc(2000, 1, 1, 13, 0, 0, 0).toFormat(BTDateFormat))
     })
 
     test('tz date', () => {
@@ -54,7 +55,7 @@ describe.sequential('default dates', () => {
     })
 
     test('tz string', () => {
-        expect(dates.tzString()).toEqual('2000-01-01T11:00:00.000+11:00')
+        expect(dates.tzString()).toEqual('2000-01-01T11:00:00Z')
     })
     
     test('tz string format', () => {
@@ -70,7 +71,7 @@ describe.sequential('default dates', () => {
     })
 
     test('utc string', () => {
-        expect(dates.utcString()).toEqual(DateTime.utc(2000, 1, 1, 0, 0, 0, 0).toString())
+        expect(dates.utcString()).toEqual(DateTime.utc(2000, 1, 1, 0, 0, 0, 0).toFormat(BTDateFormat))
     })
     
     test('utc string format', () => {

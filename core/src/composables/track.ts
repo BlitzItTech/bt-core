@@ -7,7 +7,13 @@ export interface UseTrackerOptions {
     useTracker?: boolean
 }
 
-export function useTracker(data: MaybeRefOrGetter<any>, options?: UseTrackerOptions) { //propsToIgnore, propsToTrack) {
+export interface TrackedItem<T> {
+    asyncItem: Ref<T>
+    isChanged: Ref<boolean>
+    restartTracker: () => void
+}
+
+export function useTracker<T>(data: MaybeRefOrGetter<T>, options?: UseTrackerOptions): TrackedItem<T> { //propsToIgnore, propsToTrack) {
     const isChanged = ref(false);
     const asyncItem: Ref<any> = toRef(data);
     let originalJSON = createJSON(toValue(data));
@@ -19,6 +25,9 @@ export function useTracker(data: MaybeRefOrGetter<any>, options?: UseTrackerOpti
     }
 
     function createJSON(dataItem: any) {
+        if (dataItem == null)
+            return
+        
         const copy = copyDeep(dataItem);
 
         if (options != null) {

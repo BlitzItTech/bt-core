@@ -8,6 +8,10 @@ describe('default cron', () => {
         // defaultExpression: '0 0 * * 0'
     })
 
+    test('normal', () => {
+        expect(cron).not.toBeNull()
+    })
+
     // test('normal', () => {
     //     expect(cron.regularity.value).toEqual('Custom')
 
@@ -48,6 +52,6 @@ describe('default cron predictor', () => {
 
     test('normal', () => {
         const e = pred.predictFuture({ cron: '0 0 * * 0 0-0', futureCount: 2 })
-        expect(e).toBeNull()
+        expect(e.length).toEqual(2)
     })
 })

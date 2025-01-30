@@ -161,7 +161,7 @@
         inheritAttrs: false
     })
 
-    interface SelectProps extends ListProps {
+    interface SelectProps extends ListProps<any, any, any> {
         alwaysOpen?: boolean
         canRefresh?: boolean
         canSearch?: boolean
@@ -211,7 +211,7 @@
     const mIsEditing = inject('isEditing', () => ref(false), true)
     const cIsEditing = computed(() => props.isEditing ?? mIsEditing.value)
 
-    const ui = useList<any>(props, undefined, {
+    const ui = useList(props, undefined, {
         // useBladeSrc: false,
         // useRouteSrc: false
     })
@@ -255,7 +255,7 @@
 
     const selectedItem = computed(() => {
         const idProp = props.itemValue ?? 'id'
-        return props.modelValue != null ? ui.asyncItems.value.find((x: any) => x[idProp] == props.modelValue) : null
+        return (props.modelValue != null && ui.asyncItems.value != null) ? ui.asyncItems.value.find((x: any) => x[idProp] == props.modelValue) : null
     })
     
     const mIsMobile = inject('isMobile', () => ref(false), true)

@@ -27,9 +27,30 @@ export default createCore({
         },
         defaultTheme: 'light',
     },
+    demo: {
+        apis: [
+            {
+                data: [
+                    { id: '1', text: 'testing' },
+                    { id: '2', text: 'second' }
+                ],
+                nav: 'test',
+                path: '/treat',
+            },
+            {
+                data: [{ id: '2', text: 'second' }],
+                nav: 'tester',
+                path: '/treat/2',
+            }
+        ],
+        startInDemo: false
+    },
     includeComponents: true,
     navigation: {
-        navItems: []
+        navItems: [{
+            name: 'test',
+            path: 'treat'
+        }]
     },
     urls: {
         getEnv: () => { return 'development' },

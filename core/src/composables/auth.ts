@@ -1,7 +1,6 @@
-import { appendUrl, isLengthyArray } from '../composables/helpers.ts'
+import { appendUrl, isLengthyArray, isNullOrEmpty, jwtDecrypt } from '../composables/helpers.ts'
 import { DateTime } from 'luxon'
 import { type RemovableRef, useStorage } from '@vueuse/core'
-import { type BTDemo } from '../composables/demo.ts'
 import { BTCreateMenu } from '../composables/menu.ts'
 import { Router } from 'vue-router'
 import { computed, ref, toValue } from 'vue'
@@ -28,6 +27,8 @@ export interface BaseAuthCredentials {
     isLoggedIn?: boolean
     isSuspended?: boolean
     permissions?: string
+    refreshExpiresOn?: string
+    refreshToken?: string
     subscriptionCode?: string
     timeZone?: string
     token?: string
@@ -41,7 +42,6 @@ let defaultTimeZone = 'Australia/Melbourne'
 
 export interface CreateAuthOptions {
     defaultTimeZone?: string,
-    demo?: BTDemo,
     /**expiry token date format.  Defaults to 'd/MM/yyyy h:mm:ss a' */
     expiryTokenFormat?: string
     /**OVERRIDES CORE DEFAULT. retrieve the auth item */
@@ -52,6 +52,7 @@ export interface CreateAuthOptions {
     getTokenUrl?: (code: string, redirect_uri: string, grant_type: string, client_id: string) => string
     /**OVERRIDES DEFAULT.  */
     getToken?: (code?: string, state?: string) => Promise<void>
+    getTokenTestUrl?: (token: string) => string
     menu?: BTCreateMenu
     oauthGrantType?: string
     oauthClientID?: string
@@ -59,8 +60,23 @@ export interface CreateAuthOptions {
      * for processing the token payload and applying to state
     */
     processTokenPayload?: (state: RemovableRef<any>, payload: any) => void
+    router?: Router
     /**suboptions */
     subscriptionOptions?: AuthSubscription[]
+    /**tests whether token is still valid after receiving a 401 Unauthorized Response */
+    testToken?: (code?: string) => Promise<boolean>
+    /**where to route to if token is no longer valid */
+    tokenInvalidPath?: string
+    
+    /**overrides refresh token and all params below */
+    tryRefreshToken?: (authObj?: any) => Promise<void>
+    /**how many minutes left on refresh expiry before refreshing | Defaults to 10,800 (7 days) */
+    tokenRefreshMinuteWindow?: number
+    /**if UseTokenRefresh */
+    tokenRefreshPath?: string
+    /**whether to use token refreshing */
+    useTokenRefresh?: boolean
+
 }
 
 export interface BTAuth {
@@ -77,12 +93,14 @@ export interface BTAuth {
     getAuthorizeUrl: (redirectPath?: string) => string
     getToken: (code?: string, state?: string) => Promise<void>
     isLoggedIn: ComputedRef<boolean>
-    login: (redirectPath?: string) => void
-    logout: (navNameRedirect?: string, router?: Router) => void
+    login: (redirectPath?: string, query?: any) => void
+    logout: (navNameRedirect?: string) => void
     resetAuthState: () => void
     setAuth: (jwtToken?: string) => void
+    testToken: () => Promise<boolean>
     timeZone: ComputedRef<string>
     tryLogin: () => boolean | undefined
+    tryRefreshToken: () => Promise<void>
 }
 
 let current: BTAuth
@@ -94,6 +112,8 @@ export function useAuth(): BTAuth {
 
 export function createAuth(options: CreateAuthOptions): BTAuth {
     const expiryFormat = options.expiryTokenFormat ?? 'd/MM/yyyy h:mm:ss a'
+    const refreshMinutesWindow = options.tokenRefreshMinuteWindow ?? 10800
+
     let authState = ref(localStorage.getItem(authStateKey) ?? '')
     
     if (authState.value.length == 0) {
@@ -105,7 +125,6 @@ export function createAuth(options: CreateAuthOptions): BTAuth {
         localStorage.setItem(authStateKey, authState.value)
     }
 
-    // const authState = useStorage<string>('auth-credentials-state', (Math.random().toString(36).substring(4, 19) + Math.random().toString(12).substring(1, 11)))
     const state = useStorage<BaseAuthCredentials>('auth-credentials', {})
 
     if (options.menu != null)
@@ -286,24 +305,8 @@ export function createAuth(options: CreateAuthOptions): BTAuth {
         return subLevelNeeded <= subCompanyLevel
     }
 
-    /**decrypts jwt token */
-    function jwtDecrypt(token: string) {
-        const base64Url = token.split('.')[1];
-        const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
-        const jsonPayload = decodeURIComponent(
-            atob(base64)
-                .split("")
-                .map(function(c) {
-                    return "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2);
-                })
-                .join("")
-        );
-
-        return JSON.parse(jsonPayload);
-    }
-
     /**clears credentials and potentially redirects */
-    function logout(navPathRedirect?: string, router?: Router) {
+    function logout(navPathRedirect?: string) {
         state.value = undefined
         
         //ensure time zone still exists
@@ -312,24 +315,126 @@ export function createAuth(options: CreateAuthOptions): BTAuth {
         //clear stores
 
         //maybe redirect
-        if (navPathRedirect != null && router != null) {
-            if (router.currentRoute.value.path != navPathRedirect) {
-                router.push({ path: navPathRedirect })
+        if (navPathRedirect != null && options.router != null) {
+            if (options.router.currentRoute.value.path != navPathRedirect) {
+                options.router.push({ path: navPathRedirect })
             }
         }
     }
 
     /**Redirects to OAuth 2.0 process if not yet logged in and token expired.  Ends demo. */
-    function login(redirectPath?: string) {
+    function login(redirectPath?: string, query?: any) {
         const mState = toValue(state)
 
-        if (!mState.isLoggedIn) {
-            options.demo?.endDemo()
-            if (tokenExpired()) {
-                logout()
-                window.location.href = getAuthorizeUrl(redirectPath) //}response_type=code&client_id=appClient1&redirect_path=${redirectPath}` : getAuthUrl()
+        if (tokenExpired() || !mState.isLoggedIn) {
+            logout()
+
+            let url = getAuthorizeUrl(redirectPath);
+
+            if (query != null) {
+                if (!url.includes('?'))
+                    url = url + '?'
+
+                if (url.includes('&'))
+                    url = url + '&'
+
+                url = url + new URLSearchParams(query).toString()
             }
+
+            window.location.href = url
         }
+        else if (!isNullOrEmpty(redirectPath) && options.router != null) {
+            options.router.push({ path: redirectPath })
+        }
+    }
+
+    async function tryRefreshToken() {
+        options.tryRefreshToken ??= async () => {
+            console.log('trying refresh')
+
+            if (options.useTokenRefresh !== true)
+                return
+
+            if (isNullOrEmpty(state.value.refreshToken) || isNullOrEmpty(state.value.refreshExpiresOn))
+                return
+
+            const expiresOn = DateTime.fromFormat(state.value.refreshExpiresOn!, expiryFormat)
+            const now = DateTime.utc()
+            const triggerOn = expiresOn.plus({ minutes: 0 - refreshMinutesWindow })
+            
+            // console.log(`testing ${expiresOn} with ${now} and if after ${triggerOn}`)
+            if (now.toString() > expiresOn.toString())
+                return //do not refresh
+
+            if (now.toString() < triggerOn.toString())
+                return //do not refresh
+            
+            //continue
+
+            var refreshUrl = appendUrl(useAuthUrl(), options.tokenRefreshPath ?? 'refreshtoken')
+
+            console.log(`refresh url: ${refreshUrl}`)
+
+            try {
+                var res = await fetch(refreshUrl, {
+                    method: 'POST',
+                    mode: 'cors',
+                    cache: 'no-cache',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ refreshToken: state.value.refreshToken })
+                })
+
+                if (res.ok) {
+                    var jRes = await res.json()
+                    if (res != null && jRes.data != null)
+                        setAuth(jRes.data)
+                }
+            }
+            catch { }
+        }
+
+        return await options.tryRefreshToken(state.value)
+    }
+
+    async function testToken() {
+        options.testToken ??= async () => {
+            let token = state.value.token
+            let isValid = false
+            
+            const getTestUrl = options.getTokenTestUrl ?? (() => {
+                return appendUrl(useAuthUrl(), 'test')
+            })
+            
+            if (token != null) {
+                const api = useApi()
+
+                const res = await api.post<any>({ 
+                    additionalUrl: getTestUrl(token),
+                    data: {
+                        token: token
+                    }
+                 })
+
+                 console.log('test result')
+                 console.log(res)
+
+                 if (res.data === true)
+                    isValid = true
+            }
+
+            if (!isValid) {
+                logout(options.tokenInvalidPath)
+                // if (options.tokenInvalidRouteName != null)
+                //     options?.router?.push({ name: options.tokenInvalidRouteName })
+                return false
+            }
+
+            return true
+        }
+
+        return await options.testToken()
     }
 
     /**defaults to find parameters from route query */
@@ -367,15 +472,6 @@ export function createAuth(options: CreateAuthOptions): BTAuth {
                 data: formData
             })
 
-            // const res = await fetch(url, {
-            //     method: 'POST',
-            //     mode: 'cors',
-            //     cache: 'no-cache',
-            //     body: JSON.stringify(formData)
-            // })
-
-            // const data = await res.json()
-    
             setAuth(res.access_token)
         }
 
@@ -386,14 +482,12 @@ export function createAuth(options: CreateAuthOptions): BTAuth {
     function setAuth(jwtToken?: string) {
         if (jwtToken == null) return
 
-        if (options.demo == null || !options.demo.isDemoing.value) {
-            const d = jwtDecrypt(jwtToken)
-            
-            setDefaultAuth(d, jwtToken)
-            
-            if (options.processTokenPayload != null)
-                options.processTokenPayload(state, d)
-        }
+        const d = jwtDecrypt(jwtToken)
+        
+        setDefaultAuth(d, jwtToken)
+        
+        if (options.processTokenPayload != null)
+            options.processTokenPayload(state, d)
     }
 
     function setDefaultAuth(d: any, token: string) {
@@ -403,7 +497,9 @@ export function createAuth(options: CreateAuthOptions): BTAuth {
         v.isLoggedIn = true
         v.permissions = d.Permissions
         v.subscriptionCode = d.Subscription
-        
+        v.refreshExpiresOn = d.RefreshTokenExpiresOn
+        v.refreshToken = d.RefreshToken
+
         if (options?.menu != null)
             options.menu.currentView.value = v.subscriptionCode
         
@@ -425,12 +521,30 @@ export function createAuth(options: CreateAuthOptions): BTAuth {
         const mState = toValue(state)
 
         //what if no internet?
-        if (mState.isLoggedIn && tokenExpired()) {
+
+        if (mState.isLoggedIn && tokenExpired() && refreshTokenExpired()) {
             logout()
             window.location.href = getAuthorizeUrl()
         }
 
         return mState.isLoggedIn
+    }
+
+    /**returns true if not implemented, etc. */
+    function refreshTokenExpired() {
+        if (!options.useTokenRefresh)
+            return true
+
+        if (isNullOrEmpty(state.value.refreshExpiresOn) || isNullOrEmpty(state.value.refreshToken))
+            return true
+        
+        const expiresOn = DateTime.fromFormat(state.value.refreshExpiresOn!, expiryFormat)
+        const now = DateTime.utc()
+        
+        if (now < expiresOn)
+            return true //do not refresh
+
+        return false
     }
 
     function tokenExpired() {
@@ -460,10 +574,12 @@ export function createAuth(options: CreateAuthOptions): BTAuth {
         logout,
         resetAuthState,
         setAuth,
+        testToken,
         timeZone: computed(() => {
             return state.value.timeZone ?? options.defaultTimeZone ?? defaultTimeZone
         }),
-        tryLogin
+        tryLogin,
+        tryRefreshToken
     }
 
     return current

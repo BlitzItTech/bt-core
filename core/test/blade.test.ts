@@ -1,24 +1,21 @@
 import { describe, test, expect } from 'vitest'
-import { BladeData, useBladeEvents } from '../src/composables/blade'
+import { BladeData, useBlade } from '../src/composables/blade'
+
 
 describe.sequential('default', () => {
     let updated = false
-    let created = false
 
-    const bladeOne = useBladeEvents({
+    const bladeOne = useBlade({
         bladeName: 'one'
     })
 
-    const startBlade = useBladeEvents({
+    const startBlade = useBlade({
         bladeName: 'show',
         bladeStartShowing: true
     })
 
-    const bladeTwo = useBladeEvents({
+    const bladeTwo = useBlade({
         bladeName: 'other',
-        onOpen: (data: BladeData) => {
-            created = true
-        },
         onUpdate: () => {
             updated = true
         }
@@ -52,7 +49,6 @@ describe.sequential('default', () => {
         })
 
         expect(bladeTwo.bladeData.show).toEqual(true)
-        expect(created).toEqual(true)
     })
 
 

@@ -1,16 +1,15 @@
-import type { GetOptions, OnCanDoAsync, OnDoAsync, OnDoSuccessAsync, OnGetAsync, OnGetSuccessAsync } from './actions.ts'
+import type { GetOptions, GetAllOptions, OnCanDoAsync, OnDoActionAsync, OnDoSuccessAsync, OnGetAsync, OnGetSuccessAsync, OnGetAllAsync, OnGetAllSuccessAsync, OnDoMaybeSuccessAsync } from './actions.ts'
 import type { BladeVariant } from '../composables/blade.ts'
 import { useCSV } from '../composables/csv.ts'
-import { isLengthyArray, hasSearch } from '../composables/helpers.ts'
+import { isLengthyArray, hasSearch, isNullOrEmpty } from '../composables/helpers.ts'
 import { firstBy } from 'thenby'
-import { computed, ref, onMounted, toValue, shallowRef, MaybeRefOrGetter, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { computed, ref, onMounted, toValue, shallowRef, watch } from 'vue'
+import type { RouteLocationNormalizedLoaded, Router } from 'vue-router'
 import { useArrayDifference, useArrayUnique, watchArray, watchDebounced } from '@vueuse/core'
 import { useActions } from '../composables/actions.ts'
 import { StorageMode, StoreMode, useStoreDefinition } from './stores.ts'
 import { useNavigation } from './navigation.ts'
 import { useBlade } from './blade.ts'
-// import { SaveItemOptions } from './item.ts'
 
 export interface ListRefreshOptions {
     deepRefresh?: boolean,
@@ -51,6 +50,12 @@ export interface CustomFilterParam {
     onFilterResult: Function | null
 }
 
+export interface LocalFilter {
+    name: string,
+    predicate?: (item: any) => boolean
+    onFilter?: (list: any[]) => any[]
+}
+
 export interface ListEvents {
     (e: 'change', item: any): void
     (e: 'deleted', item: any): void
@@ -77,7 +82,7 @@ export interface ListEvents {
     // showTableOnly?: boolean
     // variant?: BladeVariant
 
-export interface ListProps {
+export interface ListProps<T, TSave, TReturn> {
     addBladeName?: string
     additionalUrl?: string
     bladeGroup?: string
@@ -91,8 +96,11 @@ export interface ListProps {
     defaultFilters?: string[]
     eager?: boolean
     errorMsg?: string
+    filterToggle?: boolean
     headers?: TableColumn[]
     hideActions?: boolean
+    idSelector?: <T>(item: T) => string
+    inactiveProp?: string
     isSingle?: boolean
     itemBladeName?: string
     itemID?: string
@@ -101,31 +109,36 @@ export interface ListProps {
     itemsPerPage?: number
     itemText?: string
     loadingMsg?: string
+    localFilters?: LocalFilter[]
     localOnly?: boolean //if local only or if nav is null, then will seek to only remove from items and asyncItems
     nav?: string
     /**for defining if deletable (show button or not) */
-    onCanDelete?: (item: any) => boolean
+    onCanDelete?: (item: TReturn) => boolean
     /**when trying to delete in api */
-    onCanDeleteAsync?: OnCanDoAsync
+    onCanDeleteAsync?: OnCanDoAsync<TReturn>
     // onGetSaveAsync?: OnDoSuccessAsync
-    onCanRestore?: (item: any) => boolean
-    onCanRestoreAsync?: OnCanDoAsync
-    onCanSave?: (item: any) => boolean
-    onCanSaveAsync?: OnCanDoAsync
-    onCanSelectItem?: (item: any) => boolean
-    onDeleteAsync?: OnDoAsync
-    onDeleteSuccessAsync?: OnDoAsync
+    onCanRestore?: (item: TReturn) => boolean
+    onCanRestoreAsync?: OnCanDoAsync<TReturn>
+    onCanSave?: (item: TReturn) => boolean
+    onCanSaveAsync?: OnCanDoAsync<TReturn | TSave>
+    onCanSelectItem?: (item: TReturn) => boolean
+    onDeleteAsync?: OnDoActionAsync<TReturn>
+    onDeleteSuccessAsync?: OnDoMaybeSuccessAsync<TReturn, TReturn>
     onError?: (err: any) => void
-    onFilter?: Function
+    onFilter?: (list: TReturn[]) => TReturn[]
     onFinished?: () => void
-    onGetAsync?: OnGetAsync
-    onGetSaveAsync?: OnDoSuccessAsync
-    onGetSuccessAsync?: OnGetSuccessAsync
-    onRestoreAsync?: OnDoSuccessAsync
-    onRestoreSuccessAsync?: OnDoSuccessAsync
-    onSaveAsync?: OnDoSuccessAsync
-    onSaveSuccessAsync?: OnDoSuccessAsync
-    onSelectItem?: (item: any) => void
+    onGetAsync?: OnGetAllAsync<T>
+    onGetSingleAsync?: OnGetAsync<T>
+    onGetSaveAsync?: OnDoSuccessAsync<TReturn, TSave>
+    onGetSingleSuccessAsync?: OnGetSuccessAsync<T, TReturn>
+    onGetSuccessAsync?: OnGetAllSuccessAsync<T, TReturn>
+    onRestoreAsync?: OnDoActionAsync<TReturn>
+    onRestoreSuccessAsync?: OnDoSuccessAsync<TReturn, TReturn>
+    onSaveAsync?: (item: TSave | TReturn) => Promise<TReturn | undefined> // OnDoSuccessAsync<T, TReturn>
+    onSaveSuccessAsync?: OnDoSuccessAsync<TReturn, TReturn>
+    onSelectItem?: (item: TReturn) => void
+    onUpdateAsyncItem?: (asyncItem: TReturn | TReturn[] | undefined, newVersionItem: T) => void
+    paginate?: 'server' | 'local'
     params?: any
     proxyID?: string
     proxyKey?: string
@@ -133,18 +146,15 @@ export interface ListProps {
     searchKey?: string
     searchProps?: string[]
     selectProps?: string[]
-    // sortBy?: stringg
-    // sortOrder?: 'Ascending' | 'Descending'
-    //showSearch?: boolean
     startShowingInactive?: boolean
     startShowingSearch?: boolean
     storeKey?: string
     storeMode?: StoreMode
     storageMode?: StorageMode
     /**usually used for last-updated configs or large quantities of local items */
-    useLocalPagination?: boolean
+    // useLocalPagination?: boolean
     /**uses pagination from server */
-    useServerPagination?: boolean
+    // useServerPagination?: boolean
     useBladeSrc?: boolean
     useRouteSrc?: boolean,
     variant?: BladeVariant
@@ -157,8 +167,13 @@ export interface GroupedHeaderOption {
 
 export interface UseListOptions {
     hideActions?: boolean
+    /**used to select item. Default to x => x.id */
+    idSelector?: <T>(item: T) => string
+    isNotSetup?: boolean
     onError?: (err: any) => void
     onFinished?: () => void
+    router?: Router
+    route?: RouteLocationNormalizedLoaded
     storeKey?: string
 }
 
@@ -176,13 +191,13 @@ export interface BaseIDModel {
  * @param emit 
  * @param options 
  */
-export function useList<T extends BaseIDModel>(props: ListProps, emit?: ListEvents, options?: UseListOptions) {
+export function useList<T, TSave, TReturn>(props: ListProps<T, TSave, TReturn>, emit?: ListEvents, options?: UseListOptions) {
     const csv = useCSV()
     const navigation = useNavigation()
-    const router = useRouter()
-    const route = useRoute()
 
-    const bladeEvents = useBlade({
+    const idSelector = options?.idSelector ?? props.idSelector ?? ((item: any) => item.id)
+
+    const bladeEvents = options?.isNotSetup == true ? undefined : useBlade<T, TReturn>({
         bladeGroup: props.bladeGroup,
         bladeName: props.bladeName,
         onUpdate: () => {
@@ -199,19 +214,21 @@ export function useList<T extends BaseIDModel>(props: ListProps, emit?: ListEven
     const storeKey = props.storeKey ?? options?.storeKey
     const storeMode = props.storeMode ?? navigation.findItem(nav)?.storeMode
     const storageMode = props.storageMode ?? navigation.findItem(nav)?.storageMode
+    const deleteStrat = navigation.findItem(nav)?.deleteStrat
 
     //server filtering
     const customFilters = toValue(props.customFilters) ?? []
     const serverFilters = ref<string[]>([])
     const allFilters = computed(() => {
         return useArrayUnique([
-            ...customFilters.filter(x => x.name != null).map(x => x.name),
+            ...(props.localFilters ?? []).filter(x => x.predicate != null || x.onFilter != null).map(x => x.name),
+            ...customFilters.filter((x: any) => x.name != null).map((x: any) => x.name),
             ...(props.defaultFilters ?? []),
             ...serverFilters.value
         ]).value
     })
     //selected indexes of all filters
-    const selectedFilters = ref((props.defaultFilters ?? []).map(x => allFilters.value.indexOf(x)))
+    const selectedFilters = ref((props.defaultFilters ?? []).map((x: any) => allFilters.value.indexOf(x)))
     let latestFilters = ref([...selectedFilters.value])
     const filtersChanged = computed(() => {
         return useArrayDifference(latestFilters, selectedFilters).value.length > 0 ||
@@ -224,13 +241,13 @@ export function useList<T extends BaseIDModel>(props: ListProps, emit?: ListEven
     const currentPage = ref<number>(getStartingPage())
     function getStartingPage() {
         if (useBladeSrc) {
-            const bladePage = bladeEvents.bladeData.data.page
+            const bladePage = bladeEvents?.bladeData.data.page
             if (bladePage != null)
                 return Number.parseInt(bladePage)
         }
 
         if (useRouteSrc) {
-            const routePage = route?.query?.page
+            const routePage = options?.route?.query?.page
             if (routePage != null)
                 return Number.parseInt(typeof routePage == 'string' ? routePage : routePage.toString())
         }
@@ -244,10 +261,10 @@ export function useList<T extends BaseIDModel>(props: ListProps, emit?: ListEven
         let cProxyID: string | undefined = props.proxyID
 
         if (cProxyID == null && useBladeSrc)
-            cProxyID = bladeEvents.bladeData.data[defaultProxyKey] as string | undefined
+            cProxyID = bladeEvents?.bladeData.data[defaultProxyKey] as string | undefined
 
         if (cProxyID == null && useRouteSrc)
-            cProxyID = route?.query?.[defaultProxyKey] as string | undefined
+            cProxyID = options?.route?.query?.[defaultProxyKey] as string | undefined
         
         return cProxyID
     })
@@ -259,10 +276,10 @@ export function useList<T extends BaseIDModel>(props: ListProps, emit?: ListEven
         let search: string | undefined
 
         if (search == null && useBladeSrc)
-            search = bladeEvents.bladeData.data[defaultSearchKey] as string | undefined
+            search = bladeEvents?.bladeData.data[defaultSearchKey] as string | undefined
         
         if (search == null && useRouteSrc)
-            search = route?.query?.[defaultSearchKey] as string | undefined
+            search = options?.route?.query?.[defaultSearchKey] as string | undefined
         
         return search
     }
@@ -277,8 +294,8 @@ export function useList<T extends BaseIDModel>(props: ListProps, emit?: ListEven
         ]
     })
 
-    const asyncItems = ref<T[]>([])
-    const filteredItems = shallowRef<T[]>([])
+    const asyncItems = shallowRef<TReturn[] | TReturn | undefined>()
+    const filteredItems = shallowRef<TReturn[]>([])
     const headerOptions = ref<TableColumn[]>([])
 
     let lastSelectedItem: any
@@ -296,7 +313,8 @@ export function useList<T extends BaseIDModel>(props: ListProps, emit?: ListEven
     })
 
     const errorMsg = computed(() => props.errorMsg ?? actionErrorMsg.value)
-    const loadingMsg = computed(() => props.loadingMsg ?? actionLoadingMsg.value)
+    const mLoadingMsg = ref<string | undefined>()
+    const loadingMsg = computed(() => mLoadingMsg.value ?? props.loadingMsg ?? actionLoadingMsg.value)
     const isLoading = computed(() => loadingMsg.value != null)
     const showError = shallowRef(false)
     const showSearch = shallowRef(props.startShowingSearch == true)
@@ -328,10 +346,10 @@ export function useList<T extends BaseIDModel>(props: ListProps, emit?: ListEven
     const id = computed(() => {
         let cID: string | undefined = props.itemID
         if (cID == null && useBladeSrc)
-            cID = bladeEvents.bladeData.data.id as string | undefined
+            cID = bladeEvents?.bladeData.data.id as string | undefined
 
         if (cID == null && useRouteSrc)
-            cID = route?.query?.id as string | undefined
+            cID = options?.route?.query?.id as string | undefined
 
         return cID
     })
@@ -339,7 +357,7 @@ export function useList<T extends BaseIDModel>(props: ListProps, emit?: ListEven
     const allParams = computed(() => { 
         let p = props.params != null ? { ...props.params } : {}
 
-        if (props.useServerPagination && props.itemsPerPage != null) {
+        if (props.paginate == 'server' && props.itemsPerPage != null) {
             p.includeCount = true
             p.takeAmount = props.itemsPerPage
             p.takeFrom = (currentPage.value - 1) * props.itemsPerPage
@@ -360,7 +378,7 @@ export function useList<T extends BaseIDModel>(props: ListProps, emit?: ListEven
         return p
     })
 
-    const isDeletable = computed(() => (item: any) => {
+    const isDeletable = computed(() => (item: TReturn | any) => {
         if (props.onCanDelete != null)
             return props.onCanDelete(item)
 
@@ -370,7 +388,7 @@ export function useList<T extends BaseIDModel>(props: ListProps, emit?: ListEven
         return true
     })
 
-    const isRestorable = computed(() => (item: any) => {
+    const isRestorable = computed(() => (item: TReturn | any) => {
         if (!showInactive.value)
             return false
 
@@ -381,6 +399,20 @@ export function useList<T extends BaseIDModel>(props: ListProps, emit?: ListEven
             return true
 
         return false
+    })
+
+    const updateAsyncItem = props.onUpdateAsyncItem ?? ((original: any, newItem: any) => {
+        if (original.hasOwnProperty('rowVersion'))
+            original.rowVersion =  newItem.rowVersion
+
+        if (original.hasOwnProperty('version'))
+            original.version =  newItem.version
+
+        if (original.hasOwnProperty('isDeleted'))
+            original.isDeleted =  newItem.isDeleted
+
+        if (original.hasOwnProperty('isInactive'))
+            original.isInactive =  newItem.isInactive
     })
 
     const tableHeaders = computed(() => { return headerOptions.value.filter(x => !x.hide) })
@@ -421,13 +453,13 @@ export function useList<T extends BaseIDModel>(props: ListProps, emit?: ListEven
 
         if (aBladeName != null) {
             if (variant == 'page') {
-                router.push({
+                options?.router?.push({
                     name: aBladeName,
                     params: { id: 'new' }
                 })
             }
             else if (variant == 'blade') {
-                bladeEvents.updateBlade({
+                bladeEvents?.updateBlade({
                     data: { id: 'new' },
                     bladeName: aBladeName
                 })
@@ -435,52 +467,45 @@ export function useList<T extends BaseIDModel>(props: ListProps, emit?: ListEven
         }
     }
 
-    function mDeleteItem(dItem: MaybeRefOrGetter<any>) {
+    function mDeleteItem(item: TReturn) {
+        const id = idSelector(item)
+
         const {
             additionalUrl,
             onDeleteAsync,
         } = { ...props }
-        const item = toValue(dItem)
-        const id = item.id
 
-        const removeLocally = (id: string) => {
+        if (id == null)
+            return
+
+        const removeFrom = (list: any, id: string) => {
+            if (list == null || !Array.isArray(list))
+                return
+
             if (id != null) {
-                let asyncInd = asyncItems.value.findIndex(x => x.id == id)
-                if (asyncInd > -1) {
-                    asyncItems.value.splice(asyncInd, 1)
-                }
+                let asyncInd = list.findIndex(x => idSelector(x) == id)
+                if (asyncInd > -1)
+                    list.splice(asyncInd, 1)
 
-                if (props.items != null) {
-                    let ind = props.items.findIndex(x => x.id == id)
-                    
-                    if (ind > -1)
-                        props.items.splice(ind, 1)
-                }
             }
             else {
-                let asyncInd = asyncItems.value.findIndex(x => x === item) //.findIndex(x => x.id == id)
+                let asyncInd = list.findIndex(x => x === item) //.findIndex(x => x.id == id)
                 if (asyncInd == -1)
-                    asyncInd = asyncItems.value.findIndex(x => x == item)
+                    asyncInd = list.findIndex(x => x == item)
                 
                 if (asyncInd > -1)
-                        asyncItems.value.splice(asyncInd, 1)
-    
-                if (props.items != null) {
-                    let ind = props.items.findIndex(x => x === item) //.findIndex(y => y.id == id)
-                    
-                    if (ind == -1)
-                        ind = props.items.findIndex(x => x == item)
-    
-                    if (ind > -1)
-                        props.items.splice(ind, 1)
-                }
+                        list.splice(asyncInd, 1)
             }
-
-            // eventBus?.sendDelete(nav ?? '', id)
         }
 
         if (props.localOnly == true || nav == null) {
-            removeLocally(id)
+            if (deleteStrat != 'soft') {
+                removeFrom(asyncItems.value, id)
+                removeFrom(props.items, id)
+            }
+            else if (!showInactive.value) {
+                removeFrom(filteredItems.value, id)
+            }
         }
         else {
             deleteItem({
@@ -489,9 +514,18 @@ export function useList<T extends BaseIDModel>(props: ListProps, emit?: ListEven
                 nav,
                 onCanDeleteAsync: props.onCanDeleteAsync,
                 onDeleteAsync,
-                onDeleteSuccessAsync: async () => {
-                    removeLocally(id)
-    
+                onDeleteSuccessAsync: async (nItem: any) => {
+                    if (deleteStrat != 'soft') {
+                        removeFrom(asyncItems.value, id)
+                        removeFrom(props.items, id)
+                    }
+                    else {
+                        updateAsyncItem(item, nItem)
+
+                        if (!showInactive.value)
+                            removeFrom(filteredItems.value, id)
+                    }
+                    
                     if (props.onDeleteSuccessAsync != null)
                         return props.onDeleteSuccessAsync(item)
     
@@ -505,24 +539,42 @@ export function useList<T extends BaseIDModel>(props: ListProps, emit?: ListEven
         }
 
         if (emit)
-            emit('deleted', dItem)
+            emit('deleted', item)
     }
 
-    function mRestoreItem(dItem: MaybeRefOrGetter<any>) {
+    function mRestoreItem(dItem: any) {
+        const {
+            additionalUrl,
+            onRestoreAsync,
+            onRestoreSuccessAsync = (nItem: any) => {
+                updateAsyncItem(dItem, nItem)
+                return nItem
+            },
+        } = { ...props }
         return restoreItem({
-            data: toValue(dItem),
-            additionalUrl: props.additionalUrl,
+            additionalUrl,
+            data: dItem,
             nav,
-            onCanRestoreAsync: props.onCanRestoreAsync,
-            onRestoreAsync: props.onRestoreAsync,
-            onRestoreSuccessAsync: props.onRestoreSuccessAsync,
+            onRestoreAsync,
+            onRestoreSuccessAsync,
             proxyID: proxyID.value,
             storeKey
-            // ...(useBladeSrc ? bladeData.value : {})
+            // ...params.getOptions(),
+            // ...(useBladeSrc ? bladeData.value : {}),
         })
+        // return restoreItem({
+        //     data: toValue(dItem),
+        //     additionalUrl: props.additionalUrl,
+        //     nav,
+        //     onCanRestoreAsync: props.onCanRestoreAsync,
+        //     onRestoreAsync: props.onRestoreAsync,
+        //     onRestoreSuccessAsync: props.onRestoreSuccessAsync,
+        //     proxyID: proxyID.value,
+        //     storeKey
+        // })
     }
 
-    function mSaveItem(dItem: MaybeRefOrGetter<any>) { //, options?: SaveItemOptions) {
+    function mSaveItem(dItem: any) {
         const item = toValue(dItem)
         const {
             additionalUrl,
@@ -541,19 +593,39 @@ export function useList<T extends BaseIDModel>(props: ListProps, emit?: ListEven
             onSaveSuccessAsync,
             proxyID: proxyID.value,
             storeKey
-            // mode: item.id == null ? 'new' : 'edit'
         })
     }
     
     function exportToCSV() {
         doAction(() => {
-            csv.exportToCSV(tableHeaders.value, filteredItems.value)
+            csv.exportToCSV({ headers: tableHeaders.value, items: storeMode == 'session' ? filteredItems.value : asyncItems.value })
         }, { loadingMsg: 'Exporting to CSV' })
     }
 
     function refreshFilteredList() {
-        let l = toValue(asyncItems)
-        l = props.onFilter ? props.onFilter(l) : l
+        if (asyncItems.value == null || !Array.isArray(asyncItems.value)) {
+            filteredItems.value = []
+            return
+        }
+
+        let l = props.onFilter ? props.onFilter(asyncItems.value) : asyncItems.value
+
+        if (isLengthyArray(props.localFilters)) {
+            selectedFilters.value.forEach(ind => {
+                const localFilter = props.localFilters?.find(z => z.name == allFilters.value[ind])
+                if (localFilter != null) {
+                    if (localFilter.onFilter != null)
+                        l = localFilter.onFilter(l)
+                    else if (localFilter.predicate != null)
+                        l = l.filter(x => localFilter.predicate!(x))
+                }
+            })
+        }
+
+        if (props.inactiveProp != null && !showInactive.value) {
+            const inProp = props.inactiveProp as keyof TReturn
+            l = l.filter((x: any) => x[inProp] !== true)
+        }
 
         if (searchString.value != null && searchString.value.length > 0) {
             let sProps = [...searchableProps.value]
@@ -564,19 +636,19 @@ export function useList<T extends BaseIDModel>(props: ListProps, emit?: ListEven
                 l = l.filter(x => hasSearch(x, searchString.value, sProps))
         }
 
-        if (props.useLocalPagination != null && props.useLocalPagination !== false) {
+        if (props.paginate == 'local' && isNullOrEmpty(searchString.value)) {
             //locally paginate
             if (props.itemsPerPage != null) {
                 let indFrom = (currentPage.value - 1) * props.itemsPerPage
                 let indTo = indFrom + props.itemsPerPage
                 if (indTo >= l.length)
-                    indTo = l.length - 1
+                    indTo = l.length
 
                 l = l.slice(indFrom, indTo)
             }
         }
 
-        filteredItems.value = l as T[]
+        filteredItems.value = l
     }
 
     function refreshTableHeaders() {
@@ -599,11 +671,11 @@ export function useList<T extends BaseIDModel>(props: ListProps, emit?: ListEven
         if (perPage <= 0)
             return
 
-        if (props.useServerPagination) {
+        if (props.paginate == 'server') {
             if (cnt != null)
                 totalPages.value = Math.ceil(cnt / perPage)
         }
-        else if (props.useLocalPagination) {
+        else if (props.paginate == 'local') {
             totalPages.value = Math.ceil(list.length / perPage)
         }
     }
@@ -616,7 +688,16 @@ export function useList<T extends BaseIDModel>(props: ListProps, emit?: ListEven
         }
         
         if (props.items != null) {
-            asyncItems.value = props.onGetSuccessAsync != null ? await props.onGetSuccessAsync(props.items) : props.items
+            let refreshRes = { data: props.items }
+
+            mLoadingMsg.value = 'Loading'
+            let returnRes = props.onGetSuccessAsync != null ? await props.onGetSuccessAsync(refreshRes) : refreshRes
+            mLoadingMsg.value = undefined
+            
+            if (returnRes == null || !Array.isArray(returnRes.data))
+                return
+
+            asyncItems.value = returnRes?.data ?? []
             
             calculateTotalPages(asyncItems.value, asyncItems.value.length)
 
@@ -631,42 +712,72 @@ export function useList<T extends BaseIDModel>(props: ListProps, emit?: ListEven
             return
         }
 
-        const getOptions: GetOptions = {
-            additionalUrl: props.additionalUrl,
-            id: id.value,
-            nav,
-            params: {
-                ...allParams.value,
-                ...(useBladeSrc ? bladeEvents.bladeData.data.params : {})
-            },
-            proxyID: proxyID.value,
-            refresh: options?.deepRefresh ?? false,
-            storeKey,
-            onGetAsync: props.onGetAsync,
-            onGetSuccessAsync: props.onGetSuccessAsync,
-        }
-
         if (props.isSingle === true) {
-            if (getOptions.id === 'new')
+            const getOptions: GetOptions<T, TReturn> = {
+                additionalUrl: props.additionalUrl,
+                id: id.value,
+                nav,
+                params: {
+                    ...allParams.value,
+                    ...(useBladeSrc ? bladeEvents?.bladeData.data.params : {})
+                },
+                proxyID: proxyID.value,
+                refresh: options?.deepRefresh ?? false,
+                storeKey,
+                onGetAsync: props.onGetSingleAsync,
+                onGetSuccessAsync: props.onGetSingleSuccessAsync,
+            }
+
+            if (getOptions.id === 'new') {
                 asyncItems.value = []
-            else
-                asyncItems.value = await getItem(getOptions)
+            }
+            else {
+                const singleRes = await getItem<T, TReturn>(getOptions)
+                if (singleRes == null) {
+                    asyncItems.value = undefined
+                }
+                else {
+                    if (Array.isArray(singleRes.data))
+                        asyncItems.value = singleRes.data as TReturn[]
+                    else
+                        asyncItems.value = singleRes.data != null ? ([singleRes.data] as TReturn[]) : undefined
+                }
+            }
         }
         else {
-            let r = await getAllItems({
-                ...getOptions,
-                onGetSuccessAsync: async (gRes, opt) => {
-                    let dataRes = gRes?.data
-                    serverFilters.value = gRes?.filters ?? []
-                    calculateTotalPages(dataRes, gRes.count)
-                    if (props.onGetSuccessAsync != null)
-                        dataRes = await props.onGetSuccessAsync(dataRes, opt)
+            const getAllOptions: GetAllOptions<T, TReturn> = {
+                additionalUrl: props.additionalUrl,
+                id: id.value,
+                nav,
+                params: {
+                    ...allParams.value,
+                    ...(useBladeSrc ? bladeEvents?.bladeData.data.params : {})
+                },
+                proxyID: proxyID.value,
+                refresh: options?.deepRefresh ?? false,
+                storeKey,
+                onGetAsync: props.onGetAsync,
+                onGetSuccessAsync: props.onGetSuccessAsync,
+            }
 
-                    return dataRes
+            let r = await getAllItems<T, TReturn>({
+                ...getAllOptions,
+                onGetSuccessAsync: async (gRes, opt) => {
+                    if (gRes != null) {
+                        if (gRes.filters != null)
+                            serverFilters.value = gRes?.filters ?? []
+
+                        calculateTotalPages(gRes.data, gRes.count)
+
+                        if (props.onGetSuccessAsync != null)
+                            return await props.onGetSuccessAsync(gRes, opt)
+                    }
+
+                    return gRes
                 }
             })
 
-            asyncItems.value = r
+            asyncItems.value = (r?.data as TReturn[]) ?? []
 
             latestFilters.value = [...selectedFilters.value]
         }
@@ -691,15 +802,6 @@ export function useList<T extends BaseIDModel>(props: ListProps, emit?: ListEven
         else {
             lastSelectedItem = item != null ? item : lastSelectedItem
         }
-        
-        // if (item != null && item === lastSelectedItem) { //&& props.canUnselect) {
-        //     lastSelectedItem = null;
-        // }
-        // else {
-        //     lastSelectedItem = item
-        // }
-
-        console.log(lastSelectedItem)
 
         if (props.canSelect == true && (props.onCanSelectItem == null || props.onCanSelectItem(item))) {
             if (props.onSelectItem != null) {
@@ -707,17 +809,17 @@ export function useList<T extends BaseIDModel>(props: ListProps, emit?: ListEven
             }
             else if (variant == 'blade' && lastSelectedItem == null) {
                 //close blade
-                bladeEvents.closeBlade({ bladeName: props.itemBladeName })
+                bladeEvents?.closeBlade({ bladeName: props.itemBladeName })
             }
             else {
                 if (variant == 'page') {
-                    router.push({
+                    options?.router?.push({
                         name: props.itemBladeName,
                         params: { id: item.id }
                     })
                 }
                 else if (variant == 'blade') {
-                    bladeEvents.updateBlade({
+                    bladeEvents?.updateBlade({
                         data: { id: item.id, data: item },
                         bladeName: props.itemBladeName
                     })
@@ -738,15 +840,6 @@ export function useList<T extends BaseIDModel>(props: ListProps, emit?: ListEven
         showSearch.value = !showSearch.value
         searchString.value = undefined
         refresh()
-
-        // if (showSearch.value) {
-        //     showSearch.value = props.showSearch ?? false
-        //     searchString.value = undefined
-        //     refresh()
-        // }
-        // else {
-        //     showSearch.value = props.showSearch ?? true
-        // }
     }
 
     refreshTableHeaders()
@@ -755,7 +848,13 @@ export function useList<T extends BaseIDModel>(props: ListProps, emit?: ListEven
         refreshFilteredList()
     }, { debounce: 500, maxWait: 500 })
 
-    watch([showInactive, currentPage], async () => { //bladeData
+    watch(showInactive, async () => {
+        if (storeMode == 'whole-last-updated')
+            refreshFilteredList()
+        else
+            await refresh()
+    })
+    watch(currentPage, async () => { //bladeData
         await refresh()
     })
 
@@ -767,14 +866,26 @@ export function useList<T extends BaseIDModel>(props: ListProps, emit?: ListEven
         refresh({ deepRefresh: true })
     })
 
-    watchArray([asyncItems, () => props.items], () => {
+    watch(() => props.filterToggle, () => {
+        refreshFilteredList()
+    })
+    
+    watchArray([asyncItems], () => {
         refreshFilteredList()
     })
 
-    onMounted(async () => {
-        if (props.eager == true)
-            await refresh({ deepRefresh: route?.params?.refresh == 'true' })
+    watchArray([() => props.items], () => {
+        refresh()
     })
+
+    if (!options?.isNotSetup == true) {
+        onMounted(async () => {
+            if (props.eager == true)
+                await refresh({ deepRefresh: options?.route?.params?.refresh == 'true' })
+        })
+    }
+    else if (options?.isNotSetup == true && props.eager == true)
+        refresh({ deepRefresh: options?.route?.params?.refresh == 'true' })
 
     return {
         add,

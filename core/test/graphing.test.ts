@@ -8,8 +8,6 @@ describe('default graphing', () => {
     })
     const { getRawXY, getXY } = useGraphing({ dates })
 
-
-
     const data = [
         { a: 'a', b: 1 },
         { a: 'b', b: 1 },

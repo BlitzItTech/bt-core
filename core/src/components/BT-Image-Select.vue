@@ -3,51 +3,51 @@
         <v-dialog
             v-if="canEdit"
             v-model="modal"
+            :max-width="maxDialogWidth"
+            :min-width="minDialogWidth"
             :width="dialogWidth">
             <template #activator="{ props }">
-                <v-hover #default="{ isHovering }">
                     <v-btn
                         @click="open"
                         class="mx-auto pa-1"
+                        :color="color"
                         :height="height + 35"
                         :width="width + 15"
                         v-bind="props">
-                        <v-container class="pa-0 ma-0">
-                            <div v-if="!isNullOrEmpty(label)" class="my-1">{{ label }}</div>
-                            <v-img
-                                :height="height"
-                                :src="url"
-                                :width="width">
-                                <template #placeholder>
-                                    <v-container class="ma-0 pa-0">
-                                        <v-row>
-                                            <v-col class="text-center" cols="12">
-                                                <v-icon :size="mSize - 15">{{ placeholderIcon }}</v-icon>
-                                            </v-col>
-                                        </v-row>
-                                        <v-row>
-                                            <v-col class="text-center" cols="12">
-                                                <p>Upload Image</p>
-                                            </v-col>
-                                        </v-row>
-                                    </v-container>
-                                </template>
-                            </v-img>
-                            <v-fade-transition>
-                                <v-overlay v-if="isHovering" absolute :opacity="0.75">
-                                    <div>
+                        <v-hover v-slot="{ isHovering, props }">
+                            <v-container class="pa-0 ma-0" v-bind="props">
+                                <div v-if="!isNullOrEmpty(label)" class="my-1">{{ label }}</div>
+                                <v-img
+                                    :height="height"
+                                    :src="url"
+                                    :width="width">
+                                    <template #placeholder>
+                                        <div class="d-flex flex-column align-center">
+                                            <v-icon :size="mSize - 15">{{ placeholderIcon }}</v-icon>
+                                            <p>Upload Image</p>
+                                        </div>
+                                    </template>
+                                </v-img>
+                                
+                                <v-overlay 
+                                    v-if="isHovering"
+                                    class="align-center justify-center"
+                                    :opacity="0.75"
+                                    v-model="showO"
+                                    contained>
+                                    <div class="text-white">
                                         <v-icon start>$pencil</v-icon>Edit Image
                                     </div>
                                 </v-overlay>
-                            </v-fade-transition>
-                        </v-container>
+                                
+                            </v-container>
+                        </v-hover>
                     </v-btn>
-                </v-hover>
             </template>
             <v-card
                 class="text-center"
                 :loading="actionLoadingMsg != null"
-                :width="dialogWidth">
+                width="100%">
                 <v-card-title>Image Editor</v-card-title>
                 <v-card-text>
                     <VuePictureCropper
@@ -105,12 +105,15 @@
     interface ImgProps {
         additionalURL?: string
         canEdit?: boolean
+        color?: string
         dialogWidth?: string
         height?: number
         id?: string
         imageHeight?: number
         imageWidth?: number
         label?: string
+        maxDialogWidth?: string | number
+        minDialogWidth?: string | number
         nav?: string
         placeholderIcon?: string
         proxyID?: string
@@ -123,7 +126,9 @@
 
     const props = withDefaults(defineProps<ImgProps>(), {
         canEdit: true,
-        dialogWidth: '500',
+        dialogWidth: 'auto',
+        maxDialogWidth: 600,
+        minDialogWidth: 100,
         height: 100,
         imageHeight: 256,
         imageWidth: 256,
@@ -131,6 +136,8 @@
         size: '100',
         width: 100
     })
+
+    const showO = ref(true)
 
     const imageData = ref<any>()
     const mSize = computed(() => Number.parseInt(props.size))

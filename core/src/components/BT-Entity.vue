@@ -7,19 +7,22 @@
             <div v-else-if="ui.asyncItem.value != null" key="1"
                 :class="{ 'd-inline': inline, 'text-truncate': truncate }"
                 :style="truncate == true ? 'display: inline-block;' : ''">
-                <slot name="prepend" v-bind:item="ui.asyncItem.value">
+                <slot name="prepend" v-bind:item="ui.asyncItem.value" :refresh="ui.refresh">
                     {{ prefix }}
                 </slot>
-                <slot 
-                    v-bind:item="ui.asyncItem.value"
-                    v-bind:deleteItem="ui.deleteItem"
-                    v-bind:save="ui.saveItem">
+                <slot
+                    name="default"
+                    :isChanged="ui.isChanged"
+                    :item="ui.asyncItem.value"
+                    :deleteItem="ui.deleteItem"
+                    :refresh="ui.refresh"
+                    :save="() => ui.saveItem(ui.asyncItem.value)">
                     {{ displayText }}
                 </slot>
-                <slot name="append" v-bind:item="ui.asyncItem.value" />
+                <slot name="append" v-bind:item="ui.asyncItem.value" :refresh="ui.refresh" />
             </div>
             <div v-else key="2" :class="inline ? 'd-inline' : ''">
-                <slot name="alternate" v-bind:item="ui.asyncItem.value">
+                <slot name="alternate" :item="ui.asyncItem.value" :refresh="ui.refresh">
                     <span key="3">{{ alternateText }}</span>
                 </slot>
             </div>
@@ -43,7 +46,7 @@
     import { nestedValue } from '../composables/helpers.ts'
     import { useNavigation } from '../composables/navigation.ts';
     
-    interface BTEntityProps extends ItemProps {
+    interface BTEntityProps extends ItemProps<any, any, any> {
         alternateText?: string
         inline?: boolean
         isEditing?: boolean
@@ -58,11 +61,13 @@
     const emit = defineEmits<ItemEvents>()
 
     const props = withDefaults(defineProps<BTEntityProps>(), {
-        eager: true
+        eager: false,
+        eagerWithID: true,
+        isSingle: true
     })
 
     const filters = useFilters()
-    const ui = useItem(props, emit)
+    const ui = useItem<any, any, any>(props, emit)
     const nav = useNavigation()
 
     const mItemText = props.itemText ?? (props.nav != null ? nav.findItemText(props.nav) : undefined) ?? undefined

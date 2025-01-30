@@ -56,7 +56,7 @@ export function useActionsTracker(useOptions?: DoActionOptions) {
         mErrorMsg.value = undefined
     }
 
-    async function doAction(action: any, options?: DoActionOptions) {
+    async function doAction<TReturn>(action: any, options?: DoActionOptions) {
         const opt = { ...options }
         opt.completionMsg ??= useOptions?.completionMsg
         opt.confirmationMsg ??= useOptions?.confirmationMsg
@@ -81,7 +81,7 @@ export function useActionsTracker(useOptions?: DoActionOptions) {
                 mCompletionMsg.value = opt.completionMsg
             }
 
-            return res
+            return res as TReturn
         }
         catch (err: any) {
             if (opt.onError != null)

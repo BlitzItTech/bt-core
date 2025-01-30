@@ -30,15 +30,6 @@ export function useDates(): BTDates {
 export function createDates(options: CreateDatesOptions): BTDates {
     const getUtc = options.getUTC ?? DateTime.utc
 
-    // function toBTFormat(val?: string | DateTime): string {
-    //     let v = val ?? getUtc()
-        
-    //     if (typeof v == 'string')
-    //         return utcString(v, BTDateFormat)
-    //     else
-    //         return v.toFormat(BTDateFormat)
-    // }
-
     function btDate(val?: string): DateTime {
         if (val == null)
             return getUtc()

@@ -47,7 +47,7 @@ afterEach(() => {
     server.resetHandlers()
 })
 
-const setupItem = (props: ItemProps, options?: UseItemOptions) => {
+const setupItem = (props: ItemProps<any, any, any>, options?: UseItemOptions) => {
     return withSetup(() => {
         const api = createApi({})
 
@@ -70,7 +70,7 @@ const setupItem = (props: ItemProps, options?: UseItemOptions) => {
             router,
             auth,
             navigation,
-            item: useItem(props, null, options)
+            item: useItem(props, undefined, options)
         }
     })
 }

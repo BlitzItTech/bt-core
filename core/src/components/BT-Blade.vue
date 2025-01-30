@@ -5,17 +5,18 @@
             :class="mBladeClass"
             :color="transparent ? 'transparent' : undefined"
             :density="density"
-            :flat="ui.variant.value == 'inline' || ui.variant.value == 'pure'"
+            :flat="flat ?? (ui.variant.value == 'inline' || ui.variant.value == 'pure')"
             key="1"
             :min-height="minHeight"
             ref="blade"
             :rounded="(ui.variant.value == 'blade') ? '2' : '0'"
             :style="mBladeStyle">
             <v-toolbar v-if="!mHideToolbar"
-                color="primary"
+                :color="toolbarVariant == 'inverted' ? undefined : 'primary'"
                 :density="density"
                 ref="handle">
                 <slot name="blade-toolbar">
+                    <slot name="blade-toolbar-left"></slot>
                     <v-fade-transition hide-on-leave>
                         <v-btn
                             v-if="!mHideNavigation"
@@ -25,7 +26,7 @@
                                 @click="() => navBack()" />
                     </v-fade-transition>
                     <slot name="blade-title-left"></slot>
-                    <v-toolbar-title>{{ label }}</v-toolbar-title>
+                    <v-toolbar-title v-if="label != null">{{ label }}</v-toolbar-title>
                     
                     <slot name="blade-title-right"></slot>
                     <v-spacer />
@@ -65,18 +66,37 @@
                 </v-menu>
             </v-toolbar>
             <v-toolbar v-if="!mHideSubtoolbar"
-                color="primary"
+                :color="toolbarVariant == 'inverted' ? undefined : 'primary'"
                 :density="density"
                 tile>
                 <slot name="subtoolbar" />
             </v-toolbar>
-            <v-row v-if="!hideToolbar && ui.variant.value == 'inline'" no-gutters>
-                <v-list-subheader>{{ label }}</v-list-subheader>
+            <v-row v-if="!hideToolbar && (ui.variant.value == 'inline' || ui.variant.value == 'dialog')" no-gutters>
+                <slot name="blade-toolbar-left" />
+                <v-list-subheader v-if="label != null">{{ label }}</v-list-subheader>
                 <v-spacer />
                 <slot name="blade-toolbar-right" />
             </v-row>
             <v-slide-y-transition>
-                <v-alert closable title="Error" color="red-lighten-1" v-model="showError">{{ errorMsg }}</v-alert>
+                <!-- <v-banner
+                    v-if="showError"
+                    bg-color="red-lighten-1"
+                    
+                    rounded
+                    sticky
+                    title="Error">
+                    <template #actions>
+                        <v-btn @click="showError = false" text="Dismiss" />
+                    </template>
+                    <template #text>
+                        {{ errorMsg }}
+                    </template>
+                </v-banner> -->
+                <v-alert 
+                    closable 
+                    color="red-lighten-1"
+                    title="Error" 
+                    v-model="showError">{{ errorMsg }}</v-alert>
             </v-slide-y-transition>
             <slot name="content" :isMobile="ui.isMobile.value" :bladeData="ui.bladeData">
                 <v-card-text class="ma-0 pa-0">
@@ -107,12 +127,14 @@
     import { useNavBack } from '../composables/navigation.ts'
     import { computed, provide, ref, watch } from 'vue'
     import { useSpring } from 'vue-use-spring'
+    import { useDisplay } from 'vuetify'
 
     interface BProps extends UseBladeOptions {
         density?: BladeDensity
         errorMsg?: string
         fieldEditVariant?: string
         fieldVariant?: string
+        flat?: boolean
         hideBladeControls?: boolean
         hideNavigation?: boolean
         hideSubtoolbar?: boolean
@@ -124,6 +146,7 @@
         noMargins?: boolean
         preset?: string
         size?: string | number
+        toolbarVariant?: 'default' | 'inverted'
         transparent?: boolean
         variant?: BladeVariant
         width?: string | number
@@ -131,8 +154,10 @@
 
     const props = withDefaults(defineProps<BProps>(), {
         density: 'compact',
+        flat: undefined,
         hideToolbarSettings: true,
         minHeight: undefined,
+        noMargins: undefined,
         size: 'small',
         variant: 'page'
     })
@@ -156,6 +181,7 @@
     
     let lastWidth: number = 400 //startWidth.value
     const position = useSpring({ width: startWidth.value })
+    const { xs } = useDisplay()
     
     const blade = ref<ComponentPublicInstance | null>(null)
     const handle = ref<ComponentPublicInstance | null>(null)
@@ -172,9 +198,6 @@
             position.width = 0
         },
         onUpdate: () => {
-            console.log('u')
-            console.log(position.width)
-            console.log(widthIsPercent ? Number.parseInt(props.width as string) : lastWidth)
             if (position.width == 0)
                 position.width = (widthIsPercent && props.width != null) ? Number.parseInt(props.width as string) : lastWidth
         }
@@ -186,13 +209,17 @@
 
     const isLoading = computed(() => props.loadingMsg != null)
     const mHideBladeControls = computed(() => (presets.hideBladeControls as boolean ?? props.hideBladeControls) || (ui.variant.value != 'blade' && ui.variant.value != 'page'))
-    const mHideNavigation = computed(() => (presets.hideNavigation as boolean ?? props.hideNavigation) || ui.variant.value == 'inline' || ui.variant.value == 'pure')
-    const mHideSubtoolbar = computed(() => (presets.hideSubtoolbar as boolean ?? props.hideSubtoolbar) || ui.variant.value == 'inline' || ui.variant.value == 'pure')
-    const mHideToolbar = computed(() => (presets.hideToolbar as boolean ?? props.hideToolbar) || ui.variant.value == 'inline' || ui.variant.value == 'pure')
-    const mHideToolbarSettings = computed(() => (presets.hideToolbarSettings as boolean ?? props.hideToolbarSettings) || ui.variant.value == 'inline' || ui.variant.value == 'pure')
+    const mHideNavigation = computed(() => (presets.hideNavigation as boolean ?? props.hideNavigation) || ui.variant.value == 'inline' || ui.variant.value == 'pure' || ui.variant.value == 'dialog')
+    const mNoMargins = computed(() => {
+        const res = (presets.noMargins as boolean ?? props.noMargins)
+        return res != null ? res : xs.value
+    })
+    const mHideSubtoolbar = computed(() => (presets.hideSubtoolbar as boolean ?? props.hideSubtoolbar) || ui.variant.value == 'inline' || ui.variant.value == 'pure' || ui.variant.value == 'dialog')
+    const mHideToolbar = computed(() => (presets.hideToolbar as boolean ?? props.hideToolbar) || ui.variant.value == 'inline' || ui.variant.value == 'pure' || ui.variant.value == 'dialog')
+    const mHideToolbarSettings = computed(() => (presets.hideToolbarSettings as boolean ?? props.hideToolbarSettings) || ui.variant.value == 'inline' || ui.variant.value == 'pure' || ui.variant.value == 'dialog')
     const showError = ref(false)
     const mBladeClass = computed(() => {
-        if (props.noMargins)
+        if (mNoMargins.value)
             return ''
         
         if (ui.variant.value == 'blade') {

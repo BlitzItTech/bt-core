@@ -8,6 +8,7 @@
         :item-title="mItemText"
         :item-value="itemValue"
         :loading="ui.isLoading.value"
+        :multiple="multiple"
         :variant="fieldVariant"
         v-bind="$attrs">
         <template #item="data">
@@ -32,17 +33,16 @@
 
     }
 
-    interface SelectProps extends ListProps {
+    interface SelectProps extends ListProps<any, any, any> {
         additionalUrl?: string
         canRefresh?: boolean
         canSelectNone?: boolean
         fieldVariant?: FieldVariant
-        items?: [],
+        items?: any[],
         itemText?: string
         itemValue?: string //inherited
         multiple?: boolean
         nav?: string
-        onFilter?: Function
         textFilter?: string
     }
 
@@ -54,6 +54,6 @@
     })
 
     const mItemText = props.itemText ?? (props.nav != null ? nav.findItemText(props.nav) : undefined) ?? undefined
-    const ui = useList<any>(props, emit)
+    const ui = useList<any, any, any>(props, emit)
 
 </script>

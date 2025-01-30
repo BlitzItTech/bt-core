@@ -1,29 +1,34 @@
 import { App } from 'vue'
-import { createApi } from './composables/api.ts'
+import { createApi, CreateApiOptions } from './composables/api.ts'
 import { CreateAuthOptions, createAuth, type AuthSubscription } from './composables/auth.ts'
 import { BaseCosmeticTheme, createCosmetics, UseCosmeticsOptions } from './composables/cosmetics.ts'
 import { createDates } from './composables/dates.ts'
-import { createDemo } from './composables/demo.ts'
+import { createDemo, CreateDemoOptions } from './composables/demo.ts'
 import { createFilters } from './composables/filters.ts'
+import { CreateHeightOptions, useHeights } from './composables/heights.ts'
 import { CreateMenuOptions, createMenu } from './composables/menu.ts'
 import { UseNavigationOptions, createNavigation } from './composables/navigation.ts'
 import { createPresets } from './composables/presets.ts'
 import { createPWA } from './composables/pwa.ts'
 import { createStoreBuilder } from './composables/stores.ts'
 import { CreateUrlOptions, createUrl } from './composables/urls.ts'
-import { ThemeInstance } from 'vuetify'
+import { DisplayInstance, ThemeInstance } from 'vuetify'
 import { navigationKey, authKey, urlsKey, demoKey } from './types.ts'
 // import VueDraggableResizable  from 'vue-draggable-resizable'
 
+import BTAvatar from './components/BT-Avatar.vue'
 import BTBladeItem from './components/BT-Blade-Item.vue'
 import BTBladeItems from './components/BT-Blade-Items.vue'
 import BTBlade from './components/BT-Blade.vue'
 import BTBtn from './components/BT-Btn.vue'
+import BTCameraOverlay from './components/BT-Camera-Overlay.vue'
 import BTCol from './components/BT-Col.vue'
 import BTCosmeticsMenu from './components/BT-Cosmetics-Menu.vue'
 import BTCron from './components/BT-Cron.vue'
 import BTDate from './components/BT-Date.vue'
+import BTDragCounter from './components/BT-Drag-Counter.vue'
 import BTEntity from './components/BT-Entity.vue'
+import BTError from './components/BT-Error.vue'
 import BTFieldCheckbox from './components/BT-Field-Checkbox.vue'
 import BTFieldDate from './components/BT-Field-Date.vue'
 import BTFieldEntity from './components/BT-Field-Entity.vue'
@@ -39,11 +44,16 @@ import BTJson from './components/BT-Json.vue'
 import BTLoader from './components/BT-Loader.vue'
 import BTNavSidebar from './components/BT-Nav-Sidebar.vue'
 import BTNumber from './components/BT-Number.vue'
+import BTNumpad from './components/BT-Numpad.vue'
 import BTSelectInline from './components/BT-Select-Inline.vue'
 import BTSelectListBox from './components/BT-Select-List-Box.vue'
 import BTSelect from './components/BT-Select.vue'
+import BTSignature from './components/BT-Signature.vue'
+import BTSignatureOverlay from './components/BT-Signature-Overlay.vue'
 import BTSlider from './components/BT-Slider.vue'
 import BTSpan from './components/BT-Span.vue'
+import { Router } from 'vue-router'
+import { createAssistant, CreateAssistantOptions } from './composables/assistant.ts'
 
 export interface CoreApp {
     install(app: App, options: any) : void
@@ -51,12 +61,19 @@ export interface CoreApp {
 
 export interface InstallCoreOptions {
     vuetifyInstance?: ThemeInstance
+    vuetifyDisplay?: DisplayInstance
+    router?: Router
 }
 
 export interface CreateCoreOptions {
+    api?: CreateApiOptions
+    assistant?: CreateAssistantOptions
     auth: CreateAuthOptions
     cosmetics?: UseCosmeticsOptions<BaseCosmeticTheme>
+    demo?: CreateDemoOptions
+    filters?: any
     // defaultCacheExpiryHours?: number
+    heights?: CreateHeightOptions,
     includeComponents?: boolean
     // getAuthQuery: (redirectPath?: string, state?: string) => string
     menu?: CreateMenuOptions
@@ -67,6 +84,7 @@ export interface CreateCoreOptions {
     /**suboptions */
     subscriptionOptions?: AuthSubscription[]
     urls: CreateUrlOptions
+    usePWA?: boolean
 }
 
 export function createCore(options: CreateCoreOptions): CoreApp {
@@ -75,15 +93,19 @@ export function createCore(options: CreateCoreOptions): CoreApp {
             if (options.includeComponents == true) {
                 //register components
                 // app.component('vue-draggable-resizable', VueDraggableResizable)
+                app.component('bt-avatar', BTAvatar)
                 app.component('bt-blade-item', BTBladeItem)
                 app.component('bt-blade-items', BTBladeItems)
                 app.component('bt-blade', BTBlade)
                 app.component('bt-btn', BTBtn)
+                app.component('bt-camera-overlay', BTCameraOverlay)
                 app.component('bt-col', BTCol)
                 app.component('bt-cosmetics-menu', BTCosmeticsMenu)
                 app.component('bt-cron', BTCron)
                 app.component('bt-date', BTDate)
+                app.component('bt-drag-counter', BTDragCounter)
                 app.component('bt-entity', BTEntity)
+                app.component('bt-error', BTError)
                 app.component('bt-field-checkbox', BTFieldCheckbox)
                 app.component('bt-field-date', BTFieldDate)
                 app.component('bt-field-entity', BTFieldEntity)
@@ -99,9 +121,12 @@ export function createCore(options: CreateCoreOptions): CoreApp {
                 app.component('bt-loader', BTLoader)
                 app.component('bt-nav-sidebar', BTNavSidebar)
                 app.component('bt-number', BTNumber)
+                app.component('bt-numpad', BTNumpad)
                 app.component('bt-select-inline', BTSelectInline)
                 app.component('bt-select-list-box', BTSelectListBox)
                 app.component('bt-select', BTSelect)
+                app.component('bt-signature', BTSignature)
+                app.component('bt-signature-overlay', BTSignatureOverlay)
                 app.component('bt-slider', BTSlider)
                 app.component('bt-span', BTSpan)
             }
@@ -112,26 +137,41 @@ export function createCore(options: CreateCoreOptions): CoreApp {
 
             options.cosmetics.vuetifyInstance ??= installOptions.vuetifyInstance
             
+            createAssistant(options.assistant ?? { items: [] })
+
             const urls = createUrl(options.urls)
 
             createCosmetics(options.cosmetics)
 
-            const demo = createDemo()
-            
             const navigation = createNavigation(options.navigation ?? {})
             
+            options.heights ??= {}
+
+            options.heights.display ??= installOptions.vuetifyDisplay
+
+            options.heights.navigation ??= navigation
+
+            useHeights(options.heights)
+
             const menu = createMenu(options.menu)
             
             createPresets(options)
 
             options.auth.menu ??= menu
-            options.auth.demo ??= demo
+            options.auth.router ??= installOptions.router
             options.auth.getAuthItem = navigation.findItem
 
             const auth = createAuth(options.auth)
 
+            if (options.demo != null)
+                options.demo.auth ??= auth
+            
+            const demo = createDemo(options.demo)
+            
             const api = createApi({
+                ...options.api,
                 auth: auth,
+                demo: demo,
                 findPath: navigation.findPath,
                 useBearerToken: true
             })
@@ -143,14 +183,20 @@ export function createCore(options: CreateCoreOptions): CoreApp {
             createFilters({
                 auth: auth,
                 dates: dates,
-                demo: demo
+                demo: demo,
+                filters: options.filters
             })
 
-            createPWA()
+            options.usePWA ??= true
+
+            if (options.usePWA)
+                createPWA()
 
             createStoreBuilder({
                 api,
                 auth,
+                dates,
+                demo,
                 navigation
             })
 

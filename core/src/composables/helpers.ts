@@ -1,10 +1,96 @@
 import { firstBy } from 'thenby'
+import type { StoreGetReturn, StoreGetAllReturn } from './stores.ts';
+
+
+// function evenOut(d: number[], newArrays?: number[][]) {
+//     let min = Math.min(...d)
+//     let max = Math.max(...d)
+
+//     if (newArrays != null) {
+//         //find the min and max to adjust to
+//         let newMax = Math.max(...newArrays.map(x => Math.max(...x)))
+//         //let newMin = Math.min(...newArrays.map(x => Math.min(...x)))
+//         return d.map(x => ((x - min) / max) * newMax)
+//     }
+
+//     return d.map(x => ((x - min) / max) * 100)
+// }
+
+export function log(obj: any) {
+    console.log(JSON.parse(JSON.stringify(obj)))
+}
+
+/**decrypts jwt token */
+export function jwtDecrypt(token: string) {
+    const base64Url = token.split('.')[1];
+    const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+    const jsonPayload = decodeURIComponent(
+        atob(base64)
+            .split("")
+            .map(function(c) {
+                return "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2);
+            })
+            .join("")
+    );
+
+    return JSON.parse(jsonPayload);
+}
+
+export function jwtEncrypt(payload?: any): string {
+    payload ??= {}
+    
+    // encodeURIComponent(
+    //     btoa(JSON.stringify(payload))
+    // )
+
+    return `headers.${btoa(JSON.stringify(payload))}.signature`
+}
+
+export function expectSingleReturn<T>(res: StoreGetReturn<T | T[]> | undefined): StoreGetReturn<T> | undefined {
+    if (res == null)
+        return undefined
+
+    if (Array.isArray(res.data))
+        throw 'Is an array'
+
+    return res as StoreGetReturn<T>
+}
+
+export function expectArrayReturn<T>(res: StoreGetReturn<T | T[]> | undefined): StoreGetReturn<T[]> | undefined {
+    if (res == null)
+        return undefined
+
+    if (!Array.isArray(res.data))
+        throw 'Not an array'
+
+    return res as StoreGetReturn<T[]>
+}
+
+export function expectSingle<T>(res: StoreGetReturn<T | T[]> | StoreGetAllReturn<T> | undefined): T | undefined {
+    if (res == null)
+        return undefined
+
+    if (Array.isArray(res.data))
+        throw 'Is an array'
+
+    return res.data
+}
+
+export function expectArray<T>(res: StoreGetReturn<T | T[]> | StoreGetAllReturn<T> | undefined): T[] | undefined {
+    if (res == null)
+        return undefined
+
+    if (!Array.isArray(res.data))
+        throw 'Not an array'
+
+    return res.data
+}
 
 export function sum(array: number[]): number {
     return array.reduce((sum, v) => sum += v, 0)
 }
 
-export function orderBy(arr: any[], prop: string | ((item: any) => boolean | number | string) | undefined, asc: true | false = true) {
+export function orderBy(arr: any[], prop?: string | ((item: any) => boolean | number | string) | undefined, asc: true | false = true) {
     return arr.sort(function (a, b) {
         if (!prop) {
             if (a > b) {
@@ -71,12 +157,30 @@ export function checkImage(
         img.src = url
 }
 
-export function distinct(list: any) {
+export function distinct<T>(list: T[], compareFunc?: string | ((item: T) => any)) {
     if (list == null || !Array.isArray(list)) {
         return list
     }
 
-    return [...new Set(list.map(item => item))]
+    if (compareFunc == null)
+        return [...new Set(list.map(item => item))] as T[]
+
+    const rList: T[] = []
+
+    if (typeof compareFunc == 'string') {
+        list.forEach(item => {
+            if (!rList.some(r => nestedValue(item, compareFunc) == nestedValue(r, compareFunc)))
+                rList.push(item)
+        })
+    }
+    else {
+        list.forEach(item => {
+            if (!rList.some(r => compareFunc(item) == compareFunc(r)))
+                rList.push(item)
+        })
+    }
+
+    return rList
 }
 
 export function group<T>(list: T[], keyGetter: string | ((item: T) => string | number)) {
@@ -116,44 +220,6 @@ export interface GeoCoordinate {
     lat?: number
     lng?: number
 }
-
-// /**
-//  * confirms if area is a certain size
-//  * @param boundary array of 4 x { lat: number, lng: number }
-//  * @param size 
-//  * @returns 
-//  */
-// export function isAreaOfSize(boundary?: GeoCoordinate[], size?: number) {
-//     if (boundary == null || size == null || boundary.length != 4) {
-//         return false;
-//     }
-
-//     var middleLat = boundary[0].lat + size;
-//     var middleLng = boundary[0].lng - size;
-
-//     if ((boundary[1].lat + size) != middleLat) {
-//         return false;
-//     }
-//     if ((boundary[1].lng + size) != middleLng) {
-//         return false;
-//     }
-
-//     if ((boundary[2].lat - size) != middleLat) {
-//         return false;
-//     }
-//     if ((boundary[2].lng + size) != middleLng) {
-//         return false;
-//     }
-
-//     if ((boundary[3].lat - size) != middleLat) {
-//         return false;
-//     }
-//     if ((boundary[3].lng - size) != middleLng) {
-//         return false;
-//     }
-
-//     return true;
-// }
 
 /**
  * get area around a certain location with a space of the given size
@@ -236,7 +302,7 @@ export function getGoogleMapsLocationLine(value: any) {
     return str.replaceAll(' ', '');
 }
 
-export function getLocationLine(value: any, forGoogle: boolean = false) {
+export function getLocationLine(value: any, forGoogle: boolean = false): string {
     if (value == null) {
         return '';
     }
@@ -256,6 +322,54 @@ export function getLocationLine(value: any, forGoogle: boolean = false) {
     if (value.streetName != null) {
         rStr = rStr + value.streetName + ', ';
     }
+    if (value.suburb != null) {
+        rStr = rStr + value.suburb + ' ';
+    }
+    if (value.state != null) {
+        rStr = rStr + value.state + ' ';
+    }
+    if (value.postcode != null) {
+        rStr = rStr + value.postcode;
+    }
+    
+    return rStr;
+}
+
+export function getLocationLineOne(value: any): string {
+    if (value == null) {
+        return '';
+    }
+
+    if (typeof value !== 'object') {
+        return value;
+    }    
+    
+    var rStr = '';
+
+    if (value.addressLineOne != null) {
+        rStr = value.addressLineOne + ' ';
+    }
+    if (value.streetNumber != null) {
+        rStr = rStr + value.streetNumber + ' ';
+    }
+    if (value.streetName != null) {
+        rStr = rStr + value.streetName + ', ';
+    }
+    
+    return rStr;
+}
+
+export function getLocationLineTwo(value: any): string {
+    if (value == null) {
+        return '';
+    }
+
+    if (typeof value !== 'object') {
+        return value;
+    }    
+    
+    var rStr = '';
+
     if (value.suburb != null) {
         rStr = rStr + value.suburb + ' ';
     }
@@ -338,15 +452,34 @@ export function fromCamelCase(val?: string) {
  * @returns 
  */
 export function toCamelCase(value: any) { //for JSON parse
-    if (value != null && typeof value === 'object'){
-      for (var k in value) {
-        if (/^[A-Z]/.test(k) && Object.hasOwnProperty.call(value, k)) {
-          value[k.charAt(0).toLowerCase() + k.substring(1)] = value[k];
-          delete value[k];
-        }
-      }
+    if (value == null)
+        return value
+
+    var t = typeof value
+    if (t === 'string') {
+        return `${value.charAt(0).toLowerCase()}${value.substring(1)}`
     }
+    else if (t === 'object') {
+        console.log('c')
+        for (var k in value) {
+            if (/^[A-Z]/.test(k) && Object.hasOwnProperty.call(value, k)) {
+              value[k.charAt(0).toLowerCase() + k.substring(1)] = value[k];
+              delete value[k];
+            }
+        }
+    }
+    
     return value;
+
+    // if (value != null && typeof value === 'object'){
+    //   for (var k in value) {
+    //     if (/^[A-Z]/.test(k) && Object.hasOwnProperty.call(value, k)) {
+    //       value[k.charAt(0).toLowerCase() + k.substring(1)] = value[k];
+    //       delete value[k];
+    //     }
+    //   }
+    // }
+    // return value;
   }
 
 
@@ -524,8 +657,14 @@ export function roundTo(val: number, dPlaces: number) {
 
 //#region csv
 
-export function toggleCSV(value?: string, tag?: string) {
-    let rVal = value ?? ''
+export function toggleCSV(value?: string | string[], tag?: string) {
+    let rVal = ''
+    if (value != null) {
+        if (Array.isArray(value))
+            rVal = value.toString()
+        else
+            rVal = value
+    }
     if (tag != null) {
         if (csvContains(rVal, tag)) {
             //remove
@@ -563,7 +702,7 @@ export function csvContains(value?: string, tag?: string) {
 //#end region
 
 /**copies object and all descendant properties */
-export function copyDeep(aObject: any) {
+export function copyDeep<T>(aObject: T) {
     if (!aObject) {
         return aObject;
     }
@@ -574,7 +713,7 @@ export function copyDeep(aObject: any) {
         bObject[k] = (typeof v === 'object') ? copyDeep(v) : v;
     }
 
-    return bObject;
+    return bObject as T
 }
 
 /**copies object and returns copied object with descendant properties placed in alphabetical order */
@@ -592,7 +731,7 @@ export function copyItemByAlphabet(aObject: any) {
 }
 
 /**whether string is contained somewhere in this value */
-export function containsSearch(value?: string, str?: string) {
+export function containsSearch(value?: string | number, str?: string) {
     if (str == null) {
         return true;
     }
@@ -600,7 +739,7 @@ export function containsSearch(value?: string, str?: string) {
         return false;
     }
     
-    return value.toLowerCase().includes(str.toLowerCase());
+    return value.toString().toLowerCase().includes(str.toLowerCase());
 }
 
 /**must be an object.  Returns a flat map of all items in the prop selector */
@@ -686,7 +825,7 @@ export function hasSearch(value: any, str?: string, props?: string[]) {
         const propName = props[i];
         var propVal = nestedValue(value, propName);
         if (propVal != undefined) {
-            if (typeof(propVal) === 'string') {
+            if (typeof(propVal) === 'string' || typeof(propVal) == 'number') {
                 if (containsSearch(propVal, str)) {
                     return true;
                 }
@@ -699,7 +838,10 @@ export function hasSearch(value: any, str?: string, props?: string[]) {
 
 export function toCompareString(str?: string) {
     if (str != null) {
-        return str.replaceAll(' ', '').toLowerCase();
+        return str
+            .replaceAll(' ', '')
+            .replaceAll(/(\r\n|\n|\r)/gm, "")
+            .toLowerCase();
     }
     else {
         return null;
@@ -729,6 +871,17 @@ export function nestedValue(obj: any, path?: string) {
     }
 
     return r;
+}
+
+export function spread<T>(arr: T[], chunkSize: number): (T)[][] {
+    const res = []
+  
+    for (let i = 0; i < arr.length; i += chunkSize) {
+      const slice: (T)[] = arr.slice(i, i + chunkSize)
+      res.push(slice)
+    }
+  
+    return res
 }
 
 export function splitArray<T>(arr: T[], chunkSize: number, fill: boolean = true): (T | null)[][] {
@@ -761,4 +914,8 @@ export function singularize(str: string) {
         return str.slice(0, str.length - 1)
 
     return str
+}
+
+export function compareString(str?: string) {
+    return str?.replaceAll(' ', '').toLowerCase()
 }

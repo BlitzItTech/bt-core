@@ -29,6 +29,7 @@ export function useRules(options?: UseRulesOptions) {
         rules.push((x: any) => /^(.*[a-z].*)$/.test(x) || 'Password must contain a lowercase letter')
         rules.push((x: any) => /^(.*[A-Z].*)$/.test(x) || 'Password must contain an uppercase letter')
         rules.push((x: any) => /^(.*\d.*)$/.test(x) || 'Password must contain a number')
+        rules.push((x: any) => /^(.*[#?!@\$%\^\&*\)\(+=._-].*)$/.test(x) || 'Password must contain a special character like # ? ! @ $ % ^ & * - +')
     }
 
     if (options?.forEmail == true) {
