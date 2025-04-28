@@ -159,6 +159,9 @@
             </slot>
         </template>
         <template #content="{ bladeData, isMobile }">
+            <slot name="d"
+                :items="ui.asyncItems">
+            </slot>
             <slot name="body" 
                 :bladeData="bladeData"
                 :items="ui.filteredItems.value"
@@ -215,7 +218,7 @@
                     <v-slide-x-transition group hide-on-leave>
                         <template 
                             v-for="(fItem, fInd) in ui.filteredItems.value"
-                            :key="`${fItem != null && fItem?.id != null ? fItem.id : fInd}-table-list-item`">
+                            :key="`${fItem.id}${fInd}-table-list-item`">
                             <slot name="listItem" 
                                 :bladeData="bladeData"
                                 :deleteItem="() => ui.deleteItem(fItem)"
@@ -231,23 +234,26 @@
                                     @click="ui.selectItem(fItem, variant)"
                                     @mouseover="$emit('mouse-over-item', fItem)">
                                     <template #title>
-                                        <slot name="itemTitle" :item="fItem" :index="fInd" :size="size"></slot>
+                                        <slot name="itemTitle" :item="fItem" :index="fInd" :size="size">
+                                            <span v-for="(opt, ind) in ui.titleOptions.value" :key="ind">
+                                                <slot v-for="(title, tInd) in opt.values" :name="title.value" :key="tInd" :item="fItem" class="mr-1">
+                                                    <bt-header-option :option="title" :data="fItem" />
+                                                </slot>
+                                            </span>
+                                        </slot>
+                                    </template>
+                                    <template #subtitle>
+                                        <slot name="itemSubtitle" :item="fItem" :index="fInd" :size="size">
+                                            <span v-for="(opt, ind) in ui.subtitleOptions.value" :key="ind">
+                                                <slot v-for="(title, tInd) in opt.values" :name="title.value" :key="tInd" :item="fItem" class="mr-1">
+                                                    <bt-header-option :option="title" :data="fItem" />
+                                                </slot>
+                                            </span>
+                                        </slot>
                                     </template>
                                     <template #prepend>
                                         <slot name="itemPrepend" :item="fItem" :index="fInd" :size="size"></slot>
                                     </template>
-                                    <slot name="itemContent" :item="fItem" :index="fInd" :size="size">
-                                        <v-list-item-title v-for="(opt, ind) in ui.titleOptions.value" :key="ind">
-                                            <span v-for="(title, tInd) in opt.values" :key="tInd" class="mr-1">
-                                                <bt-header-option :option="title" :data="fItem" />
-                                            </span>
-                                        </v-list-item-title>
-                                        <v-list-item-subtitle v-for="(opt, ind) in ui.subtitleOptions.value" :key="ind">
-                                            <span v-for="(subtitle, tInd) in opt.values" :key="tInd" class="mr-1">
-                                                <bt-header-option :option="subtitle" :data="fItem" />
-                                            </span>
-                                        </v-list-item-subtitle>
-                                    </slot>
                                     <template v-if="!hideActions" v-slot:append>
                                         <v-row no-gutters :class="mFadingActions ? 'actionButtons' : null">
                                             <slot name="itemActions" :item="fItem" :index="fInd" :items="ui.asyncItems.value" :size="mActionButtonSize" />
@@ -367,7 +373,7 @@
     import { computed, ref, watch, onMounted, ComponentPublicInstance, nextTick } from 'vue'
     import { useRoute, useRouter } from 'vue-router'
     import { useHeights } from '../composables/heights.ts'
-import { useDisplay } from 'vuetify'
+    import { useDisplay } from 'vuetify'
 
     interface PageEvents extends ListEvents {
         // (e: 'mouse-over-item', item: any): void

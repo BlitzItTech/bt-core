@@ -12,6 +12,13 @@ import { useIcons } from '../../../../core/src/composables/icons'
 import { useLocalCosmetics } from '../../../../core/src/composables/cosmetics'
 import { createVuetify } from 'vuetify'
 
+import {
+  mdiCardPlusOutline,
+  mdiPrinter,
+  mdiRobot,
+  mdiViewList
+} from '@mdi/js'
+
 const theme = useLocalCosmetics({
   defaultTheme: 'dark',
   dark: {
@@ -40,7 +47,10 @@ const theme = useLocalCosmetics({
 export default createVuetify({
   //@ts-ignore
   icons: useIcons({
-    
+    'card-plus-outline': mdiCardPlusOutline,
+    printer: mdiPrinter,
+    robot: mdiRobot,
+    'view-list': mdiViewList
   }),
   theme: theme
 })

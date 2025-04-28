@@ -1,13 +1,20 @@
 import { createCore } from '../../../../core/src/core'
 
 export default createCore({
+    api: {
+        testUnauthorizedErrors: false
+    },
     assistant: {
+        feedbackAfterDays: 1,
+        firstFeedbackAfterDays: -1,
+        helpMenuRoute: '/',
         items: [
             {
                 description: 'description description description description description description',
                 icon: '$youtube',
                 id: 'a',
-                routeNames: ['/a'],
+                isAlways: true,
+                routeNames: ['/'],
                 subtitle: 'How To Do Rostering',
                 title: 'Rostering',
                 url: 'https://www.youtube.com/watch?v=mVl6RVG8kds&list=PL5dySLuP_j8sHXuiiF2Mic9YO2F8V6Q6P'
@@ -16,6 +23,7 @@ export default createCore({
                 description: 'description description description description description description',
                 icon: '$youtube',
                 id: 'b',
+                isAlways: true,
                 routeNames: ['my-route'],
                 subtitle: 'How To Do Rostering',
                 tags: ['one'],
@@ -85,16 +93,62 @@ export default createCore({
         startInDemo: false
     },
     includeComponents: true,
+    menu: {
+        groups: [
+            {
+                displayName: 'Ordering',
+                icon: '$animation',
+                sortNumber: 0
+            },
+            {
+                displayName: 'Stock',
+                icon: '$package-variant',
+                sortNumber: 1
+            },
+            {
+                displayName: 'Dispatch',
+                icon: '$truck-fast',
+                sortNumber: 2
+            },
+            {
+                displayName: 'Invoicing',
+                icon: '$receipt',
+                sortNumber: 3
+            },
+            {
+                displayName: 'Business',
+                icon: '$domain',
+                sortNumber: 4
+            },
+            {
+                displayName: 'Items',
+                icon: '$view-list',
+                sortNumber: 5
+            },
+            {
+                displayName: 'Account',
+                icon: '$account-box',
+                sortNumber: 6
+            }
+        ]
+    },
     navigation: {
         navItems: [{
             name: 'test',
-            path: 'treat'
+            path: 'ProductGroups',
+            storeMode: 'session',
+            storageMode: 'session'
         }]
     },
     urls: {
         getEnv: () => { return 'development' },
         production: {},
-        development: {},
+        development: {
+            data: 'https://localhost:44387/api/v1',
+            origins: [
+                'http://127.0.0.1:3001'
+            ]
+        },
         staging: {}
     }
 })

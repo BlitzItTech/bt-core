@@ -53,7 +53,7 @@ export function useBlade<T, TReturn>(options?: UseBladeOptions): BTBlade<GetOpti
     const bladeBasic = options?.bladeBasic == true
     const bladeData = ref<InternalBladeData>()
     const bladeName = options?.bladeName
-    const breakpoint = options?.mobileBreakpoint ?? 500
+    const breakpoint = options?.mobileBreakpoint ?? 600
     const groupName = options?.bladeGroup ?? 'default'
     const handle = options?.handle ?? ref(null)
     const isMobile = ref(false)

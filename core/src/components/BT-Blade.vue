@@ -1,16 +1,15 @@
 <template>
-    <!-- <v-slide-x-transition> -->
-        <!-- v-if="variant != 'blade' || bladeUI.bladeData.show" -->
-        <v-card
-            :class="mBladeClass"
-            :color="transparent ? 'transparent' : undefined"
-            :density="density"
-            :flat="flat ?? (ui.variant.value == 'inline' || ui.variant.value == 'pure')"
-            key="1"
-            :min-height="minHeight"
-            ref="blade"
-            :rounded="(ui.variant.value == 'blade') ? '2' : '0'"
-            :style="mBladeStyle">
+    <v-card
+        :class="mBladeClass"
+        :color="transparent ? 'transparent' : undefined"
+        :density="density"
+        :flat="flat ?? (ui.variant.value == 'inline' || ui.variant.value == 'pure')"
+        key="1"
+        :min-height="minHeight"
+        ref="blade"
+        :rounded="(ui.variant.value == 'blade') ? '2' : '0'"
+        :style="mBladeStyle">
+        <v-slide-y-transition hide-on-leave>
             <v-toolbar v-if="!mHideToolbar"
                 :color="toolbarVariant == 'inverted' ? undefined : 'primary'"
                 :density="density"
@@ -23,7 +22,7 @@
                                 icon="$arrow-left"
                                 :size="size"
                                 title="Back"
-                                @click="() => navBack()" />
+                                @click="() => navBackward()" />
                     </v-fade-transition>
                     <slot name="blade-title-left"></slot>
                     <v-toolbar-title v-if="label != null">{{ label }}</v-toolbar-title>
@@ -32,20 +31,6 @@
                     <v-spacer />
                     <slot name="blade-toolbar-right"></slot>
                 </slot>
-                <!-- <v-btn
-                    v-if="!mHideBladeControls && ui.variant.value == 'page'"
-                    icon="$move-resize-variant"
-                    key="5"
-                    :size="size"
-                    title="Undock"
-                    @click="ui.variant.value = 'freestyle'" />
-                <v-btn
-                    v-else-if="!mHideBladeControls"
-                    icon="$window-maximize"
-                    key="6"
-                    :size="size"
-                    title="Maximize"
-                    @click="ui.variant.value = 'page'" /> -->
                 <v-btn
                     v-if="!mHideBladeControls && variant == 'blade'"
                     icon="$close"
@@ -65,58 +50,46 @@
                     </v-list>
                 </v-menu>
             </v-toolbar>
+        </v-slide-y-transition>
+        <v-slide-y-transition hide-on-leave>
             <v-toolbar v-if="!mHideSubtoolbar"
                 :color="toolbarVariant == 'inverted' ? undefined : 'primary'"
                 :density="density"
                 tile>
-                <slot name="subtoolbar" />
+                <slot name="subtoolbar"></slot>
             </v-toolbar>
-            <v-row v-if="!hideToolbar && (ui.variant.value == 'inline' || ui.variant.value == 'dialog')" no-gutters>
-                <slot name="blade-toolbar-left" />
-                <v-list-subheader v-if="label != null">{{ label }}</v-list-subheader>
-                <v-spacer />
-                <slot name="blade-toolbar-right" />
-            </v-row>
-            <v-slide-y-transition>
-                <!-- <v-banner
-                    v-if="showError"
-                    bg-color="red-lighten-1"
-                    
-                    rounded
-                    sticky
-                    title="Error">
-                    <template #actions>
-                        <v-btn @click="showError = false" text="Dismiss" />
-                    </template>
-                    <template #text>
-                        {{ errorMsg }}
-                    </template>
-                </v-banner> -->
-                <v-alert 
-                    closable 
-                    color="red-lighten-1"
-                    title="Error" 
-                    v-model="showError">{{ errorMsg }}</v-alert>
-            </v-slide-y-transition>
-            <slot name="content" :isMobile="ui.isMobile.value" :bladeData="ui.bladeData">
-                <v-card-text class="ma-0 pa-0">
+        </v-slide-y-transition>
+        <v-row v-if="!hideToolbar && (ui.variant.value == 'inline' || ui.variant.value == 'dialog')" no-gutters>
+            <slot name="blade-toolbar-left" />
+            <v-list-subheader v-if="label != null">{{ label }}</v-list-subheader>
+            <v-spacer />
+            <slot name="blade-toolbar-right" />
+        </v-row>
+        <v-slide-y-transition>
+            <v-alert 
+                closable 
+                color="red-lighten-1"
+                title="Error" 
+                v-model="showError">{{ errorMsg }}</v-alert>
+        </v-slide-y-transition>
+        <slot name="content" :isMobile="ui.isMobile.value" :bladeData="ui.bladeData">
+            <v-card-text class="ma-0 pa-0">
 
+            </v-card-text>
+        </slot>
+        <v-overlay 
+            v-model="isLoading"
+            class="align-center justify-center text-center overlay"
+            contained
+            persistent>
+            <v-card>
+                <v-card-text>
+                    <v-progress-circular indeterminate />
+                    <p>{{ loadingMsg }}</p>
                 </v-card-text>
-            </slot>
-            <v-overlay 
-                v-model="isLoading"
-                class="align-center justify-center text-center overlay"
-                contained
-                persistent>
-                <v-card>
-                    <v-card-text>
-                        <v-progress-circular indeterminate />
-                        <p>{{ loadingMsg }}</p>
-                    </v-card-text>
-                </v-card>
-            </v-overlay>
-        </v-card>
-    <!-- </v-slide-x-transition> -->
+            </v-card>
+        </v-overlay>
+    </v-card>
 </template>
 
 <script setup lang="ts">
@@ -135,6 +108,7 @@
         fieldEditVariant?: string
         fieldVariant?: string
         flat?: boolean
+        getNavBack?: () => void | undefined
         hideBladeControls?: boolean
         hideNavigation?: boolean
         hideSubtoolbar?: boolean
@@ -187,6 +161,12 @@
     const handle = ref<ComponentPublicInstance | null>(null)
     const { navBack } = useNavBack()
     
+    function navBackward() {
+        var getNavBack = props.getNavBack ?? (() => undefined)
+        var goBack = getNavBack() ?? navBack
+        goBack()
+    }
+
     const ui = useBlade({ 
         ...props,
         blade,

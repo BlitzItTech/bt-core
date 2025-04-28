@@ -2,7 +2,7 @@ import type { ThemeInstance } from 'vuetify'
 import { computed, ref, watch } from 'vue'
 import type { ComputedRef, Ref } from 'vue'
 
-interface CosmeticData {
+export interface CosmeticData {
     dark?: BaseCosmeticTheme,
     drawer?: boolean,
     drawerStick?: boolean,

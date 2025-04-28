@@ -20,6 +20,14 @@ export function log(obj: any) {
     console.log(JSON.parse(JSON.stringify(obj)))
 }
 
+export function moveInArray(arr: any[], fromInd: number, toInd: number) {
+    if (fromInd >= 0 && fromInd < arr.length && toInd >= 0 && toInd < arr.length) {
+        var el = arr[fromInd]
+        arr.splice(fromInd, 1)
+        arr.splice(toInd, 0, el)
+    }
+}
+
 /**decrypts jwt token */
 export function jwtDecrypt(token: string) {
     const base64Url = token.split('.')[1];
@@ -214,59 +222,6 @@ export function extensionExists(elementId: string = 'blitzItExtensionExists') {
     }
 }
 
-//#region area and space
-
-export interface GeoCoordinate {
-    lat?: number
-    lng?: number
-}
-
-/**
- * get area around a certain location with a space of the given size
- * @param location 
- * @param radius
- * @returns 
- */
-export function getAreaAround(location: GeoCoordinate, radius: number) {
-    if (location.lat == null || location.lng == null)
-        return undefined
-
-    return [
-        { lat: location.lat - radius, lng: location.lng + radius },
-        { lat: location.lat - radius, lng: location.lng - radius },
-        { lat: location.lat + radius, lng: location.lng - radius },
-        { lat: location.lat + radius, lng: location.lng + radius }
-    ];
-}
-
-/**get square area using the location as the far right line */
-export function getAreaToLeft(location: GeoCoordinate, radius: number) {
-    if (location.lat == null || location.lng == null)
-        return undefined
-
-    return [
-        { lat: location.lat - (radius * 2), lng: location.lng + radius },
-        { lat: location.lat - (radius * 2), lng: location.lng - radius },
-        { lat: location.lat, lng: location.lng - radius },
-        { lat: location.lat, lng: location.lng + radius }
-    ];
-}
-
-/**get square area using the location as the far left line */
-export function getAreaToRight(location: GeoCoordinate, radius: number) {
-    if (location.lat == null || location.lng == null)
-        return undefined
-
-    return [
-        { lat: location.lat, lng: location.lng + radius },
-        { lat: location.lat, lng: location.lng - radius },
-        { lat: location.lat + (radius * 2), lng: location.lng - radius },
-        { lat: location.lat + (radius * 2), lng: location.lng + radius }
-    ];
-}
-
-//#endregion
-
 //#region locations
 
 /**
@@ -460,7 +415,6 @@ export function toCamelCase(value: any) { //for JSON parse
         return `${value.charAt(0).toLowerCase()}${value.substring(1)}`
     }
     else if (t === 'object') {
-        console.log('c')
         for (var k in value) {
             if (/^[A-Z]/.test(k) && Object.hasOwnProperty.call(value, k)) {
               value[k.charAt(0).toLowerCase() + k.substring(1)] = value[k];

@@ -4,7 +4,7 @@
         :md="mMd"
         :sm="mSm"
         :cols="cols">
-        <v-list-item>
+        <v-list-item class="ma-0 pa-0">
             <v-list-item-subtitle>{{ label }}</v-list-item-subtitle>
             <v-list-item-title>
                 <v-row dense>
@@ -16,7 +16,7 @@
                 
             </v-list-item-title>
             <template #append>
-                <v-row dense>
+                <v-row no-gutters>
                     <v-col>
                         <v-menu v-if="useAutomation || useAutomationDaily || useAutomationLarge">
                             <template #activator="{ props }">
@@ -84,8 +84,9 @@
                             :disabled="!cIsEditing"
                             title="Trigger">
                             <v-btn v-for="(opt, ind) in triggerOptions"
+                                :icon="useIcon ? opt.icon : undefined"
                                 :key="ind"
-                                :icon="opt.icon"
+                                :prepend-icon="usePrependIcon ? opt.icon : undefined"
                                 :size="mSize"
                                 :text="opt.text" />
                         </v-btn-toggle>
@@ -126,8 +127,9 @@
 </template>
 
 <script setup lang="ts">
-import { type BladeDensity } from '../composables/blade.ts'
-import { computed, inject, ref, type Ref } from 'vue'
+    import { type BladeDensity } from '../composables/blade.ts'
+    import { computed, inject, ref, type Ref } from 'vue'
+    import { useDisplay } from 'vuetify'
 
     defineOptions({
         inheritAttrs: false
@@ -145,6 +147,7 @@ import { computed, inject, ref, type Ref } from 'vue'
         custom?: any
         density?: BladeDensity
         guide?: any
+        displayStrategy?: 'responsive' | 'icons' | 'words' | 'both'
         isEditing?: boolean
         isMobile?: boolean
         label: any
@@ -166,16 +169,34 @@ import { computed, inject, ref, type Ref } from 'vue'
     }
 
     const props = withDefaults(defineProps<FieldProps>(), {
+        displayStrategy: 'responsive',
         isEditing: undefined,
         cols: '12',
         lg: false,
         md: false,
-        sm: '6'
+        sm: '6',
     })
 
+    const { xs } = useDisplay()
     const mSize = inject('size', () => ref('small'), true)
 
     const emit = defineEmits(['update:automation', 'update:custom', 'update:guide', 'update:trigger'])
+    const usePrependIcon = computed(() => {
+        if (props.displayStrategy == 'icons' || props.displayStrategy == 'words')
+            return false
+        else if (props.displayStrategy == 'both')
+            return true
+        else
+            return !xs.value
+    })
+    const useIcon = computed(() => {
+        if (props.displayStrategy == 'icons')
+            return true
+        else if (props.displayStrategy == 'both' || props.displayStrategy == 'words')
+            return false
+        else
+            return xs.value
+    })
     let automationOptions: Ref<Option[]> = ref([])
     let customOptions: Ref<Option[]> = ref(props.options ?? [])
     let guideOptions: Ref<Option[]> = ref([])

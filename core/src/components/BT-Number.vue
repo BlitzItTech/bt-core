@@ -4,7 +4,7 @@
         :dark="theme.global.current.value.dark"
         type="number"
         v-bind="$attrs"
-        v-model="value" />
+        v-model.number="value" />
 </template>
 
 <script setup lang="ts">

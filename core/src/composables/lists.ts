@@ -38,10 +38,10 @@ export function useLists(options: UseListsOptions) {
         }
         else {
             const original = listOptions.onFinished
-            listOptions.onFinished = () => {
+            listOptions.onFinished = (items) => {
                 waiter.loaded = true
                 check()
-                original()
+                original(items)
             }
         }
 

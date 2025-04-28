@@ -1,7 +1,7 @@
 import type { GetOptions, GetAllOptions, OnCanDoAsync, OnDoActionAsync, OnDoSuccessAsync, OnGetAsync, OnGetSuccessAsync, OnGetAllAsync, OnGetAllSuccessAsync, OnDoMaybeSuccessAsync } from './actions.ts'
-import type { BladeVariant } from '../composables/blade.ts'
+import type { BladeMode, BladeVariant } from '../composables/blade.ts'
 import { useCSV } from '../composables/csv.ts'
-import { isLengthyArray, hasSearch, isNullOrEmpty } from '../composables/helpers.ts'
+import { isLengthyArray, hasSearch, nestedValue } from '../composables/helpers.ts'
 import { firstBy } from 'thenby'
 import { computed, ref, onMounted, toValue, shallowRef, watch } from 'vue'
 import type { RouteLocationNormalizedLoaded, Router } from 'vue-router'
@@ -66,29 +66,12 @@ export interface ListEvents {
     (e: 'mouse-over-item', item: any): void
 }
 
-//unused props for ui
-    // canAdd?: boolean
-    // canDelete?: boolean
-    // canEdit?: boolean
-    // canRestore?: boolean
-    // canShowInactive?: boolean
-    // hideColumns?: boolean
-    // hideFilters?: boolean
-    // hideRefresh?: boolean
-    // hideSubtoolbarSettings?: boolean
-    // itemValue?: string
-    // lines?: 'one' | 'two' | 'three'
-    // showListOnly?: boolean
-    // showTableOnly?: boolean
-    // variant?: BladeVariant
-
 export interface ListProps<T, TSave, TReturn> {
     addBladeName?: string
     additionalUrl?: string
     bladeGroup?: string
     bladeName?: string
     bladeStartShowing?: boolean
-    // canSearch?: boolean
     canSelect?: boolean
     canUnselect?: boolean
     confirmOnDelete?: boolean
@@ -108,6 +91,7 @@ export interface ListProps<T, TSave, TReturn> {
     /**only used with server pagination */
     itemsPerPage?: number
     itemText?: string
+    keyStrategy?: 'rID' | 'index' | 'id' //id is default
     loadingMsg?: string
     localFilters?: LocalFilter[]
     localOnly?: boolean //if local only or if nav is null, then will seek to only remove from items and asyncItems
@@ -116,7 +100,6 @@ export interface ListProps<T, TSave, TReturn> {
     onCanDelete?: (item: TReturn) => boolean
     /**when trying to delete in api */
     onCanDeleteAsync?: OnCanDoAsync<TReturn>
-    // onGetSaveAsync?: OnDoSuccessAsync
     onCanRestore?: (item: TReturn) => boolean
     onCanRestoreAsync?: OnCanDoAsync<TReturn>
     onCanSave?: (item: TReturn) => boolean
@@ -126,7 +109,7 @@ export interface ListProps<T, TSave, TReturn> {
     onDeleteSuccessAsync?: OnDoMaybeSuccessAsync<TReturn, TReturn>
     onError?: (err: any) => void
     onFilter?: (list: TReturn[]) => TReturn[]
-    onFinished?: () => void
+    onFinished?: (items: any) => void
     onGetAsync?: OnGetAllAsync<T>
     onGetSingleAsync?: OnGetAsync<T>
     onGetSaveAsync?: OnDoSuccessAsync<TReturn, TSave>
@@ -142,10 +125,13 @@ export interface ListProps<T, TSave, TReturn> {
     params?: any
     proxyID?: string
     proxyKey?: string
+    queryParams?: string[] | Record<string, string>[]
     refreshToggle?: boolean
     searchKey?: string
     searchProps?: string[]
     selectProps?: string[]
+    sortProp?: string
+    startEditing?: boolean
     startShowingInactive?: boolean
     startShowingSearch?: boolean
     storeKey?: string
@@ -171,7 +157,8 @@ export interface UseListOptions {
     idSelector?: <T>(item: T) => string
     isNotSetup?: boolean
     onError?: (err: any) => void
-    onFinished?: () => void
+    onFinished?: (items: any) => void
+    onFinishedAsync?: (items: any) => Promise<void>
     router?: Router
     route?: RouteLocationNormalizedLoaded
     storeKey?: string
@@ -294,16 +281,20 @@ export function useList<T, TSave, TReturn>(props: ListProps<T, TSave, TReturn>, 
         ]
     })
 
-    const asyncItems = shallowRef<TReturn[] | TReturn | undefined>()
+    const asyncItems = ref<TReturn[] | TReturn | undefined>() //shallowRef<TReturn[] | TReturn | undefined>()
     const filteredItems = shallowRef<TReturn[]>([])
     const headerOptions = ref<TableColumn[]>([])
 
     let lastSelectedItem: any
+    const onFinished = props.onFinished ?? options?.onFinished
 
     const { actionErrorMsg, actionLoadingMsg, deleteItem, doAction, getItem, getAllItems, restoreItem, saveItem } = useActions({
         nav: nav,
         onError: props.onError ?? options?.onError,
-        onFinished: props.onFinished ?? options?.onFinished,
+        onFinished: () => {
+            if (onFinished != null)
+                onFinished(asyncItems.value)
+        },
         proxyID: proxyID.value,
         store: useStoreDefinition({
             storeMode: storeMode,
@@ -348,11 +339,18 @@ export function useList<T, TSave, TReturn>(props: ListProps<T, TSave, TReturn>, 
         if (cID == null && useBladeSrc)
             cID = bladeEvents?.bladeData.data.id as string | undefined
 
-        if (cID == null && useRouteSrc)
+        if (cID == null && useRouteSrc) {
             cID = options?.route?.query?.id as string | undefined
+        }
+        
+        if (cID == null && useRouteSrc) {
+            cID = options?.route?.params?.id as string | undefined
+        }
 
         return cID
     })
+
+    const mode = ref<BladeMode>(id.value == 'new' ? 'new' : (props.startEditing ? 'edit' : 'view'))
 
     const allParams = computed(() => { 
         let p = props.params != null ? { ...props.params } : {}
@@ -374,6 +372,19 @@ export function useList<T, TSave, TReturn>(props: ListProps<T, TSave, TReturn>, 
 
         if (searchString.value != null)
             p.searchString = searchString.value
+
+        if (isLengthyArray(props.queryParams) && options?.route?.query != null) {
+            props.queryParams?.forEach(q => {
+                if (typeof(q) == 'string') {
+                    if (options.route?.query[q] != null)
+                        p[q] = options.route?.query[q]
+                }
+                else {
+                    if (options.route?.query[q.key] != null)
+                        p[q.value] = options.route?.query[q.key]
+                }
+            })
+        }
 
         return p
     })
@@ -402,17 +413,20 @@ export function useList<T, TSave, TReturn>(props: ListProps<T, TSave, TReturn>, 
     })
 
     const updateAsyncItem = props.onUpdateAsyncItem ?? ((original: any, newItem: any) => {
-        if (original.hasOwnProperty('rowVersion'))
+        if (newItem.hasOwnProperty('rowVersion'))
             original.rowVersion =  newItem.rowVersion
 
-        if (original.hasOwnProperty('version'))
+        if (newItem.hasOwnProperty('version'))
             original.version =  newItem.version
 
-        if (original.hasOwnProperty('isDeleted'))
+        if (newItem.hasOwnProperty('isDeleted'))
             original.isDeleted =  newItem.isDeleted
 
-        if (original.hasOwnProperty('isInactive'))
+        if (newItem.hasOwnProperty('isInactive'))
             original.isInactive =  newItem.isInactive
+
+        if (newItem.hasOwnProperty('id'))
+            original.id = newItem.id
     })
 
     const tableHeaders = computed(() => { return headerOptions.value.filter(x => !x.hide) })
@@ -480,22 +494,29 @@ export function useList<T, TSave, TReturn>(props: ListProps<T, TSave, TReturn>, 
 
         const removeFrom = (list: any, id: string) => {
             if (list == null || !Array.isArray(list))
-                return
+                return false
 
             if (id != null) {
                 let asyncInd = list.findIndex(x => idSelector(x) == id)
-                if (asyncInd > -1)
+                if (asyncInd > -1) {
                     list.splice(asyncInd, 1)
-
+                    return true
+                }
             }
             else {
                 let asyncInd = list.findIndex(x => x === item) //.findIndex(x => x.id == id)
-                if (asyncInd == -1)
+                if (asyncInd == -1) {
                     asyncInd = list.findIndex(x => x == item)
-                
-                if (asyncInd > -1)
-                        list.splice(asyncInd, 1)
+                    return true
+                }
+                    
+                if (asyncInd > -1) {
+                    list.splice(asyncInd, 1)
+                    return true
+                }
             }
+
+            return false
         }
 
         if (props.localOnly == true || nav == null) {
@@ -516,7 +537,6 @@ export function useList<T, TSave, TReturn>(props: ListProps<T, TSave, TReturn>, 
                 onDeleteAsync,
                 onDeleteSuccessAsync: async (nItem: any) => {
                     if (deleteStrat != 'soft') {
-                        removeFrom(asyncItems.value, id)
                         removeFrom(props.items, id)
                     }
                     else {
@@ -636,8 +656,22 @@ export function useList<T, TSave, TReturn>(props: ListProps<T, TSave, TReturn>, 
                 l = l.filter(x => hasSearch(x, searchString.value, sProps))
         }
 
-        if (props.paginate == 'local' && isNullOrEmpty(searchString.value)) {
+        // if (props.paginate == 'local' && isNullOrEmpty(searchString.value)) {
+        //     //locally paginate
+        //     if (props.itemsPerPage != null) {
+        //         let indFrom = (currentPage.value - 1) * props.itemsPerPage
+        //         let indTo = indFrom + props.itemsPerPage
+        //         if (indTo >= l.length)
+        //             indTo = l.length
+
+        //         l = l.slice(indFrom, indTo)
+        //     }
+        // }
+
+        if (props.paginate == 'local') {
             //locally paginate
+            calculateTotalPages(l, l.length)
+
             if (props.itemsPerPage != null) {
                 let indFrom = (currentPage.value - 1) * props.itemsPerPage
                 let indTo = indFrom + props.itemsPerPage
@@ -648,6 +682,9 @@ export function useList<T, TSave, TReturn>(props: ListProps<T, TSave, TReturn>, 
             }
         }
 
+        if (props.sortProp != null)
+            l = l.sort(firstBy(z => nestedValue(z, props.sortProp)))
+        
         filteredItems.value = l
     }
 
@@ -680,13 +717,13 @@ export function useList<T, TSave, TReturn>(props: ListProps<T, TSave, TReturn>, 
         }
     }
 
-    async function refresh(options?: ListRefreshOptions) {
+    async function refresh(rOptions?: ListRefreshOptions) {
         showError.value = false
-        if (options?.resetSearch === true) {
+        if (rOptions?.resetSearch === true) {
             showSearch.value = false
             searchString.value = undefined
         }
-        
+
         if (props.items != null) {
             let refreshRes = { data: props.items }
 
@@ -699,12 +736,16 @@ export function useList<T, TSave, TReturn>(props: ListProps<T, TSave, TReturn>, 
 
             asyncItems.value = returnRes?.data ?? []
             
-            calculateTotalPages(asyncItems.value, asyncItems.value.length)
+            if (props.paginate != 'local')
+                calculateTotalPages(asyncItems.value, asyncItems.value.length)
 
             refreshFilteredList()
             
-            if (props.onFinished)
-                props.onFinished()
+            if (onFinished != null)
+                onFinished(asyncItems.value)
+
+            if (options?.onFinishedAsync != null)
+                await options?.onFinishedAsync(asyncItems.value)
 
             if (emit)
                 emit('fetched', asyncItems.value)
@@ -722,7 +763,7 @@ export function useList<T, TSave, TReturn>(props: ListProps<T, TSave, TReturn>, 
                     ...(useBladeSrc ? bladeEvents?.bladeData.data.params : {})
                 },
                 proxyID: proxyID.value,
-                refresh: options?.deepRefresh ?? false,
+                refresh: rOptions?.deepRefresh ?? false,
                 storeKey,
                 onGetAsync: props.onGetSingleAsync,
                 onGetSuccessAsync: props.onGetSingleSuccessAsync,
@@ -754,7 +795,7 @@ export function useList<T, TSave, TReturn>(props: ListProps<T, TSave, TReturn>, 
                     ...(useBladeSrc ? bladeEvents?.bladeData.data.params : {})
                 },
                 proxyID: proxyID.value,
-                refresh: options?.deepRefresh ?? false,
+                refresh: rOptions?.deepRefresh ?? false,
                 storeKey,
                 onGetAsync: props.onGetAsync,
                 onGetSuccessAsync: props.onGetSuccessAsync,
@@ -784,9 +825,11 @@ export function useList<T, TSave, TReturn>(props: ListProps<T, TSave, TReturn>, 
 
         refreshFilteredList()
         
-        if (props.onFinished)
-            props.onFinished()
+        if (onFinished)
+            onFinished(asyncItems.value)
 
+        if (options?.onFinishedAsync != null)
+            await options?.onFinishedAsync(asyncItems.value)
         
         if (emit)
             emit('fetched', asyncItems.value)
@@ -872,11 +915,16 @@ export function useList<T, TSave, TReturn>(props: ListProps<T, TSave, TReturn>, 
     
     watchArray([asyncItems], () => {
         refreshFilteredList()
-    })
+    }, { deep: true })
 
     watchArray([() => props.items], () => {
         refresh()
-    })
+    }, { deep: true })
+    
+    // watchArray([() => props.items], () => {
+    //     console.log('items')
+    //     refresh()
+    // })
 
     if (!options?.isNotSetup == true) {
         onMounted(async () => {
@@ -884,8 +932,9 @@ export function useList<T, TSave, TReturn>(props: ListProps<T, TSave, TReturn>, 
                 await refresh({ deepRefresh: options?.route?.params?.refresh == 'true' })
         })
     }
-    else if (options?.isNotSetup == true && props.eager == true)
+    else if (options?.isNotSetup == true && props.eager == true) {
         refresh({ deepRefresh: options?.route?.params?.refresh == 'true' })
+    }
 
     return {
         add,
@@ -899,10 +948,13 @@ export function useList<T, TSave, TReturn>(props: ListProps<T, TSave, TReturn>, 
         filters: allFilters,
         filtersChanged,
         headerOptions,
+        id,
         isDeletable,
+        isEditing: computed(() => mode.value == 'new' || mode.value == 'edit'),
         isLoading,
         isRestorable,
         loadingMsg,
+        mode,
         refresh,
         restoreItem: mRestoreItem,
         saveItem: mSaveItem,

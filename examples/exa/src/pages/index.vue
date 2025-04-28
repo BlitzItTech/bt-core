@@ -1,7 +1,4 @@
 <template>
-  <HelloWorld />
+    <div>Home</div>
+    <v-btn :to="{ path: '/test' }" text="Nav" />
 </template>
-
-<script lang="ts" setup>
-  //
-</script>

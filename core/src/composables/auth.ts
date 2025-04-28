@@ -350,7 +350,7 @@ export function createAuth(options: CreateAuthOptions): BTAuth {
 
     async function tryRefreshToken() {
         options.tryRefreshToken ??= async () => {
-            console.log('trying refresh')
+            // console.log('trying refresh')
 
             if (options.useTokenRefresh !== true)
                 return
@@ -373,7 +373,7 @@ export function createAuth(options: CreateAuthOptions): BTAuth {
 
             var refreshUrl = appendUrl(useAuthUrl(), options.tokenRefreshPath ?? 'refreshtoken')
 
-            console.log(`refresh url: ${refreshUrl}`)
+            // console.log(`refresh url: ${refreshUrl}`)
 
             try {
                 var res = await fetch(refreshUrl, {
@@ -417,8 +417,8 @@ export function createAuth(options: CreateAuthOptions): BTAuth {
                     }
                  })
 
-                 console.log('test result')
-                 console.log(res)
+                //  console.log('test result')
+                //  console.log(res)
 
                  if (res.data === true)
                     isValid = true

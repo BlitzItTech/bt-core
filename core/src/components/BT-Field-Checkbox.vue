@@ -9,14 +9,16 @@
                 v-bind="$attrs"
                 v-model="value"
                 color="primary"
-                :hide-details="rules == undefined"
+                :hide-details="cRules == null"
                 :label="label"
-                :readonly="!cIsEditing" />
+                :readonly="!cIsEditing"
+                :rules="cRules" />
         <!-- </v-list-item> -->
     </v-col>
 </template>
 
 <script setup lang="ts">
+import { TestRequired } from '../composables/rules.ts'
 import type { BladeDensity } from '../composables/blade.ts'
 import { computed, inject, ref } from 'vue'
 
@@ -34,6 +36,7 @@ import { computed, inject, ref } from 'vue'
         lg?: string | boolean
         md?: string | boolean
         modelValue: any
+        required?: boolean
         rules?: any
         sm?: string | boolean
     }
@@ -60,8 +63,16 @@ import { computed, inject, ref } from 'vue'
     const mIsEditing = inject('isEditing', () => ref(false), true)
     const cIsEditing = computed(() => props.isEditing ?? mIsEditing.value)
     const mIsMobile = inject('isMobile', () => ref(false), true)
-    // const variant = inject('variant', 'underlined')
-    // const editVariant = inject('editVariant', 'outlined')
+    const cRules = computed(() => {
+        var r = [
+            ...(props.rules ?? []),
+        ]
+
+        if (props.required)
+            r.push(TestRequired)
+
+        return r.length > 0 ? r : undefined
+    })
 
     const mLg = computed(() => (props.isMobile ?? mIsMobile.value) ? false : props.lg)
     const mMd = computed(() => (props.isMobile ?? mIsMobile.value) ? false : props.md)

@@ -3,12 +3,13 @@
         :append-icon="canRefresh ? '$refresh' : undefined"
         :clearable="canSelectNone"
         @click:append-icon="ui.refresh({ deepRefresh: true })"
-        hide-details
+        :hide-details="cRules == null"
         :items="ui.filteredItems.value"
         :item-title="mItemText"
         :item-value="itemValue"
         :loading="ui.isLoading.value"
         :multiple="multiple"
+        :rules="cRules"
         :variant="fieldVariant"
         v-bind="$attrs">
         <template #item="data">
@@ -27,7 +28,9 @@
 <script setup lang="ts">
     import { type FieldVariant } from '../types.ts'
     import { type ListProps, type ListEvents, useList } from '../composables/list.ts'
-    import { useNavigation } from '../composables/navigation.ts';
+    import { useNavigation } from '../composables/navigation.ts'
+    import { computed } from 'vue'
+    import { TestRequired } from '../composables/rules.ts'
 
     interface SelectEvents extends ListEvents {
 
@@ -43,6 +46,8 @@
         itemValue?: string //inherited
         multiple?: boolean
         nav?: string
+        required?: boolean
+        rules?: any
         textFilter?: string
     }
 
@@ -55,5 +60,15 @@
 
     const mItemText = props.itemText ?? (props.nav != null ? nav.findItemText(props.nav) : undefined) ?? undefined
     const ui = useList<any, any, any>(props, emit)
+    const cRules = computed(() => {
+        var r = [
+            ...(props.rules ?? []),
+        ]
+
+        if (props.required)
+            r.push(TestRequired)
+
+        return r.length > 0 ? r : undefined
+    })
 
 </script>

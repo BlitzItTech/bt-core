@@ -1,10 +1,11 @@
 <template>
     <v-col
+        :class="colClass"
         :lg="mLg"
         :md="mMd"
         :sm="mSm"
         :cols="cols">
-        <v-list-item v-if="!cIsEditing" class="px-0" density="compact">
+        <v-list-item v-if="!cIsEditing" class="ma-0 pa-0" density="compact">
             <v-list-item-subtitle>{{ label }}</v-list-item-subtitle>
             <v-list-item-title>{{ displayValue }}</v-list-item-title>
         </v-list-item>
@@ -12,9 +13,10 @@
             <template v-slot:activator="{ props }">
                 <v-text-field
                     v-bind="props"
-                    :hide-details="!dateRules"
+                    :hide-details="cRules == null"
                     :label="label"
                     readonly
+                    :rules="cRules"
                     :variant="cIsEditing ? editVariant : variant"
                     v-model="displayValue" />
             </template>
@@ -40,6 +42,7 @@
     import { useAuth } from '../composables/auth.ts'
     import { useDates } from '../composables/dates.ts'
     import { useTheme } from 'vuetify'
+    import { TestRequired } from '../composables/rules.ts'
 
     defineOptions({
         inheritAttrs: false
@@ -47,8 +50,9 @@
 
     interface FieldProps {
         cols?: string | boolean
+        colClass?: any
         dateFrom?: string
-        dateRules?: Function | unknown[]
+        // dateRules?: Function | unknown[]
         format?: string
         fromNow?: boolean
         horizontal?: boolean
@@ -59,6 +63,8 @@
         lg?: string | boolean
         md?: string | boolean
         modelValue: any
+        required?: boolean
+        rules?: any
         sm?: string | boolean
         useTime?: boolean
     }
@@ -99,6 +105,16 @@
     const mIsMobile = inject('isMobile', () => ref(false), true)
     const variant = inject('fieldVariant', 'underlined')
     const editVariant = inject('fieldEditVariant', 'outlined')
+    const cRules = computed(() => {
+        var r = [
+            ...(props.rules ?? []),
+        ]
+
+        if (props.required)
+            r.push(TestRequired)
+
+        return r.length > 0 ? r : undefined
+    })
 
     const mLg = computed(() => (props.isMobile ?? mIsMobile.value) ? false : props.lg)
     const mMd = computed(() => (props.isMobile ?? mIsMobile.value) ? false : props.md)

@@ -1,4 +1,4 @@
-import { validEmail } from '../composables/helpers.ts'
+import { isNullOrEmpty, validEmail } from '../composables/helpers.ts'
 
 export interface UseRulesOptions {
     forEmail?: boolean
@@ -7,8 +7,11 @@ export interface UseRulesOptions {
     required?: boolean,
 }
 
+export const TestEmailValid = (v: any) => isNullOrEmpty(v) || /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*$/.test(v) || 'Email must be valid'
+export const TestRequired = (v: any) => !!v || 'Required'
+
 export function useRules(options?: UseRulesOptions) {
-    const rules = []
+    const rules: ((val: any) => boolean | string)[] = []
 
     if (options?.required == true) {
         rules.push((v: any) => !!v || 'Field is required')
@@ -38,4 +41,18 @@ export function useRules(options?: UseRulesOptions) {
     }
 
     return rules
+}
+
+export function useRequirements(options?: UseRulesOptions) {
+    const rules = useRules(options)
+
+    return {
+        rules,
+        isValid: (val: any) => {
+            return rules.every(f => {
+                var res = f(val)
+                return res == true
+            })
+        }
+    }
 }

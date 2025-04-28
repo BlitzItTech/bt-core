@@ -4,7 +4,7 @@
         :md="mMd"
         :sm="mSm"
         :cols="cols">
-        <v-list-item>
+        <v-list-item class="ma-0 pa-0">
             <v-list-item-subtitle>{{ label }}</v-list-item-subtitle>
             <!-- <v-list-item-title>{{ modelValue }}</v-list-item-title> -->
             <template #append>

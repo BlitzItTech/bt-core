@@ -192,14 +192,14 @@
         }
     })
 
-    async function save(navBack: boolean) {
+    async function save(navBack: boolean, stayEditing?: boolean) {
         if (form.value != null) {
             const { valid } = await form.value.validate()
             if (valid)
-                await ui.saveItem(ui.asyncItem.value, { navBack })
+                await ui.saveItem(ui.asyncItem.value, { navBack, stayEditing })
         }
         else {
-            await ui.saveItem(ui.asyncItem.value, { navBack })
+            await ui.saveItem(ui.asyncItem.value, { navBack, stayEditing })
         }
     }
 

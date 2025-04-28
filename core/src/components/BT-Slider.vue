@@ -103,16 +103,17 @@
 
     function navBack() {
         history.value.pop()
-        emit('update:modelValue', -2)
+        // emit('update:modelValue', -2)
     }
 
     function navTo(panelIndex: number) {
-        var ind = panelIndex
-        if (ind == 0) {
-            history.value = [ind]
-        }
-        else if (lastPanel.value != ind) {
-            history.value.push(ind)
+        if (panelIndex == 0)
+            history.value = [panelIndex]
+        else if (lastPanel.value != panelIndex) {
+            if (history.value.length == 0)
+                history.value.push(0)
+
+            history.value.push(panelIndex)
         }
     }
 
@@ -125,9 +126,16 @@
             navTo(paneData.index)
     }
 
+    watch(lastPanel, v => {
+        if (v != props.modelValue)
+            emit('update:modelValue', v)
+    })
+
     watch(() => props.modelValue, v => {
-        if (v != null && v != -2)
-            navTo(v + 1)
+        // if (v != null && lastPanel.value !== (v + 1))
+        //     navTo(v + 1)
+        if (v != null && lastPanel.value != v)
+            navTo(v)
     })
 
     onMounted(() => {

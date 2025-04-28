@@ -10,7 +10,7 @@ import { CreateMenuOptions, createMenu } from './composables/menu.ts'
 import { UseNavigationOptions, createNavigation } from './composables/navigation.ts'
 import { createPresets } from './composables/presets.ts'
 import { createPWA } from './composables/pwa.ts'
-import { createStoreBuilder } from './composables/stores.ts'
+import { createBlobStoreBuilder, createStoreBuilder } from './composables/stores.ts'
 import { CreateUrlOptions, createUrl } from './composables/urls.ts'
 import { DisplayInstance, ThemeInstance } from 'vuetify'
 import { navigationKey, authKey, urlsKey, demoKey } from './types.ts'
@@ -52,8 +52,11 @@ import BTSignature from './components/BT-Signature.vue'
 import BTSignatureOverlay from './components/BT-Signature-Overlay.vue'
 import BTSlider from './components/BT-Slider.vue'
 import BTSpan from './components/BT-Span.vue'
+import BTStatusItem from './components/BT-Status-Item.vue'
+import BTTags from './components/BT-Tags.vue'
 import { Router } from 'vue-router'
 import { createAssistant, CreateAssistantOptions } from './composables/assistant.ts'
+import { createFeedback, CreateFeedbackOptions } from './composables/feedback.ts'
 
 export interface CoreApp {
     install(app: App, options: any) : void
@@ -71,6 +74,7 @@ export interface CreateCoreOptions {
     auth: CreateAuthOptions
     cosmetics?: UseCosmeticsOptions<BaseCosmeticTheme>
     demo?: CreateDemoOptions
+    feedback?: CreateFeedbackOptions
     filters?: any
     // defaultCacheExpiryHours?: number
     heights?: CreateHeightOptions,
@@ -129,6 +133,8 @@ export function createCore(options: CreateCoreOptions): CoreApp {
                 app.component('bt-signature-overlay', BTSignatureOverlay)
                 app.component('bt-slider', BTSlider)
                 app.component('bt-span', BTSpan)
+                app.component('bt-status-item', BTStatusItem)
+                app.component('bt-tags', BTTags)
             }
             
             //define globals
@@ -180,6 +186,8 @@ export function createCore(options: CreateCoreOptions): CoreApp {
                 getTimeZone: () => auth.timeZone.value
             })
 
+            createFeedback(options.feedback)
+
             createFilters({
                 auth: auth,
                 dates: dates,
@@ -193,6 +201,14 @@ export function createCore(options: CreateCoreOptions): CoreApp {
                 createPWA()
 
             createStoreBuilder({
+                api,
+                auth,
+                dates,
+                demo,
+                navigation
+            })
+
+            createBlobStoreBuilder({
                 api,
                 auth,
                 dates,

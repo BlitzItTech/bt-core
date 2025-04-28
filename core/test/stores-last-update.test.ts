@@ -6,6 +6,7 @@ import { setupServer } from 'msw/node'
 import { http, HttpResponse } from 'msw'
 import { createApp } from 'vue'
 import { withSetup } from './utils'
+import { createDates } from '../src/composables/dates'
 
 const handlers = [
     http.get('https://api/get/1', () => {
@@ -44,6 +45,9 @@ describe('use last update store no api no caching', () => {
         defaultThrowError: false
     }))
 
+    const dates = createDates({
+        getTimeZone: () => 'Australia/Melbourne'
+    })
     const pinia = createPinia()
     app.use(pinia)
 
@@ -51,9 +55,20 @@ describe('use last update store no api no caching', () => {
 
     const store = createWholeLastUpdateStoreDefinition({
         api: undefined,
+        dates,
         storageMode: 'session',
         storeName: 'whole'
     })()
+
+    test('last update test', async () => {
+        await store.post<any>({ data: { id: '1', test: 'a' }})
+        await store.post<any>({ data: { id: '2', test: 'b' }})
+        await store.post<any>({ data: { id: '3', test: 'c' }})
+
+        let getAll = await store.getAll<any>({})
+        expect(getAll.data.length).toEqual(3)
+        expect(getAll.count).toEqual(3)
+    })
 
     test('all session activity', async () => {
 
@@ -91,6 +106,10 @@ describe('use last update store with api no caching', () => {
         defaultThrowError: false
     }))
 
+    
+    const dates = createDates({
+        getTimeZone: () => 'Australia/Melbourne'
+    })
     const pinia = createPinia()
         app.use(pinia)
         setActivePinia(pinia)
@@ -98,6 +117,7 @@ describe('use last update store with api no caching', () => {
     const store = createWholeLastUpdateStoreDefinition({
         storageMode: 'session',
         api: api,
+        dates,
         storeName: 'whole-api'
     })()
 
@@ -149,9 +169,14 @@ describe('use last update store with api and caching', () => {
     app.use(pinia)
     setActivePinia(pinia)
 
+    const dates = createDates({
+        getTimeZone: () => 'Australia/Melbourne'
+    })
+
     const store = createWholeLastUpdateStoreDefinition({
         storageMode: 'session',
         api: api,
+        dates,
         storeName: 'whole-api'
     })()
 

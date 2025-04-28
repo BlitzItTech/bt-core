@@ -19,7 +19,9 @@
                     :save="() => ui.saveItem(ui.asyncItem.value)">
                     {{ displayText }}
                 </slot>
-                <slot name="append" v-bind:item="ui.asyncItem.value" :refresh="ui.refresh" />
+                <slot name="append" v-bind:item="ui.asyncItem.value" :refresh="ui.refresh">
+                    {{ suffix }}
+                </slot>
             </div>
             <div v-else key="2" :class="inline ? 'd-inline' : ''">
                 <slot name="alternate" :item="ui.asyncItem.value" :refresh="ui.refresh">
@@ -53,6 +55,7 @@
         itemText?: string
         label?: string
         prefix?: string
+        suffix?: string
         textFilter?: string
         textFunction?: (item: any) => string
         truncate?: boolean

@@ -68,7 +68,7 @@ export function useMenu(): BTMenu {
         sidebarNavItems: computed(() => {
             routes = routes.filter(z => z.meta != null && z.meta.menuGroup != null)
 
-            const groupItems: MenuGroup[] = []
+            let groupItems: MenuGroup[] = []
 
             routes.forEach((route: RouteRecordNormalized) => {
                 const optionMeta = current.groupOptions.value.find(z => z.displayName == route.meta.menuGroup)
@@ -82,7 +82,8 @@ export function useMenu(): BTMenu {
                         icon: optionMeta?.icon ?? routeMeta?.icon as string | undefined ?? navMeta?.icon,
                         isGroup: true,
                         items: [],
-                        routeName: ''
+                        routeName: '',
+                        sortNumber: optionMeta?.sortNumber
                     }
 
                     groupItems.push(existingGroup)
@@ -100,7 +101,7 @@ export function useMenu(): BTMenu {
                     subOptions = Array.isArray(navMeta.subFilters) ? navMeta.subFilters : [navMeta.subFilters]
                 }
                 
-                if (current.currentView.value == null || subOptions == null || subOptions.some((subOption: string) => subOption == 'All' || current.currentView.value == subOption)) {
+                if (current.currentView.value == null || !isLengthyArray(subOptions) || subOptions.some((subOption: string) => subOption == 'All' || current.currentView.value == subOption)) {
                     existingGroup.items?.push({
                         displayName: routeMeta?.displayName as string ?? navigation.findDisplay(navMeta ?? undefined),
                         icon: routeMeta?.icon as string ?? navigation.findIcon(navMeta ?? undefined),
@@ -116,6 +117,8 @@ export function useMenu(): BTMenu {
             groupItems.forEach((grp: MenuGroup) => {
                 grp.items = grp.items?.filter(z => !z.requiresAuth || auth.doShow(z.subscriptions, z.permissions, 'view')).sort(firstBy(z => z.displayName))
             })
+
+            groupItems.sort(firstBy(x => x.sortNumber ?? x.displayName))
 
             if (current.currentGroup.value != null) {
                 return groupItems.find(z => z.displayName == current.currentGroup.value)?.items ?? []

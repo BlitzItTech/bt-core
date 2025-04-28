@@ -85,6 +85,10 @@ export interface ApiActionOptions extends StorePathOptions, DoActionOptions {
     api?: BTApi
 }
 
+export interface ApiRequestActionOptions extends ApiActionOptions {
+    method: string
+}
+
 export interface UseActionsOptions extends DoActionOptions {
     nav?: string
     proxyID?: string
@@ -104,9 +108,11 @@ export interface UseActionsOptions extends DoActionOptions {
 export interface BTActions {
     actionLoadingMsg: ShallowRef<string | undefined>
     actionErrorMsg: ShallowRef<string | undefined>
+    // apiFetch: (doOptions: ApiRequestActionOptions) => Promise<Response | undefined>
     apiGet: <TReturn>(doOptions: ApiActionOptions) => Promise<TReturn | undefined>
     apiPatch: <TReturn>(doOptions: ApiActionOptions) => Promise<TReturn | undefined>
     apiPost: <TReturn>(doOptions: ApiActionOptions) => Promise<TReturn | undefined>
+    apiRequest: (doOptions: ApiRequestActionOptions) => Promise<Response | undefined>
     apiUpload: <TReturn>(doOptions: ApiActionOptions) => Promise<TReturn | undefined>
     clearErrors: () => void
     deleteItem: <T>(doOptions: DeleteOptions<T>) => Promise<string | undefined>
@@ -479,6 +485,38 @@ export function useActions(options?: UseActionsOptions): BTActions {
     }
 
     /**
+    * Get response from api (no extra '/get' url or anything)
+    */
+    function apiRequest(doOptions: ApiRequestActionOptions) {
+        doOptions.nav ??= options?.nav
+        doOptions.proxyID ??= options?.proxyID
+        doOptions.storeKey ??= options?.storeKey
+        doOptions.throwError ??= options?.throwError
+        doOptions.url ??= options?.url
+
+        return doAction<Response>(async () => {
+            const api = doOptions.api ?? useApi()
+            return await api.request(doOptions)
+        }, { ...options, ...doOptions })
+    }
+
+    // /**
+    // * Get response from api (no extra '/get' url or anything)
+    // */
+    // function apiFetch(doOptions: ApiRequestActionOptions) {
+    //     doOptions.nav ??= options?.nav
+    //     doOptions.proxyID ??= options?.proxyID
+    //     doOptions.storeKey ??= options?.storeKey
+    //     doOptions.throwError ??= options?.throwError
+    //     doOptions.url ??= options?.url
+
+    //     return doAction<Promise<Response | undefined>>(async () => {
+    //         const api = doOptions.api ?? useApi()
+    //         return api.getFetch(doOptions)
+    //     }, { ...options, ...doOptions })
+    // }
+
+    /**
     * Get from api (no extra '/get' url or anything)
     */
     function apiGet<T>(doOptions: ApiActionOptions) {
@@ -524,7 +562,7 @@ export function useActions(options?: UseActionsOptions): BTActions {
         
         return doAction<T>(async () => {
             const api = doOptions.api ?? useApi()
-            return await api.uploadImage(doOptions)
+            return await api.uploadImage<T>(doOptions)
         }, { ...options, ...doOptions })
     }
 
@@ -548,9 +586,11 @@ export function useActions(options?: UseActionsOptions): BTActions {
     return {
         actionLoadingMsg,
         actionErrorMsg,
+        // apiFetch,
         apiGet,
         apiPatch,
         apiPost,
+        apiRequest,
         apiUpload,
         clearErrors,
         deleteItem,

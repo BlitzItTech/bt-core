@@ -48,6 +48,7 @@ export interface ItemProps<T, TSave, TReturn> {
     onGetListSuccessAsync?: OnGetAllSuccessAsync<T, TReturn>
     onGetSuccessAsync?: OnGetSuccessAsync<T, TReturn>
     onGetNew?: (data?: PathOptions) => TReturn
+    onGetNewAsync?: (data?: PathOptions) => Promise<TReturn>
     onGetNotFound?: (data?: PathOptions) => TReturn
     onGetSaveAsync?: OnDoSuccessAsync<TReturn, TSave>
     onRestoreAsync?: OnDoActionAsync<TReturn>
@@ -77,7 +78,8 @@ export interface ItemRefreshOptions {
 }
 
 export interface SaveItemOptions {
-    navBack?: boolean
+    navBack?: boolean,
+    stayEditing?: boolean
 }
 
 export interface UseItemOptions {
@@ -227,17 +229,20 @@ export function useItem<T, TSave, TReturn>(props: ItemProps<T, TSave, TReturn>, 
     })
 
     const updateAsyncItem = props.onUpdateAsyncItem ?? ((original: any, newItem: any) => {
-        if (original.hasOwnProperty('rowVersion'))
+        if (newItem.hasOwnProperty('rowVersion'))
             original.rowVersion =  newItem.rowVersion
 
-        if (original.hasOwnProperty('version'))
+        if (newItem.hasOwnProperty('version'))
             original.version =  newItem.version
 
-        if (original.hasOwnProperty('isDeleted'))
+        if (newItem.hasOwnProperty('isDeleted'))
             original.isDeleted =  newItem.isDeleted
 
-        if (original.hasOwnProperty('isInactive'))
+        if (newItem.hasOwnProperty('isInactive'))
             original.isInactive =  newItem.isInactive
+
+        if (newItem.hasOwnProperty('id'))
+            original.id = newItem.id
     })
 
     const { isChanged, restartTracker } = useTracker(asyncItem, { 
@@ -337,7 +342,12 @@ export function useItem<T, TSave, TReturn>(props: ItemProps<T, TSave, TReturn>, 
                 }
 
                 if (getOptions.id === 'new') {
-                    asyncItem.value = props.onGetNew ? props.onGetNew(getOptions) : {} as TReturn
+                    if (props.onGetNew != null)
+                        asyncItem.value = props.onGetNew(getOptions)
+                    else if (props.onGetNewAsync != null)
+                        asyncItem.value = await props.onGetNewAsync(getOptions)
+                    else
+                        asyncItem.value = {} as TReturn
                 }
                 else if (nav != null) {
                     const apiRes = await getItem<T, TReturn>(getOptions)
@@ -396,7 +406,9 @@ export function useItem<T, TSave, TReturn>(props: ItemProps<T, TSave, TReturn>, 
                 }
                 else {
                     restartTracker()
-                    mode.value = 'view'
+
+                    if (options?.stayEditing != true)
+                        mode.value = 'view'
                 }
 
                 if (emit)

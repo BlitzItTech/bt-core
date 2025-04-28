@@ -57,7 +57,6 @@
     })
 
     function confirmDialog() {
-        console.log(mSelected.value)
         if (resolveDialog != null) {
             resolveDialog({
                 isCancelled: false,

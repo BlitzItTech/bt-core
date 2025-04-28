@@ -47,7 +47,6 @@
                         :size="mSize"
                         variant="text" />
                 </template>
-
             </v-text-field>
             <v-virtual-scroll
                 v-if="(alwaysOpen || mIsSelecting) && useVirtualScroller"
@@ -74,7 +73,8 @@
                 v-else-if="alwaysOpen || mIsSelecting"
                 :bg-color="transparent ? 'transparent' : undefined"
                 :height="height"
-                key="3">
+                key="3"
+                width="100%">
                 <v-list-item
                     v-if="canSelectNone"
                     key="-1"

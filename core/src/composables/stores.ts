@@ -38,6 +38,7 @@ export interface StoreGetReturn<T> {
 }
 
 export interface GetStorageKeyOptions {
+    credentials?: any
     itemID?: string
     storeName?: string
     userID?: string
@@ -53,6 +54,15 @@ export interface StorePathOptions extends PathOptions {
     /**PLU Only */
     dateTo?: string
 }
+
+export interface BTBlobStoreDefinition extends StoreDefinition<any, {}, {},
+{
+    getBlob: (dOptions: StorePathOptions) => Promise<Blob | undefined>
+}> {}
+
+export interface BTBlobStore extends Store<any, {}, {}, {
+    getBlob: (dOptions: StorePathOptions) => Promise<Blob | undefined>
+}> {}
 
 export interface BTStoreDefinition extends StoreDefinition<any, {}, {},
 {
@@ -126,7 +136,19 @@ export interface CreateStoreOptions {
     nav: string
 }
 
+export interface CreateBlobStoreOptions {
+    /**whether to store data locally or only for the duration of the session */
+    storageMode?: StorageMode
+    /**the nav item or name of this store */
+    nav: string
+}
+
 let currentBuilder: (opt: CreateStoreOptions) => BTStoreDefinition
+let currentBlobBuilder: (opt: CreateBlobStoreOptions) => BTBlobStoreDefinition
+
+export function useBlobStore(options: CreateBlobStoreOptions): BTBlobStore {
+    return currentBlobBuilder(options)()
+}
 
 export function useStore(options: CreateStoreOptions): BTStore {
     return currentBuilder(options)()
@@ -145,6 +167,17 @@ export function createStoreBuilder(options: CreateStoreBuilderOptions): (opt: Cr
     }
 
     return currentBuilder
+}
+
+export function createBlobStoreBuilder(options: CreateStoreBuilderOptions): (opt: CreateBlobStoreOptions) => BTBlobStoreDefinition {
+    currentBlobBuilder = (opt: CreateBlobStoreOptions) => {
+        return createBlobStoreDefinition({
+            ...options,
+            ...opt
+        })
+    }
+
+    return currentBlobBuilder
 }
 
 /**defaults to options --> navigation --> session/local-cache */
@@ -225,6 +258,142 @@ const defaultPathBuilder = (path: PathOptions) => {
     return path.finalUrl ?? ''
 }
 
+interface UseBlobStoreOptions extends UseStoreOptions {
+    api?: BTApi
+    auth?: BTAuth
+    demo?: BTDemo
+    /**custom override for getting the key to store */
+    getStorageKey?: (dOptions: GetStorageKeyOptions) => string
+    /**whether to store data locally or only for the duration of the session */
+    storageMode?: 'session' | 'local-cache'
+    // /**build a query.  Overrides the default */
+    // buildQuery?: (params: any) => string
+    /**overrides the default */
+    buildUrl?: (path: PathOptions) => string
+    /**the name of this store */
+    storeName?: string
+}
+
+export function createBlobStoreDefinition(options: UseBlobStoreOptions): BTBlobStoreDefinition {
+    let navItem = options.navigation?.findItem(options.nav)
+    options.storeMode ??= navItem?.storeMode ?? 'session'
+    options.storageMode ??= navItem?.storageMode ?? 'local-cache'
+    options.storeName ??= `blob-${options.navigation?.findStoreName(navItem ?? options.nav) ?? options.nav}`
+    options.getStorageKey ??= navItem?.getStorageKey
+    
+    if (options.demo?.isDemoing.value)
+        options.storageMode = 'session'
+
+    if (options.storeName == null)
+        throw new Error('no store name provided')
+
+    return defineStore(options.storeName, () => {
+        const blobMemory: Ref<{ [key: string]: Blob | undefined }> = ref({})
+        const blobPromiseMemory: Ref<{ [key: string]: Promise<Blob | undefined> }> = ref({})
+
+        const cacheLocally = options.storageMode == 'local-cache'
+        const localDb = useLocalDb()
+        
+        const buildPath = options.buildUrl ?? options.api?.buildUrl ?? defaultPathBuilder
+        
+        function getKey(dOptions: StorePathOptions) {
+            let strKey = 'blob_'
+
+            if (options.demo?.isDemoing.value == true)
+                strKey = `${strKey}demo_`
+
+            let getKeyOptions = {
+                credentials: options.auth?.credentials.value,
+                itemID: dOptions.id ?? dOptions.data?.id,
+                userID: options.auth?.credentials.value.userID,
+                storeName: options.storeName
+            }
+
+            if (dOptions.getStorageKey != null)
+                return `${strKey}${dOptions.getStorageKey(getKeyOptions)}`
+
+            if (options.getStorageKey != null)
+                return `${strKey}${options.getStorageKey(getKeyOptions)}`
+
+            let paramStr: string = ''
+            const params = dOptions.params ?? {}
+
+            if (params != null) {
+                paramStr = Object.entries(params)
+                    .sort(firstBy(x => x[0]))
+                    .map(entry => {
+                        return `${entry[0]}=${JSON.stringify(entry[1])}`
+                    })
+                    .join('&')
+            }
+
+            return `${strKey}${options.storeName ?? 'base'}_${options.auth?.credentials.value.userID ?? 'no-user-id'}_${dOptions.id ?? dOptions.data?.id ?? 'no-item-id'}_${paramStr ?? 'no-params'}_${dOptions.storeKey ?? 'original-key'}`
+        }
+
+        async function getBlob(dOptions: StorePathOptions): Promise<Blob | undefined> {
+            dOptions.additionalUrl ??= '/get'
+            
+            buildPath(dOptions)
+            const key = getKey(dOptions)
+            const refresh = dOptions.refresh
+
+            if (!refresh && blobMemory.value[key] !== undefined)
+                return blobMemory.value[key]
+
+            if (!refresh && cacheLocally == true ) {
+                //attempt to get locally
+                const localRes = await localDb.getItem<Blob>(key)
+                if (localRes != null)
+                    return localRes
+            }
+
+            //nothing exists in session so far so load from api
+            if (options.api == null || dOptions.localOnly) {
+                return blobMemory.value[key]
+            }
+
+            try {
+                let apiPrm = blobPromiseMemory.value[key]
+
+                if (apiPrm == null) {
+                    apiPrm = new Promise<Blob | undefined>(async (resolve, reject) => {
+                        options.api!.getBlob(dOptions)
+                            .then(res => res.blob())
+                            .then(blob => {
+                                if (cacheLocally == true)
+                                    localDb.setItem(key, blob)
+                                        .then(v => {
+                                            resolve(v)
+                                        })
+                                else
+                                    resolve(blob)
+                            })
+                            .catch(err => reject(err))
+                            .finally(() => {
+                                delete blobPromiseMemory.value[key]
+                            })
+                    })
+
+                    blobPromiseMemory.value[key] = apiPrm
+                }
+
+                const apiRes = await apiPrm
+
+                blobMemory.value[key] = apiRes
+
+                return apiRes
+            }
+            catch (err: any) {
+                throw err
+            }
+        }
+
+        return {
+            getBlob
+        }
+    })
+}
+
 interface UseSessionStoreOptions {
     /**ideally required. Otherwise will struggle to find url path */
     api?: BTApi
@@ -248,8 +417,10 @@ interface UseSessionStoreOptions {
 export function createSessionStoreDefinition(options: UseSessionStoreOptions): BTStoreDefinition {
     return defineStore(options.storeName, () => {
         const currentTimeStampDays = DateTime.utc().toSeconds() / 86400
+        
         const searchMemory: Ref<{ [key: string]: LocallyStoredItem }> = ref({})
         const promiseMemory: Ref<{ [key: string]: Promise<LocallyStoredItem> }> = ref({})
+        
         const cacheLocally = options.storageMode == 'local-cache'
         const localDb = useLocalDb()
         
@@ -263,6 +434,7 @@ export function createSessionStoreDefinition(options: UseSessionStoreOptions): B
                 strKey = `${strKey}demo_`
 
             let getKeyOptions = {
+                credentials: options.auth?.credentials.value,
                 itemID: dOptions.id ?? dOptions.data?.id,
                 userID: options.auth?.credentials.value.userID,
                 storeName: options.storeName
@@ -326,7 +498,6 @@ export function createSessionStoreDefinition(options: UseSessionStoreOptions): B
                     apiPrm = new Promise<LocallyStoredItem>(async (resolve, reject) => {
                         try {
                             const apiRes = await options.api?.getAll<StoreGetAllReturn<T>>(dOptions)
-
                             const res: LocallyStoredItem = {
                                 meta: { storedOn: currentTimeStampDays.toString() },
                                 data: apiRes?.data,
@@ -357,7 +528,7 @@ export function createSessionStoreDefinition(options: UseSessionStoreOptions): B
                 searchMemory.value[key] = apiRes
                 
                 return {
-                    data: apiRes?.data,
+                    data: searchMemory.value[key]?.data, //apiRes?.data,
                     filters: apiRes?.filters,
                     count: apiRes?.count
                 }
@@ -428,7 +599,7 @@ export function createSessionStoreDefinition(options: UseSessionStoreOptions): B
 
                 searchMemory.value[key] = apiRes
 
-                return { data: apiRes.data }
+                return { data: searchMemory.value[key]?.data }
             }
             catch (err: any) {
                 throw err
@@ -541,7 +712,7 @@ export function createSessionStoreDefinition(options: UseSessionStoreOptions): B
 
                 searchMemory.value[key] = existingItem
 
-                return existingItem.data
+                return searchMemory.value[key]?.data
             }
 
             return postedObject
@@ -691,7 +862,7 @@ export function createWholeLastUpdateStoreDefinition(options: UseWholeLastUpdate
         const dataItems: Ref<any[] | undefined> = ref()
         const count = ref(0)
         const currentTimeStampHours = DateTime.utc().toSeconds() / 3600
-        
+
         const cacheLocally = options.storageMode == 'local-cache'
         const itemSelector = options.idSelector ?? ((item: any) => item.id)
         const meta: Ref<LocalMeta> = ref({ storedOn: currentTimeStampHours.toString() })
@@ -710,6 +881,7 @@ export function createWholeLastUpdateStoreDefinition(options: UseWholeLastUpdate
                 strKey = `${strKey}demo_`
             
             let getKeyOptions = {
+                credentials: options.auth?.credentials.value,
                 userID: options.auth?.credentials.value.userID,
                 storeName: options.storeName
             }
@@ -742,19 +914,20 @@ export function createWholeLastUpdateStoreDefinition(options: UseWholeLastUpdate
 
         function createRefreshPromise<T>(dOptions: StorePathOptions): Promise<StoreGetAllReturn<T>> {
             const key = getKey()
-            
+
             if (promiseMemory.value[key])
                 return promiseMemory.value[key]
 
             promiseMemory.value[key] = new Promise<StoreGetAllReturn<T>>(async (resolve, reject) => {
                 try {
+                    const params = {
+                        lastUpdate: meta.value.lastUpdate ?? getMinDateString()
+                    }
+
                     let res = await options.api?.getAll<StoreGetAllReturn<T>>({
                         additionalUrl: '/getAll',
                         nav: dOptions.nav,
-                        params: {
-                            lastUpdate: meta.value.lastUpdate ?? getMinDateString()
-                            // lastUpdate: options.priority == 'server' ? undefined : meta.value.lastUpdate ?? getMinDateString()
-                        }
+                        params
                     })
 
                     if (res == null) {
@@ -834,6 +1007,7 @@ export function createWholeLastUpdateStoreDefinition(options: UseWholeLastUpdate
             if (!refresh && (options.priority != 'server' && cacheLocally == true)) {
                 //retrieve from local cache
                 const localRes = await useLocalDb().getItem<LocallyStoredItem>(key)
+                
                 if (localRes != null && parseFloat(localRes.meta.storedOn) > (currentTimeStampHours - 7)) {
                     dataItems.value = localRes.data
                     count.value = localRes.data.length
@@ -1157,6 +1331,7 @@ export function createPartialLastUpdateStoreDefinition(options: UsePartialLastUp
                 strKey = `${strKey}_demo`
             
             let getKeyOptions = {
+                credentials: options.auth?.credentials.value,
                 userID: options.auth?.credentials.value.userID,
                 storeName: options.storeName
             }
@@ -1333,8 +1508,7 @@ export function createPartialLastUpdateStoreDefinition(options: UsePartialLastUp
                                 leftItems.push(...leftRes.data)
                         }
                     }
-// console.log('left items')
-// console.log(leftItems)
+
                     let rightItems: T[] = []
                     if (bundledWindow.right != null) {
                         for (let i = 0; i < bundledWindow.right.length; i++) {
@@ -1358,9 +1532,6 @@ export function createPartialLastUpdateStoreDefinition(options: UsePartialLastUp
                                 rightItems.push(...rightRes.data)
                         }
                     }
-
-                    // console.log('right items')
-                    // console.log(rightItems)
 
                     let updatedItems: T[] = []
                     if (meta.value.dateFrom != null && meta.value.dateTo != null) {

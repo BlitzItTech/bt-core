@@ -1,51 +1,51 @@
 <template>
-    <v-row class="align-center ml-2" no-gutters>
+    <v-row class="align-center ml-2">
         <v-slide-y-transition hide-on-leave group>
             <v-col v-if="label != null" cols="12" key="1">
                 <v-list-subheader>{{ label }}</v-list-subheader>
             </v-col>
-            <v-col v-if="firstPrefix != null" class="mr-1" key="1.5" cols="auto">
+            <v-col v-if="firstPrefix != null" key="1.5" cols="auto">
                 {{ firstPrefix }}
             </v-col>
-            <v-col class="mr-1 flex-grow-0" key="2">
+            <v-col class="flex-grow-0" key="2">
                 <bt-select-inline
                     :items="regularityOptions"
                     v-model="cron.regularity.value" />
             </v-col>
-            <v-col v-if="cron.regularity.value == 'Custom'" class="mr-1" key="3">
+            <v-col v-if="cron.regularity.value == 'Custom'" key="3">
                 <bt-field-string
                     isEditing
                     @update:focused="rawChange"
                     v-model="cron.rawExpression.value" />
             </v-col>
-            <v-col v-if="cron.regularity.value != 'Custom'" class="mr-1 flex-grow-0" key="4">at</v-col>
-            <v-col v-if="cron.regularity.value != 'Custom'" class="mr-1 flex-grow-0" key="5">
+            <v-col v-if="cron.regularity.value != 'Custom'" class="flex-grow-0" key="4">at</v-col>
+            <v-col v-if="cron.regularity.value != 'Custom'" class="flex-grow-0" key="5">
                 <bt-select-inline
                     @change="reconfigure"
                     :items="hourOptions"
                     v-model="cron.hour.value" />
             </v-col>
-            <v-col v-if="cron.regularity.value == 'Monthly' || cron.regularity.value == 'Weekly'" class="mr-1 flex-grow-0" key="6">
+            <v-col v-if="cron.regularity.value == 'Monthly' || cron.regularity.value == 'Weekly'" class="flex-grow-0" key="6">
                 on
             </v-col>
-            <v-col v-if="cron.regularity.value == 'Monthly'" class="mr-1 flex-grow-0" key="7">
+            <v-col v-if="cron.regularity.value == 'Monthly'" class="flex-grow-0" key="7">
                 <bt-select-inline
                     @change="reconfigure"
                     :items="weekOptions"
                     multiple
                     v-model="cron.weeks.value" />
             </v-col>
-            <v-col v-if="cron.regularity.value == 'Monthly' || cron.regularity.value == 'Weekly'" class="mr-1 flex-grow-0" key="8">
+            <v-col v-if="cron.regularity.value == 'Monthly' || cron.regularity.value == 'Weekly'" class="flex-grow-0" key="8">
                 <bt-select-inline
                     @change="reconfigure"
                     :items="weekdayOptions"
                     multiple
                     v-model="cron.weekdays.value" />
             </v-col>
-            <v-col v-if="useLeadTimeLeft" cols="12" key="9" class="ma-0 pa-0">
-                <v-row class="align-center" no-gutters>
+            <v-col v-if="useLeadTimeLeft" cols="12" key="9">
+                <v-row class="align-center">
                     <v-slide-y-transition hide-on-leave group>
-                        <v-col v-if="secondPrefix != null" class="mr-1" key="1" cols="auto">
+                        <v-col v-if="secondPrefix != null" key="1" cols="auto">
                             {{ secondPrefix }}
                         </v-col>
                         <v-col class="mx-3 my-0 pa-0 text-center" cols="auto" key="2">
@@ -57,8 +57,10 @@
                                 width="70"
                                 v-model.number="cron.leadTimeLeft.value" />
                         </v-col>
-                        <v-col class="mr-1" cols="auto" key="3">
-                            {{ useLeadTimeInHours ? 'hour' : 'minute' }}{{ cron.leadTimeLeft.value == 1 ? 'later' : 's later' }}
+                        <v-col cols="auto" key="3">
+                            <span>{{ useLeadTimeInHours ? 'hour' : 'minute' }}</span>
+                            <span v-if="cron.leadTimeLeft.value != 1">s</span>
+                            <span class="ml-1">later</span>
                         </v-col>
                     </v-slide-y-transition>
                 </v-row>

@@ -54,6 +54,10 @@ export interface PathOptions {
     useLocalCache?: boolean
 }
 
+export interface RequestPathOptions extends PathOptions {
+    method: string
+}
+
 type FindPath = (navName?: string) => string | undefined
 // type BuildHeaders = (path: PathOptions) => HeadersInit
 // type BuildQuery = (params: any) => string
@@ -91,9 +95,11 @@ export interface BTApi {
     deleteItem: <T>(pathOptions: PathOptions) => Promise<T | undefined>
     get: <T>(pathOptions: PathOptions) => Promise<T | undefined>
     getAll: <T>(pathOptions: PathOptions) => Promise<T | undefined>
+    getBlob: (pathOptions: PathOptions) => Promise<Response>
     post: <T>(pathOptions: PathOptions) => Promise<T | undefined>
     patch: <T>(pathOptions: PathOptions) => Promise<T | undefined>
-    uploadImage: (pathOptions: PathOptions) => Promise<string | undefined>
+    request: (pathOptions: RequestPathOptions) => Promise<Response | undefined>
+    uploadImage: <T>(pathOptions: PathOptions) => Promise<T | undefined>
 }
 
 let current: BTApi
@@ -211,6 +217,33 @@ export function createApi(options?: CreateApiOptions): BTApi {
         fetchOptions['Content-Type'] ??= (path.contentType ?? options?.defaultContentType ?? 'application/json')
 
         return fetchOptions
+    }
+
+    async function getBlob(pathOptions: PathOptions): Promise<Response> {
+        let url = pathOptions.finalUrl
+        let headers = pathOptions.headers
+        
+        if (url == null)
+            url = buildUrl(pathOptions)
+
+        if (demo?.isDemoing.value) {
+            console.log(`DEMO: Get from ${url}`)
+            return demo.get(pathOptions)
+        }
+        
+        console.log(`Get from ${url}`)
+
+        await options?.auth?.tryRefreshToken()
+    
+        if (pathOptions.overrideHeaders !== true)
+            headers = buildHeaders(pathOptions)
+
+        return fetch(url, {
+            method: 'GET',
+            mode: 'cors',
+            cache: 'no-cache',
+            headers
+        });
     }
 
     async function get<T>(pathOptions: PathOptions): Promise<T | undefined> {
@@ -635,10 +668,10 @@ export function createApi(options?: CreateApiOptions): BTApi {
     }
 
     /**data as a blob */
-    async function uploadImage(pathOptions: PathOptions): Promise<string | undefined> {
+    async function uploadImage<T>(pathOptions: PathOptions): Promise<T | undefined> {
         const throwError = pathOptions.throwError ?? options?.defaultThrowError ??  true
-        // const returnJson = pathOptions.returnJson ?? options?.defaultReturnJson ?? true
-        // const returnText = pathOptions.returnText ?? options?.defaultReturnText ?? false
+        const returnJson = pathOptions.returnJson ?? options?.defaultReturnJson ?? true
+        const returnText = pathOptions.returnText ?? options?.defaultReturnText ?? false
 
         let url = pathOptions.finalUrl
         let headers = pathOptions.headers
@@ -653,7 +686,7 @@ export function createApi(options?: CreateApiOptions): BTApi {
             console.log(`DEMO: Uploading image to ${url}`)
             return demo.post(pathOptions)
         }
-        
+
         console.log(`Upload image to ${url}`)
         
         let res: Response | undefined
@@ -690,10 +723,16 @@ export function createApi(options?: CreateApiOptions): BTApi {
                 }
             }
 
-            if (res.status == 200)
-                return undefined
+            // if (res.status == 200)
+            //     return undefined
 
-            return res.statusText
+            if (returnText)
+                return await res.text() as T
+            if (returnJson)
+                return await res.json() as T
+
+            return undefined
+            // return res.statusText
         }
         catch (err: any) {
             if (res!.status == 200 || !throwError)
@@ -712,6 +751,102 @@ export function createApi(options?: CreateApiOptions): BTApi {
         }
     }
 
+    async function request(pathOptions: RequestPathOptions): Promise<Response | undefined> {
+        const throwError = pathOptions.throwError ?? options?.defaultThrowError ??  true
+
+        let url = pathOptions.finalUrl
+        let headers = pathOptions.headers
+        
+        if (url == null)
+            url = buildUrl(pathOptions)
+
+        let res: Response | undefined
+
+        try {
+            if (demo?.isDemoing.value) {
+                console.log(`DEMO: Get from ${url}`)
+                return demo.get(pathOptions)
+            }
+            
+            console.log(`Get from ${url}`)
+
+            await options?.auth?.tryRefreshToken()
+        
+            if (pathOptions.overrideHeaders !== true)
+                headers = buildHeaders(pathOptions)
+    
+            return await fetch(url, {
+                method: pathOptions.method,
+                mode: 'cors',
+                cache: 'no-cache',
+                headers
+            });
+        }
+        catch (err: any) {
+            const errMsg = `${res?.status ?? ''} ${res?.statusText ?? ''} ${err.message}`
+            if (!throwError) {
+                return undefined
+            }
+
+            if (err.code == 401)
+                throw err
+
+            throw {
+                code: res?.status ?? err?.code ?? undefined,
+                name: 'Error',
+                message: errMsg
+            }
+        }
+    }
+    
+    // async function getFetch(pathOptions: RequestPathOptions): Promise<Response | undefined> {
+    //     const throwError = pathOptions.throwError ?? options?.defaultThrowError ??  true
+
+    //     let url = pathOptions.finalUrl
+    //     let headers = pathOptions.headers
+        
+    //     if (url == null)
+    //         url = buildUrl(pathOptions)
+
+    //     let res: Response | undefined
+
+    //     try {
+    //         if (demo?.isDemoing.value) {
+    //             console.log(`DEMO: Get from ${url}`)
+    //             return demo.get(pathOptions)
+    //         }
+            
+    //         console.log(`Get from ${url}`)
+
+    //         await options?.auth?.tryRefreshToken()
+        
+    //         if (pathOptions.overrideHeaders !== true)
+    //             headers = buildHeaders(pathOptions)
+    
+    //         return fetch(url, {
+    //             method: pathOptions.method,
+    //             mode: 'cors',
+    //             cache: 'no-cache',
+    //             headers
+    //         });
+    //     }
+    //     catch (err: any) {
+    //         const errMsg = `${res?.status ?? ''} ${res?.statusText ?? ''} ${err.message}`
+    //         if (!throwError) {
+    //             return undefined
+    //         }
+
+    //         if (err.code == 401)
+    //             throw err
+
+    //         throw {
+    //             code: res?.status ?? err?.code ?? undefined,
+    //             name: 'Error',
+    //             message: errMsg
+    //         }
+    //     }
+    // }
+    
     current = {
         buildHeaders,
         buildQuery,
@@ -719,8 +854,11 @@ export function createApi(options?: CreateApiOptions): BTApi {
         deleteItem,
         get,
         getAll,
+        getBlob,
+        // getFetch,
         patch,
         post,
+        request,
         uploadImage
     }
 
