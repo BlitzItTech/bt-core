@@ -1,5 +1,10 @@
 <template>
-  <div>
+  <div class="d-flex">
+    <!-- {{ t }}
+    <BTCron
+      label="Test Cron"
+      v-model="t.cronExpression" /> -->
+
     <!-- <bt-image-uploader
       additionalURL="/Upload?id={id}"
       class="mx-auto my-auto"
@@ -19,7 +24,7 @@
 
          <!-- backgroundUrl="https://blitzittechimages.blob.core.windows.net/company-logos/349f072e-3dd1-42e4-8318-8abdef8a0d5a-ordering-background"
         logoUrl="https://blitzittechimages.blob.core.windows.net/company-logos/349f072e-3dd1-42e4-8318-8abdef8a0d5a-logo-lg" -->
-      <v-container>
+      <!-- <v-container>
         <v-row>
           <bt-col sm="12">
             <BTStatusItem
@@ -62,7 +67,7 @@
             </BTFormBuilder>
           </bt-col>
         </v-row>
-      </v-container>
+      </v-container> -->
     <!-- <BTBladeItem 
       :actualUsedHeight="0"
       variant="pure">
@@ -82,6 +87,67 @@
       <!-- </template>
     </BTBladeItem> -->
     
+    <!-- <BTBladeItem
+      :item="{ test: 'a', a: true, d: '', s: 'a', t: 'a,b', tr: 'Manual', area: 'Just a really long line.  Just a really long line.  Just a really long line.  Just a really long line.  Just a really long line.  Just a really long line.  Just a really long line.  Just a really long line.  ' }">
+      <template #default="{ item }">
+        {{ item }}
+        <v-container>
+          <v-row>
+            <BTFieldString
+              label="Test"
+              v-model="item.test" />
+            <BTFieldCheckbox
+              label="Test"
+              v-model="item.a" />
+            <BTFieldDate
+              label="Test Date"
+              v-model="item.d" />
+            <BTFieldSelect
+              :items="['a', 'b', 'c']"
+              label="Test Select"
+              v-model="item.s" />
+            <BTFieldSwitch
+              label="Test Switch"
+              v-model="item.a" />
+            <BTFieldTags
+              label="Test Tags"
+              v-model="item.t" />
+            <BTFieldTextarea
+              label="Test Area"
+              v-model="item.area" />
+            <BTFieldTrigger
+              label="Text Trigger"
+              useTrigger
+              v-model:trigger="item.tr" />
+          </v-row>
+        </v-container>
+      </template>
+    </BTBladeItem> -->
+
+      <BTBladeItems
+        bladeName="a"
+        :headers="[{ title: 'N', value: 'a' }, { title: 'M', value: 'b', align: 'end' }]"
+        :items="[{ a: 'a', b: 'b', c: 'c' }]"
+        label="Dialog"
+        variant="freestyle"
+        :width="300" />
+
+        <v-btn @click="open" text="Open" />
+    <!-- <BTBladeItems
+      :headers="[{ title: 'N', value: 'a' }, { title: 'M', value: 'b', align: 'end' }]"
+      hideActions
+      :items="[{ a: 'a', b: 'b', c: 'c' }]"
+      min-width="300"
+      title="Inline"
+      variant="inline" />
+
+      <BTBladeItems
+      :headers="[{ title: 'N', value: 'a' }, { title: 'M', value: 'b', align: 'end' }]"
+      hideActions
+      :items="[{ a: 'a', b: 'b', c: 'c' }]"
+      min-width="300"
+      title="Pane"
+      variant="pane" /> -->
 
       <!-- <BTSelectListBox
         alwaysOpen
@@ -90,9 +156,10 @@
         itemValue="id" /> -->
 
       <!-- <BTBladeItems
-        :headers="[{ title: 'Name', value: 'id', searchable: true }]"
+        :fadingActions="false"
+        :headers="[{ title: 'Name', value: 'aName', searchable: true, level: 0 }]"
         :items="listItems"
-        :itemsPerPage="15"
+        nav="nav-items"
         paginate="local" /> -->
         
     <!-- <BT-Blade-Steps
@@ -161,17 +228,36 @@
   import BTFormBuilder from '../../../../../core/src/components/BT-Form-Builder.vue'
   import BTForm from '../../../../../core/src/components/BT-Form.vue'
 import BTBladeItem from '../../../../../core/src/components/BT-Blade-Item.vue'
+import BTBladeItems from '../../../../../core/src/components/BT-Blade-Items.vue'
 import BTFieldString from '../../../../../core/src/components/BT-Field-String.vue'
 import { useTracker } from '../../../../../core/src/composables/track'
 import { twiddleThumbs } from '../../../../../core/src/composables/helpers'
 import BTFieldCheckbox from '../../../../../core/src/components/BT-Field-Checkbox.vue'
 import BTFieldDate from '../../../../../core/src/components/BT-Field-Date.vue'
 import BTFieldSelect from '../../../../../core/src/components/BT-Field-Select.vue'
+import BTFieldSwitch from '../../../../../core/src/components/BT-Field-Switch.vue'
+import BTFieldTags from '../../../../../core/src/components/BT-Field-Tags.vue'
+import BTFieldTextarea from '../../../../../core/src/components/BT-Field-Textarea.vue'
 import BTStatusItem from '../../../../../core/src/components/BT-Status-Item.vue'
-// import BTCron from '../../../../../core/src/components/BT-Cron.vue'
+import BTCron from '../../../../../core/src/components/BT-Cron.vue'
+import BTFieldTrigger from '../../../../../core/src/components/BT-Field-Trigger.vue'
+import { useBlade } from '../../../../../core/src/composables/blade'
 // import BTTags from '../../../../../core/src/components/BT-Tags.vue'
 
+const listItems = [
+  { aName: 'One', x1: '1', x2: undefined },
+  { aName: 'Two', x1: undefined, x2: undefined },
+  { aName: 'Three', x1: undefined, x2: '2' },
+]
 
+const b = useBlade({ bladeName: 'a' })
+
+function open() {
+  b.updateBlade({
+    bladeName: 'a',
+    data: 'test'
+  })
+}
 
 const form = {
   name: 'Test Form',
@@ -317,10 +403,11 @@ async function submitForm() {
 // const listItems = ref<any>(l)
 
 
-// const t = ref<any>({
-//   adjustments: undefined,
-//   cronExpression: undefined
-// })
+const t = ref<any>({
+  adjustments: undefined,
+  cronExpression: undefined
+})
+
   const steps: StepOption<any>[] = [
     {
       name: 'a',

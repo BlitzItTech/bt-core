@@ -4,11 +4,23 @@
         :md="mMd"
         :sm="mSm"
         :cols="cols">
+        <v-list-item v-if="!cIsEditing && viewVariant == 'list-item'" 
+            density="compact" 
+            v-bind="$attrs">
+            <!-- <v-list-item-subtitle>{{ label }}</v-list-item-subtitle> -->
+            <!-- <v-list-item-title>{{ value }}</v-list-item-title> -->
+            <template #default>
+                <v-list-item-subtitle class="mb-2">{{ label }}</v-list-item-subtitle>
+                {{ value }}
+            </template>
+        </v-list-item>
         <v-textarea
+            v-else
             v-bind="$attrs"
+            :label="label"
             :readonly="!cIsEditing"
             :rules="rules"
-            :variant="cIsEditing ? editVariant : variant"
+            :variant="cIsEditing ? editVariant : viewVariant"
             v-model="value" />
     </v-col>
 </template>
@@ -26,7 +38,7 @@ import { computed, inject, ref } from 'vue'
         horizontal?: boolean
         isEditing?: boolean
         isMobile?: boolean
-        // label: any
+        label: any
         lg?: string | boolean
         md?: string | boolean
         // mode?: 'view' | 'edit' | 'new'
@@ -58,8 +70,8 @@ import { computed, inject, ref } from 'vue'
 
     const cIsEditing = computed(() => props.isEditing ?? mIsEditing.value)
     const mIsMobile = inject('isMobile', () => ref(false), true)
-    const variant = inject('fieldVariant', 'underlined')
-    const editVariant = inject('fieldEditVariant', 'outlined')
+    const viewVariant = inject<any>('viewVariant', 'underlined')
+    const editVariant = inject('editVariant', 'outlined')
 
     const mLg = computed(() => (props.isMobile ?? mIsMobile.value) ? false : props.lg)
     const mMd = computed(() => (props.isMobile ?? mIsMobile.value) ? false : props.md)

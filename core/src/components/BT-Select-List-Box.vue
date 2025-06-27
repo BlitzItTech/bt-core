@@ -6,9 +6,10 @@
         :sm="mSm"
         :cols="cols">
         <v-list-item v-if="!alwaysOpen && mIsSelecting" @click="mIsSelecting = false"
+            :density="density"
             :subtitle="label">
             <template #append>
-                <v-row class="ma-0 pa-0">
+                <div class="d-flex align-center">
                     <slot name="actions" />
                     <v-icon>$chevron-up</v-icon>
                     <slot name="actionsRight" />
@@ -27,7 +28,7 @@
                             <slot name="settings" />
                         </v-list>
                     </v-menu>
-                </v-row>
+                </div>
             </template>
         </v-list-item>
         <v-slide-y-transition hide-on-leave group>
@@ -53,10 +54,11 @@
                 :height="height"
                 item-height="50"
                 :items="ui.filteredItems.value"
-                key="2">
+                key="2"
+                :maxHeight="maxHeight">
                 <template #default="{ item }">
                     <slot name="item" v-bind:item="item" v-bind:selectItem="selectItem(item)" :active="isActive(item)">
-                        <v-list-item @click="selectItem(item)" :active="isActive(item)" color="primary">
+                        <v-list-item @click="selectItem(item)" :active="isActive(item)" color="primary" :density="density">
                             <slot v-bind:item="item">
                                 <v-list-item-title v-if="itemText != null || textFilter != null || textFunction != null">
                                     {{ displayTitle(item) }}
@@ -73,12 +75,14 @@
                 v-else-if="alwaysOpen || mIsSelecting"
                 :bg-color="transparent ? 'transparent' : undefined"
                 :height="height"
+                :maxHeight="maxHeight"
                 key="3"
                 width="100%">
+                <slot name="topItem"></slot>
                 <v-list-item
                     v-if="canSelectNone"
                     key="-1"
-                    density="compact"
+                    :density="density"
                     @click="selectItem(null)"
                     subtitle="(Select None)" />
                 <v-slide-x-transition group hide-on-leave>
@@ -91,6 +95,8 @@
                             :selectItem="selectItem">
                             <v-list-item
                                 :active="isActive(fItem)"
+                                :density="density"
+                                :prepend-icon="prependIcon"
                                 :value="fItem"
                                 @click="selectItem(fItem)">
                                 <slot :item="fItem" :index="fInd" :size="mSize">
@@ -103,20 +109,25 @@
                                 </slot>
                             </v-list-item>
                         </slot>
+                        <v-divider v-if="hideDividers !== true" />
                     </template>
                 </v-slide-x-transition>
+                <slot name="bottomItem"></slot>
             </v-list>
             <slot v-else name="selected" :item="selectedItem" :open="openList">
                 <v-list-item
                     @click="openList"
-                    key="4"
-                    :title="label"
-                    :subtitle="displayTitle(selectedItem) ?? placeholder">
+                    :density="density"
+                    key="4">
+                    <template #default>
+                        <v-list-item-subtitle v-if="label != null">{{ label }}</v-list-item-subtitle>
+                        <v-list-item-title>{{ displayTitle(selectedItem) ?? placeholder }}</v-list-item-title>
+                    </template>
                     <template #append>
-                        <v-row no-gutters>
-                            <slot name="actions" />
+                        <div class="d-flex align-center">
+                            <slot name="actions"></slot>
                             <v-icon>$chevron-down</v-icon>
-                            <slot name="actionsRight" />
+                            <slot name="actionsRight"></slot>
                             <v-menu
                                 v-if="showSettings"
                                 offset-y 
@@ -129,10 +140,10 @@
                                         title="Settings" />
                                 </template>
                                 <v-list>
-                                    <slot name="settings" />
+                                    <slot name="settings"></slot>
                                 </v-list>
                             </v-menu>
-                        </v-row>
+                        </div>
                     </template>
                 </v-list-item>
             </slot>
@@ -168,7 +179,9 @@
         canSelectNone?: boolean
         colClass?: string
         cols?: string | boolean
+        density?: 'compact' | 'comfortable' | 'default'
         height?: string
+        hideDividers?: boolean
         isMobile?: boolean
         isEditing?: boolean
         isSelecting?: boolean
@@ -178,10 +191,12 @@
         itemValue?: string //inherited
         label?: string
         lg?: string | boolean
+        maxHeight?: string | number
         modelValue?: any
         md?: string | boolean
         nav?: string
         placeholder?: string
+        prependIcon?: string
         showSettings?: boolean
         sm?: string | boolean
         subtextFilter?: string
@@ -196,9 +211,11 @@
 
     const props = withDefaults(defineProps<SelectProps>(), {
         canRefresh: true,
+        density: 'default',
         eager: true,
-        height: '400',
+        height: undefined,
         isEditing: undefined,
+        maxHeight: undefined,
         sortOrder: 'Ascending',
         cols: '12',
         lg: false,

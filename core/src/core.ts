@@ -29,6 +29,7 @@ import BTDate from './components/BT-Date.vue'
 import BTDragCounter from './components/BT-Drag-Counter.vue'
 import BTEntity from './components/BT-Entity.vue'
 import BTError from './components/BT-Error.vue'
+import BTField from './components/BT-Field.vue'
 import BTFieldCheckbox from './components/BT-Field-Checkbox.vue'
 import BTFieldDate from './components/BT-Field-Date.vue'
 import BTFieldEntity from './components/BT-Field-Entity.vue'
@@ -57,6 +58,7 @@ import BTTags from './components/BT-Tags.vue'
 import { Router } from 'vue-router'
 import { createAssistant, CreateAssistantOptions } from './composables/assistant.ts'
 import { createFeedback, CreateFeedbackOptions } from './composables/feedback.ts'
+import { createComponentConfig, CreateComponentConfigOptions } from './composables/component-config.ts'
 
 export interface CoreApp {
     install(app: App, options: any) : void
@@ -72,6 +74,7 @@ export interface CreateCoreOptions {
     api?: CreateApiOptions
     assistant?: CreateAssistantOptions
     auth: CreateAuthOptions
+    componentConfig?: CreateComponentConfigOptions
     cosmetics?: UseCosmeticsOptions<BaseCosmeticTheme>
     demo?: CreateDemoOptions
     feedback?: CreateFeedbackOptions
@@ -110,6 +113,7 @@ export function createCore(options: CreateCoreOptions): CoreApp {
                 app.component('bt-drag-counter', BTDragCounter)
                 app.component('bt-entity', BTEntity)
                 app.component('bt-error', BTError)
+                app.component('bt-field', BTField)
                 app.component('bt-field-checkbox', BTFieldCheckbox)
                 app.component('bt-field-date', BTFieldDate)
                 app.component('bt-field-entity', BTFieldEntity)
@@ -147,6 +151,8 @@ export function createCore(options: CreateCoreOptions): CoreApp {
 
             const urls = createUrl(options.urls)
 
+            createComponentConfig(options.componentConfig)
+            
             createCosmetics(options.cosmetics)
 
             const navigation = createNavigation(options.navigation ?? {})

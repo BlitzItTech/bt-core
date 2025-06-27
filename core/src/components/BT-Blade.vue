@@ -9,6 +9,12 @@
         ref="blade"
         :rounded="(ui.variant.value == 'blade') ? '2' : '0'"
         :style="mBladeStyle">
+        a{{ width }}
+        b{{ position }}
+        c{{ mBladeStyle }}
+        d{{ startWidth }}
+        e{{ bladeStartShowing }}
+        f{{ lastWidth }}
         <v-slide-y-transition hide-on-leave>
             <v-toolbar v-if="!mHideToolbar"
                 :color="toolbarVariant == 'inverted' ? undefined : 'primary'"
@@ -16,17 +22,14 @@
                 ref="handle">
                 <slot name="blade-toolbar">
                     <slot name="blade-toolbar-left"></slot>
-                    <v-fade-transition hide-on-leave>
-                        <v-btn
-                            v-if="!mHideNavigation"
-                                icon="$arrow-left"
-                                :size="size"
-                                title="Back"
-                                @click="() => navBackward()" />
-                    </v-fade-transition>
+                    <v-btn
+                        v-if="!mHideNavigation"
+                            icon="$arrow-left"
+                            :size="size"
+                            title="Back"
+                            @click="() => navBackward()" />
                     <slot name="blade-title-left"></slot>
                     <v-toolbar-title v-if="label != null">{{ label }}</v-toolbar-title>
-                    
                     <slot name="blade-title-right"></slot>
                     <v-spacer />
                     <slot name="blade-toolbar-right"></slot>
@@ -46,7 +49,7 @@
                         <v-btn icon="$cog" :size="size" v-bind="props" />
                     </template>
                     <v-list :density="density">
-                        <slot name="bladeSettings" />
+                        <slot name="bladeSettings"></slot>
                     </v-list>
                 </v-menu>
             </v-toolbar>
@@ -60,10 +63,10 @@
             </v-toolbar>
         </v-slide-y-transition>
         <v-row v-if="!hideToolbar && (ui.variant.value == 'inline' || ui.variant.value == 'dialog')" no-gutters>
-            <slot name="blade-toolbar-left" />
+            <slot name="blade-toolbar-left"></slot>
             <v-list-subheader v-if="label != null">{{ label }}</v-list-subheader>
             <v-spacer />
-            <slot name="blade-toolbar-right" />
+            <slot name="blade-toolbar-right"></slot>
         </v-row>
         <v-slide-y-transition>
             <v-alert 
@@ -101,12 +104,12 @@
     import { computed, provide, ref, watch } from 'vue'
     import { useSpring } from 'vue-use-spring'
     import { useDisplay } from 'vuetify'
+    import { EditVariant, useComponentConfig, ViewVariant } from '../composables/component-config.ts'
 
     interface BProps extends UseBladeOptions {
         density?: BladeDensity
+        editVariant?: EditVariant
         errorMsg?: string
-        fieldEditVariant?: string
-        fieldVariant?: string
         flat?: boolean
         getNavBack?: () => void | undefined
         hideBladeControls?: boolean
@@ -123,10 +126,12 @@
         toolbarVariant?: 'default' | 'inverted'
         transparent?: boolean
         variant?: BladeVariant
+        viewVariant?: ViewVariant
         width?: string | number
     }
 
     const props = withDefaults(defineProps<BProps>(), {
+        bladeStartShowing: true,
         density: 'compact',
         flat: undefined,
         hideToolbarSettings: true,
@@ -153,7 +158,7 @@
         return Number.parseInt(props.width)
     })
     
-    let lastWidth: number = 400 //startWidth.value
+    let lastWidth: number = 400
     const position = useSpring({ width: startWidth.value })
     const { xs } = useDisplay()
     
@@ -182,10 +187,12 @@
                 position.width = (widthIsPercent && props.width != null) ? Number.parseInt(props.width as string) : lastWidth
         }
     })
+
+    const { editVariant, viewVariant } = useComponentConfig()
     
     provide('isMobile', ui.isMobile)
-    provide('fieldVariant', props.fieldVariant ?? 'underlined')
-    provide('fieldEditVariant', props.fieldEditVariant ?? 'outlined')
+    provide('editVariant', props.editVariant ?? editVariant ?? 'outlined')
+    provide('viewVariant', props.viewVariant ?? viewVariant ?? 'list-item')
 
     const isLoading = computed(() => props.loadingMsg != null)
     const mHideBladeControls = computed(() => (presets.hideBladeControls as boolean ?? props.hideBladeControls) || (ui.variant.value != 'blade' && ui.variant.value != 'page'))
@@ -212,17 +219,16 @@
         return ''
     })
     const mBladeStyle = computed(() => {
-        if (ui.variant.value == 'blade') {
+        if (ui.variant.value == 'blade' || ui.variant.value == 'dialog') {
             if (widthIsPercent.value)
                 return `width: ${position.width}%`
 
             return `width: ${position.width}px`
         }
         else {
-            return ``
+            return ''
         }
     })
-    // const mMinWidth = computed(() => position.width == 0 ? 0 : props.minWidth)
 
     watch(() => props.errorMsg, (v) => { showError.value = v != null })
     

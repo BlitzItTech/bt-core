@@ -1,8 +1,6 @@
 <template>
     <bt-blade
         bladeBasic
-        :bladeName="bladeName"
-        :bladeStartShowing="bladeStartShowing"
         :density="density"
         :errorMsg="ui.errorMsg.value"
         :flat="flat"
@@ -91,11 +89,24 @@
                                 :item="ui.asyncItem.value" 
                                 :mode="ui.mode.value" 
                                 name="default"
+                                :refresh="ui.refresh"
                                 :save="save"
                                 :size="mSize"></slot>
                         </v-form>
                     </v-card-text>
                     <v-card-actions v-if="mCanSave">
+                        <slot
+                            :bladeData="bladeData"
+                            :density="density" 
+                            :isChanged="ui.isChanged.value"
+                            :isEditing="ui.isEditing.value" 
+                            :isMobile="isMobile"
+                            :item="ui.asyncItem.value" 
+                            :mode="ui.mode.value" 
+                            name="bottom-left"
+                            :refresh="ui.refresh"
+                            :save="save"
+                            :size="mSize"></slot>
                         <v-spacer />
                         <v-slide-x-transition group>
                             <v-btn v-if="mCanSave && ui.isSaveable.value && (ui.isChanged.value || ui.mode.value == 'new')" @click="save(false)" :size="mSize" class="mr-4">
@@ -150,10 +161,7 @@
         density: 'compact',
         eager: true,
         flat: true,
-        // includeDetails: true,
         isSingle: true,
-        // storeMode: 'session',
-        // storageMode: 'local-cache',
         trackChanges: true,
         useBladeSrc: undefined,
         useRouteSrc: undefined,
@@ -175,7 +183,7 @@
     const mCanRestore = computed(() => (presets.canRestore as boolean ?? props.canRestore))
     const mCanSave = computed(() => (presets.canSave as boolean ?? props.canSave))
     const mHideRefresh = computed(() => (presets.hideRefresh as boolean ?? props.hideRefresh))
-    const mLabel = computed(() => props.label ?? (props.getLabel != null ? props.getLabel(ui.asyncItem.value) : undefined) ?? findSingleDisplay(props.nav ?? props.bladeName ?? ''))
+    const mLabel = computed(() => props.label ?? (props.getLabel != null ? props.getLabel(ui.asyncItem.value) : undefined) ?? findSingleDisplay(props.nav ?? ''))
     const contentStyle = computed(() => {
         if (props.actualHeight != null) {
             return `height: calc(${props.actualHeight})`

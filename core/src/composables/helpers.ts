@@ -1,7 +1,6 @@
 import { firstBy } from 'thenby'
 import type { StoreGetReturn, StoreGetAllReturn } from './stores.ts';
 
-
 // function evenOut(d: number[], newArrays?: number[][]) {
 //     let min = Math.min(...d)
 //     let max = Math.max(...d)
@@ -15,6 +14,22 @@ import type { StoreGetReturn, StoreGetAllReturn } from './stores.ts';
 
 //     return d.map(x => ((x - min) / max) * 100)
 // }
+
+export function toggle(obj: any, prop: string, values: any[]) {
+    if (!isLengthyArray(values))
+        return
+
+    var objVal = obj[prop]
+    
+    var ind = values.findIndex(v => v === objVal)
+        ind ??= -1
+        ind++
+
+        if (ind < values.length)
+            obj[prop] = values[ind]
+        else
+            obj[prop] = values[0]
+}
 
 export function log(obj: any) {
     console.log(JSON.parse(JSON.stringify(obj)))
@@ -98,20 +113,55 @@ export function sum(array: number[]): number {
     return array.reduce((sum, v) => sum += v, 0)
 }
 
-export function orderBy(arr: any[], prop?: string | ((item: any) => boolean | number | string) | undefined, asc: true | false = true) {
+// export function orderBy(arr: any[], prop?: string | ((item: any) => boolean | number | string) | undefined, asc: true | false = true) {
+//     return arr.sort(function (a, b) {
+//         if (!prop) {
+//             if (a > b) {
+//                 return asc === true ? 1 : -1;
+//             }
+//             else if (a < b) {
+//                 return asc === true ? -1 : 1;
+//             }
+//             else {
+//                 return 0;
+//             }
+//         }
+//         else if (typeof(prop) === 'string') {            
+//             if (nestedValue(a, prop) > nestedValue(b, prop)) {
+//                 return asc === true ? 1 : -1;
+//             }
+//             else if (nestedValue(a, prop) < nestedValue(b, prop)) {
+//                 return asc === true ? -1 : 1;
+//             }
+//             else {
+//                 return 0;
+//             }
+//         }
+//         else {
+//             if (prop(a) > prop(b)) {
+//                 return asc === true ? 1 : -1;
+//             }
+//             else if (prop(a) < prop(b)) {
+//                 return asc === true ? -1 : 1;
+//             }
+//             else {
+//                 return 0;
+//             }
+//         }
+//     })
+// }
+
+export function orderBy<T>(arr: T[], prop?: keyof T | ((item: T) => boolean | number | string), asc: true | false = true) {
     return arr.sort(function (a, b) {
-        if (!prop) {
-            if (a > b) {
+        if (prop == null) {
+            if (a > b)
                 return asc === true ? 1 : -1;
-            }
-            else if (a < b) {
+            else if (a < b)
                 return asc === true ? -1 : 1;
-            }
-            else {
+            else
                 return 0;
-            }
         }
-        else if (typeof(prop) === 'string') {            
+        else if (typeof(prop) === 'string') {
             if (nestedValue(a, prop) > nestedValue(b, prop)) {
                 return asc === true ? 1 : -1;
             }
@@ -122,7 +172,7 @@ export function orderBy(arr: any[], prop?: string | ((item: any) => boolean | nu
                 return 0;
             }
         }
-        else {
+        else if (typeof(prop) == 'function') {
             if (prop(a) > prop(b)) {
                 return asc === true ? 1 : -1;
             }
@@ -133,6 +183,8 @@ export function orderBy(arr: any[], prop?: string | ((item: any) => boolean | nu
                 return 0;
             }
         }
+        else
+            return 0;
     })
 }
 
@@ -338,7 +390,50 @@ export function getLocationLineTwo(value: any): string {
     return rStr;
 }
 
+export function dropFromList<T>(arr?: T[], pred?: (item: T) => boolean): number {
+    if (arr == null || pred == null)
+        return -1
 
+    let i = arr.findIndex(x => pred(x))
+    let oldI = i;
+
+    while (i != null && i >= 0) {
+        oldI = i
+        arr.splice(i, 1)
+        i = arr.findIndex(x => pred(x))
+    }
+
+    return oldI
+}
+
+/**remove all items with a certain predicate and add item to the first predicate or at the end of the list */
+export function dropAndAddToList<T>(arr?: T[], itemToAdd?: T, pred?: (item: T) => boolean): number {
+    if (arr == null || itemToAdd == null || pred == null)
+        return -1
+
+    let i = arr.findIndex(x => x !== itemToAdd && pred(x))
+    let isReplaced = false
+    let oldI = i;
+
+    while (i != null && i >= 0) {
+        if (isReplaced)
+            arr.splice(i, 1)
+        else {
+            arr.splice(i, 1, itemToAdd)
+            oldI = i
+            isReplaced = true
+        }
+
+        i = arr.findIndex(x => x !== itemToAdd && pred(x))
+    }
+
+    if (!isReplaced) {
+        arr.push(itemToAdd)
+        oldI = arr.length - 1
+    }
+
+    return oldI
+}
 
 //#endregion
 
@@ -626,7 +721,7 @@ export function toggleCSV(value?: string | string[], tag?: string) {
         }
         else {
             //add
-            if (rVal != null) {
+            if (rVal != null && rVal.length > 0) {
                 rVal = `${rVal},${tag}`;
             }
             else {
@@ -635,7 +730,7 @@ export function toggleCSV(value?: string | string[], tag?: string) {
         }
     }
     
-    return rVal != null && rVal.length > 0 ? rVal : null
+    return rVal != null && rVal.length > 0 ? rVal : undefined
 }
 
 export function csvContains(value?: string, tag?: string) {

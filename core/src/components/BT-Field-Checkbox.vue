@@ -4,16 +4,14 @@
         :md="mMd"
         :sm="mSm"
         :cols="cols">
-        <!-- <v-list-item :density="density"> -->
-            <v-checkbox
-                v-bind="$attrs"
-                v-model="value"
-                color="primary"
-                :hide-details="cRules == null"
-                :label="label"
-                :readonly="!cIsEditing"
-                :rules="cRules" />
-        <!-- </v-list-item> -->
+        <v-checkbox
+            v-bind="$attrs"
+            v-model="value"
+            color="primary"
+            :hide-details="cRules == null"
+            :label="label"
+            :readonly="!cIsEditing"
+            :rules="cRules" />
     </v-col>
 </template>
 

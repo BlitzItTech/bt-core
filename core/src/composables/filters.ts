@@ -1,3 +1,4 @@
+import { DurationUnit } from 'luxon'
 import { getLocationLine, getLocationLineOne, getLocationLineTwo, isMinDate } from '../composables/helpers.ts'
 import { BTAuth } from './auth.ts'
 import { BTDates } from './dates.ts'
@@ -274,6 +275,31 @@ export function createFilters(options: UseFiltersOptions): BTFilters {
         }
     }
 
+    function toTimeSpan(val?: string, spanName?: DurationUnit): string {
+        var d = options.dates
+        if (spanName != null)
+            return d.utcDate().diff(d.btDate(val), spanName).toString() ?? ''
+        else {
+            var dif = d.btDate(val).diff(d.utcDate(), ['months','days','hours','minutes','seconds']).toObject();
+
+            var str = '';
+
+            if (dif.months != null && dif.months > 0) {
+                return `${dif.months} ${dif.months == 1 ? 'month ' : 'months '}`;
+            }
+            if (dif.days != null && dif.days > 0) {
+                return `${str} ${dif.days} ${dif.days == 1 ? 'day ' : 'days '}`;
+            }
+            if (dif.hours != null && dif.hours > 0) {
+                str = `${str} ${dif.hours} ${dif.hours == 1 ? 'hour ' : 'hours '}`;
+            }
+            if (dif.minutes != null && dif.minutes > 0) {
+                str = `${str} ${dif.minutes} ${dif.minutes == 1 ? 'minute ' : 'minutes '}`;
+            }
+            return str;
+        }
+    }
+
     const e = {
         toCompanyNameAndLocationLine,
         toCurrency,
@@ -299,6 +325,7 @@ export function createFilters(options: UseFiltersOptions): BTFilters {
         toShortDateAndTime,
         toTime,
         toTimeOfDay,
+        toTimeSpan,
         ...customFilters
     }
 

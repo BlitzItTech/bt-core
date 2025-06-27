@@ -158,7 +158,8 @@ export function useActions(options?: UseActionsOptions): BTActions {
             store = useStoreDefinition({ 
                 nav: doOptions.nav,
                 storeMode: doOptions.storeMode,
-                storageMode: doOptions.storageMode
+                storageMode: doOptions.storageMode,
+                proxyID: doOptions.proxyID
             })
         }
         
@@ -238,7 +239,8 @@ export function useActions(options?: UseActionsOptions): BTActions {
             store = useStoreDefinition({ 
                 nav: doOptions.nav,
                 storeMode: doOptions.storeMode,
-                storageMode: doOptions.storageMode
+                storageMode: doOptions.storageMode,
+                proxyID: doOptions.proxyID
             })
         }
 
@@ -294,11 +296,14 @@ export function useActions(options?: UseActionsOptions): BTActions {
         let store = doOptions?.store ?? options?.store
         const items = options?.items ?? []
         
+        console.log(doOptions)
+
         if (store == null && doOptions.nav != null) {
             store = useStoreDefinition({ 
                 nav: doOptions.nav,
                 storeMode: doOptions.storeMode,
-                storageMode: doOptions.storageMode
+                storageMode: doOptions.storageMode,
+                proxyID: doOptions.proxyID
             })
         }
 
@@ -352,7 +357,8 @@ export function useActions(options?: UseActionsOptions): BTActions {
             store = useStoreDefinition({ 
                 nav: doOptions.nav,
                 storeMode: doOptions.storeMode,
-                storageMode: doOptions.storageMode
+                storageMode: doOptions.storageMode,
+                proxyID: doOptions.proxyID
             })
         }
 
@@ -412,7 +418,8 @@ export function useActions(options?: UseActionsOptions): BTActions {
             store = useStoreDefinition({ 
                 nav: doOptions.nav,
                 storeMode: doOptions.storeMode,
-                storageMode: doOptions.storageMode
+                storageMode: doOptions.storageMode,
+                proxyID: doOptions.proxyID
             })
         }
         

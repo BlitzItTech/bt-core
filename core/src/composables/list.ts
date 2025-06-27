@@ -8,7 +8,7 @@ import type { RouteLocationNormalizedLoaded, Router } from 'vue-router'
 import { useArrayDifference, useArrayUnique, watchArray, watchDebounced } from '@vueuse/core'
 import { useActions } from '../composables/actions.ts'
 import { StorageMode, StoreMode, useStoreDefinition } from './stores.ts'
-import { useNavigation } from './navigation.ts'
+import { ExternalParty, useNavigation } from './navigation.ts'
 import { useBlade } from './blade.ts'
 
 export interface ListRefreshOptions {
@@ -100,6 +100,8 @@ export interface ListProps<T, TSave, TReturn> {
     onCanDelete?: (item: TReturn) => boolean
     /**when trying to delete in api */
     onCanDeleteAsync?: OnCanDoAsync<TReturn>
+    /**for defining if can be integrated */
+    onCanIntegrate?: (item: TReturn) => boolean
     onCanRestore?: (item: TReturn) => boolean
     onCanRestoreAsync?: OnCanDoAsync<TReturn>
     onCanSave?: (item: TReturn) => boolean
@@ -199,9 +201,12 @@ export function useList<T, TSave, TReturn>(props: ListProps<T, TSave, TReturn>, 
 
     const nav = props.nav ?? props.bladeName ?? props.itemBladeName ?? 'basic'
     const storeKey = props.storeKey ?? options?.storeKey
-    const storeMode = props.storeMode ?? navigation.findItem(nav)?.storeMode
-    const storageMode = props.storageMode ?? navigation.findItem(nav)?.storageMode
-    const deleteStrat = navigation.findItem(nav)?.deleteStrat
+    var navItem = navigation.findItem(nav)
+    const storeMode = props.storeMode ?? navItem?.storeMode
+    const storageMode = props.storageMode ?? navItem?.storageMode
+    const deleteStrat = navItem?.deleteStrat
+    const externalParties = ref<ExternalParty[]>(navItem?.externalConfig?.parties ?? [])
+    const selectedExternalParties = ref<number[]>([])
 
     //server filtering
     const customFilters = toValue(props.customFilters) ?? []
@@ -299,7 +304,8 @@ export function useList<T, TSave, TReturn>(props: ListProps<T, TSave, TReturn>, 
         store: useStoreDefinition({
             storeMode: storeMode,
             storageMode: storageMode,
-            nav: nav
+            nav: nav,
+            proxyID: proxyID.value
         })
     })
 
@@ -397,6 +403,32 @@ export function useList<T, TSave, TReturn>(props: ListProps<T, TSave, TReturn>, 
             return false
 
         return true
+    })
+
+    const isIntegratable = computed(() => (item: TReturn | any) => {
+        if (props.onCanIntegrate != null)
+            return props.onCanIntegrate(item)
+
+        if (!isLengthyArray(externalParties.value))
+            return false
+
+        if (item?.isInactive === true)
+            return false
+
+        return true
+    })
+
+    const isIntegrated = computed(() => (item: TReturn | any) => {
+        if (isLengthyArray(selectedExternalParties.value)) {
+            return selectedExternalParties.value.some((ind: number) => {
+                return nestedValue(item, externalParties.value[ind].localIDProp) != null
+            })
+        }
+        else {
+            return externalParties.value.some((ep: ExternalParty) => {
+                return nestedValue(item, ep.localIDProp) != null
+            })
+        }
     })
 
     const isRestorable = computed(() => (item: TReturn | any) => {
@@ -855,6 +887,8 @@ export function useList<T, TSave, TReturn>(props: ListProps<T, TSave, TReturn>, 
                 bladeEvents?.closeBlade({ bladeName: props.itemBladeName })
             }
             else {
+                console.log('selecting')
+                console.log(variant)
                 if (variant == 'page') {
                     options?.router?.push({
                         name: props.itemBladeName,
@@ -888,7 +922,10 @@ export function useList<T, TSave, TReturn>(props: ListProps<T, TSave, TReturn>, 
     refreshTableHeaders()
 
     watchDebounced([searchString], () => {
-        refreshFilteredList()
+        if (currentPage.value != 1)
+            currentPage.value = 1
+        else
+            refreshFilteredList()
     }, { debounce: 500, maxWait: 500 })
 
     watch(showInactive, async () => {
@@ -912,6 +949,10 @@ export function useList<T, TSave, TReturn>(props: ListProps<T, TSave, TReturn>, 
     watch(() => props.filterToggle, () => {
         refreshFilteredList()
     })
+
+    watch(() => props.proxyID, () => {
+        refresh()
+    })
     
     watchArray([asyncItems], () => {
         refreshFilteredList()
@@ -921,29 +962,34 @@ export function useList<T, TSave, TReturn>(props: ListProps<T, TSave, TReturn>, 
         refresh()
     }, { deep: true })
     
-    // watchArray([() => props.items], () => {
-    //     console.log('items')
-    //     refresh()
-    // })
-
     if (!options?.isNotSetup == true) {
         onMounted(async () => {
             if (props.eager == true)
-                await refresh({ deepRefresh: options?.route?.params?.refresh == 'true' })
+                await refresh({ deepRefresh: options?.route?.params?.refresh == 'true' || options?.route?.query?.refresh == 'true' })
         })
     }
     else if (options?.isNotSetup == true && props.eager == true) {
-        refresh({ deepRefresh: options?.route?.params?.refresh == 'true' })
+        refresh({ deepRefresh: options?.route?.params?.refresh == 'true' || options?.route?.query?.refresh == 'true' })
     }
 
     return {
         add,
+        applyFilters: async () => {
+            if (currentPage.value != 1) {
+                showSearch.value = false
+                searchString.value = undefined
+                currentPage.value = 1
+            }
+            else
+                await refresh({ resetSearch: true })
+        },
         asyncItems,
         currentPage,
         deleteItem: mDeleteItem,
         displayHeaders,
         errorMsg,
         exportToCSV,
+        externalParties,
         filteredItems,
         filters: allFilters,
         filtersChanged,
@@ -951,6 +997,8 @@ export function useList<T, TSave, TReturn>(props: ListProps<T, TSave, TReturn>, 
         id,
         isDeletable,
         isEditing: computed(() => mode.value == 'new' || mode.value == 'edit'),
+        isIntegratable,
+        isIntegrated,
         isLoading,
         isRestorable,
         loadingMsg,
@@ -959,6 +1007,7 @@ export function useList<T, TSave, TReturn>(props: ListProps<T, TSave, TReturn>, 
         restoreItem: mRestoreItem,
         saveItem: mSaveItem,
         searchString,
+        selectedExternalParties,
         selectedFilters,
         selectItem,
         showError,

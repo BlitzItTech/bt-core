@@ -35,6 +35,10 @@ export default createCore({
     auth: {
 
     },
+    componentConfig: {
+        editVariant: 'solo',
+        viewVariant: 'underlined'
+    },
     cosmetics: {
         defaultDarkTheme: {
             primary: '#1d5474',
@@ -138,6 +142,17 @@ export default createCore({
             path: 'ProductGroups',
             storeMode: 'session',
             storageMode: 'session'
+        },
+        {
+            name: 'nav-items',
+            // externalParties: [
+            //     {
+            //         party: 'xero', property: 'x1'
+            //     },
+            //     {
+            //         party: 'myob', property: 'x2'
+            //     }
+            // ]
         }]
     },
     urls: {

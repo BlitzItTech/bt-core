@@ -33,6 +33,7 @@ export interface ItemProps<T, TSave, TReturn> {
     loadingMsg?: string
     // mode?: BladeMode
     nav?: string
+    navSuffix?: string
     onCanDelete?: (item: TReturn) => boolean
     onCanDeleteAsync?: OnCanDoAsync<TReturn>
     onCanEdit?: (item: TReturn) => boolean
@@ -92,6 +93,7 @@ export interface UseItemOptions {
 }
 
 export interface ItemEvents {
+    (e: 'edit', item: any): void
     (e: 'fetched', item: any): void
     (e: 'saved', item: any): void
 }
@@ -151,7 +153,8 @@ export function useItem<T, TSave, TReturn>(props: ItemProps<T, TSave, TReturn>, 
         store: useStoreDefinition({
             storeMode: storeMode,
             storageMode: storageMode,
-            nav: nav 
+            nav: nav,
+            proxyID: proxyID.value
         })
     })
 
@@ -264,7 +267,7 @@ export function useItem<T, TSave, TReturn>(props: ItemProps<T, TSave, TReturn>, 
                     if (props.variant == 'blade')
                         bladeEvents.closeBlade({ bladeName: props.bladeName })
                     else
-                        navBack()
+                        navBack(true)
                 }
 
                 return Promise.resolve(undefined)
@@ -390,6 +393,7 @@ export function useItem<T, TSave, TReturn>(props: ItemProps<T, TSave, TReturn>, 
     }
 
     function mSaveItem(dItem: any, options?: SaveItemOptions) {
+        const isNew = dItem.id == null
         const {
             additionalUrl,
             onCanSaveAsync,
@@ -402,7 +406,7 @@ export function useItem<T, TSave, TReturn>(props: ItemProps<T, TSave, TReturn>, 
                     if (props.variant == 'blade')
                         bladeEvents.closeBlade({ bladeName: props.bladeName })
                     else
-                        navBack()
+                        navBack(isNew)
                 }
                 else {
                     restartTracker()
@@ -438,6 +442,8 @@ export function useItem<T, TSave, TReturn>(props: ItemProps<T, TSave, TReturn>, 
 
         if (!current || current == 'view') {
             mode.value = 'edit'
+            if (emit != null)
+                emit('edit', asyncItem.value)
         }
         else if (current == 'edit') {
             mode.value = 'view'
@@ -455,6 +461,10 @@ export function useItem<T, TSave, TReturn>(props: ItemProps<T, TSave, TReturn>, 
     })
 
     watch(() => props.itemID, () => {
+        refresh()
+    })
+
+    watch(() => props.proxyID, () => {
         refresh()
     })
     

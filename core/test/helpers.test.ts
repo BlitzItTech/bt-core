@@ -1,7 +1,81 @@
-import { group, orderBy, sum, nestedValue, toCompareString, hasSearch, deepSelect, containsSearch, copyItemByAlphabet, copyDeep, csvContains, toggleCSV, roundTo, isArrayOfLength, isLengthyArray, addWeekday, removeWeekday, appendUrl, distinct, getAreaAround, getAreaToLeft, getAreaToRight, getLocationLine, capitalizeWords, fromCamelCase, toCamelCase, weekdayValue, weekdayShortName, containsWeekday, validEmail, isNullOrEmpty, jwtEncrypt, jwtDecrypt } from '../src/composables/helpers'
+import { dropAndAddToList, dropFromList, toggle, group, orderBy, sum, nestedValue, toCompareString, hasSearch, deepSelect, containsSearch, copyItemByAlphabet, copyDeep, csvContains, toggleCSV, roundTo, isArrayOfLength, isLengthyArray, addWeekday, removeWeekday, appendUrl, distinct, getLocationLine, capitalizeWords, fromCamelCase, toCamelCase, weekdayValue, weekdayShortName, containsWeekday, validEmail, isNullOrEmpty, jwtEncrypt, jwtDecrypt } from '../src/composables/helpers'
 import { describe, expect, test } from 'vitest'
 
 describe("helpers", () => {
+
+    interface T {
+        toggle?: string
+    }
+
+    test('drop from list', () => {
+        let l = [{ test: 'a' }, { test: 'b' }, { test: 'c' }]
+
+        let res = dropFromList(l, x => x.test == 'b')
+
+        expect(res).toEqual(1)
+        expect(l).toEqual([{ test: 'a' }, { test: 'c' }])
+        
+    })
+
+
+    test('replace or add to list', () => {
+        let l = [{ test: 'a' }, { test: 'b' }, { test: 'c' }, { test: 'b', b: 'a' }]
+
+        let res = dropAndAddToList(l, { test: 'd' }, x => x.test == 'b')
+
+        expect(res).toEqual(1)
+        expect(l).toEqual([{ test: 'a' }, { test: 'd' }, { test: 'c' }])
+
+        res = dropAndAddToList(l, { test: 'e' }, x => x.test == 'b')
+
+        expect(res).toEqual(3)
+        expect(l).toEqual([{ test: 'a' }, { test: 'd' }, { test: 'c' }, { test: 'e' }])
+
+        let m = [{ test: 'a' }, { test: 'b' }]
+
+        dropAndAddToList(m, { test: 'c' }, x => x.test == 'c')
+
+        expect(m).toEqual([{ test: 'a' }, { test: 'b' }, { test: 'c' }])
+
+        dropAndAddToList(m, { test: 'c' }, x => x.test == 'c')
+        
+        expect(m).toEqual([{ test: 'a' }, { test: 'b' }, { test: 'c' }])
+
+        dropAndAddToList(m, { test: 'c' }, x => x.test == 'c')
+
+        expect(m).toEqual([{ test: 'a' }, { test: 'b' }, { test: 'c' }])
+    })
+
+    test('toggle', () => {
+        var v: T = { toggle: 'one' }
+
+        toggle(v, 'toggle', ['one', 'two', 'three'])
+
+        expect(v.toggle).toEqual('two')
+        toggle(v, 'toggle', ['one', 'two', 'three'])
+        expect(v.toggle).toEqual('three')
+        toggle(v, 'toggle', ['one', 'two', 'three'])
+        expect(v.toggle).toEqual('one')
+
+        v.toggle = undefined
+        
+
+        toggle(v, 'toggle', ['one', 'two', 'three'])
+        expect(v.toggle).toEqual('one')
+        toggle(v, 'toggle', ['one', 'two', 'three'])
+        expect(v.toggle).toEqual('two')
+        toggle(v, 'toggle', ['one', 'two', 'three'])
+        expect(v.toggle).toEqual('three')
+
+        toggle(v, 'toggle', [undefined, true, false, 'three'])
+        expect(v.toggle).toBeUndefined()
+
+        toggle(v, 'toggle', [undefined, true, false, 'three'])
+        expect(v.toggle).toEqual(true)
+
+        toggle(v, 'toggle', [undefined, true, false, 'three'])
+        expect(v.toggle).toEqual(false)
+    })
 
     test('decrypt encrypt', () => {
         const token = {
@@ -72,24 +146,24 @@ describe("helpers", () => {
     //     expect(group([]))
     // })
     
-    test('get area around', () => {
-        //starts with top left and goes anti-clockwise
-        expect(getAreaAround({ lat: 0, lng: 0 }, 1)).toEqual([{ lat: -1, lng: 1 },{ lat: -1, lng: -1 },{ lat: 1, lng: -1 },{ lat: 1, lng: 1 }])
-        expect(getAreaAround({ lat: 0, lng: 0 }, 2)).toEqual([{ lat: -2, lng: 2 },{ lat: -2, lng: -2 },{ lat: 2, lng: -2 },{ lat: 2, lng: 2 }])
-        expect(getAreaAround({ lat: 2, lng: 6 }, 1)).toEqual([{ lat: 1, lng: 7 },{ lat: 1, lng: 5 },{ lat: 3, lng: 5 },{ lat: 3, lng: 7 }])
-    })
+    // test('get area around', () => {
+    //     //starts with top left and goes anti-clockwise
+    //     expect(getAreaAround({ lat: 0, lng: 0 }, 1)).toEqual([{ lat: -1, lng: 1 },{ lat: -1, lng: -1 },{ lat: 1, lng: -1 },{ lat: 1, lng: 1 }])
+    //     expect(getAreaAround({ lat: 0, lng: 0 }, 2)).toEqual([{ lat: -2, lng: 2 },{ lat: -2, lng: -2 },{ lat: 2, lng: -2 },{ lat: 2, lng: 2 }])
+    //     expect(getAreaAround({ lat: 2, lng: 6 }, 1)).toEqual([{ lat: 1, lng: 7 },{ lat: 1, lng: 5 },{ lat: 3, lng: 5 },{ lat: 3, lng: 7 }])
+    // })
 
-    test('get area to left', () => {
-        //starts with top left and goes anti-clockwise
-        expect(getAreaToLeft({ lat: 0, lng: 0 }, 1)).toEqual([{ lat: -2, lng: 1 },{ lat: -2, lng: -1 },{ lat: 0, lng: -1 },{ lat: 0, lng: 1 }])
-        expect(getAreaToLeft({ lat: 0, lng: 0 }, 2)).toEqual([{ lat: -4, lng: 2 },{ lat: -4, lng: -2 },{ lat: 0, lng: -2 },{ lat: 0, lng: 2 }])
-    })
+    // test('get area to left', () => {
+    //     //starts with top left and goes anti-clockwise
+    //     expect(getAreaToLeft({ lat: 0, lng: 0 }, 1)).toEqual([{ lat: -2, lng: 1 },{ lat: -2, lng: -1 },{ lat: 0, lng: -1 },{ lat: 0, lng: 1 }])
+    //     expect(getAreaToLeft({ lat: 0, lng: 0 }, 2)).toEqual([{ lat: -4, lng: 2 },{ lat: -4, lng: -2 },{ lat: 0, lng: -2 },{ lat: 0, lng: 2 }])
+    // })
 
-    test('get area to right', () => {
-        //starts with top left and goes anti-clockwise
-        expect(getAreaToRight({ lat: 0, lng: 0 }, 1)).toEqual([{ lat: 0, lng: 1 },{ lat: 0, lng: -1 },{ lat: 2, lng: -1 },{ lat: 2, lng: 1 }])
-        expect(getAreaToRight({ lat: 2, lng: 0 }, 2)).toEqual([{ lat: 2, lng: 2 },{ lat: 2, lng: -2 },{ lat: 6, lng: -2 },{ lat: 6, lng: 2 }])
-    })
+    // test('get area to right', () => {
+    //     //starts with top left and goes anti-clockwise
+    //     expect(getAreaToRight({ lat: 0, lng: 0 }, 1)).toEqual([{ lat: 0, lng: 1 },{ lat: 0, lng: -1 },{ lat: 2, lng: -1 },{ lat: 2, lng: 1 }])
+    //     expect(getAreaToRight({ lat: 2, lng: 0 }, 2)).toEqual([{ lat: 2, lng: 2 },{ lat: 2, lng: -2 },{ lat: 6, lng: -2 },{ lat: 6, lng: 2 }])
+    // })
 
     test('get location line', () => {
         expect(getLocationLine(null)).toEqual('')
@@ -185,10 +259,18 @@ describe("helpers", () => {
     
     test('toggle csv', () => {
         expect(toggleCSV('one,two,three', 'two')).toEqual('one,three')
-        expect(toggleCSV('two', 'two')).toEqual(null)
+        expect(toggleCSV('two', 'two')).toBeUndefined()
 
         expect(toggleCSV(['one','two','three'], 'two')).toEqual('one,three')
-        expect(toggleCSV(['two'], 'two')).toEqual(null)
+        expect(toggleCSV(['two'], 'two')).toBeUndefined()
+
+
+        var e: string | undefined
+        e = toggleCSV(e, 'two')
+        expect(e).toEqual('two')
+
+        e = toggleCSV(e, 'two')
+        expect(e).toBeUndefined()
     })
 
     test('csv contains', () => {

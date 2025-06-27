@@ -67,7 +67,32 @@ export function useGeo() {
         return newPaths[0]
     }
 
+    function areaContains(polygon: GeoCoordinate[], point?: GeoCoordinate) {
+        if (polygon == null || point?.lat == null || point?.lng == null)
+            return false;
+
+        var pointsList = polygon.map(x => {
+            return { x: x.lat!, y: x.lng! };
+        });
+        //A point is in a polygon if a line from the point to infinity crosses the polygon an odd number of times
+        let odd = false;
+        //For each edge (In this case for each point of the polygon and the previous one)
+        for (let i = 0, j = pointsList.length - 1; i < pointsList.length; i++) {
+            if ((pointsList[i].y > point.lng) !== (pointsList[j].y > point.lng)) {
+                if (point.lat < ((pointsList[j].x - pointsList[i].x) * (point.lng - pointsList[i].y) / (pointsList[j].y - pointsList[i].y) + pointsList[i].x)) {
+                    odd = !odd;
+                }
+            }
+            
+            j = i;
+
+        }
+        //If the number of crossings was odd, the point is in the polygon
+        return odd;
+    }
+
     return {
+        areaContains,
         getAreaAround,
         getAreaToLeft,
         getAreaToRight,

@@ -3,7 +3,7 @@ import { ref, toRaw, type Ref } from 'vue'
 import { type ApiError, type PathOptions, type BTApi } from './api.ts'
 import { DateTime } from 'luxon'
 import { toValue } from 'vue'
-import { appendUrl, distinct, getMinDateString, log } from './helpers.ts'
+import { appendUrl, distinct, getMinDateString, isNullOrEmpty, log } from './helpers.ts'
 import { firstBy } from 'thenby'
 import { useLocalDb } from './forage.ts'
 import { BTAuth } from './auth.ts'
@@ -40,6 +40,7 @@ export interface StoreGetReturn<T> {
 export interface GetStorageKeyOptions {
     credentials?: any
     itemID?: string
+    proxyID?: string
     storeName?: string
     userID?: string
 }
@@ -104,6 +105,8 @@ export interface UseStoreOptions {
     nav?: string
     /**ideally required.  For determining store mode */
     navigation?: BTNavigation
+    /**appended to the end of the store name if exists */
+    proxyID?: string
     /**particularly what store syle to use */
     storeMode?: StoreMode
     /**whether to store data locally or only for the duration of the session */
@@ -134,6 +137,7 @@ export interface CreateStoreOptions {
     storageMode?: StorageMode
     /**the nav item or name of this store */
     nav: string
+    proxyID?: string
 }
 
 export interface CreateBlobStoreOptions {
@@ -196,14 +200,18 @@ export function createStoreDefinition(options: UseStoreOptions): BTStoreDefiniti
     if (options.storeName == null)
         throw new Error('no store name provided')
 
+    var storeName = options.storeName
+    if (!isNullOrEmpty(options.proxyID))
+        storeName = `${options.storeName}_${options.proxyID}`
+
     if (options.storeMode == 'whole-last-updated') {
         if (options.api == null) throw new Error('Must supply an api object to use store')
     
         return createWholeLastUpdateStoreDefinition({
             ...options,
             minutesToClear: navItem?.minutesToClear,
-            storeName: options.storeName ?? '',
-            priority: navItem?.priority ?? 'local'
+            storeName: storeName,
+            priority: navItem?.priority ?? 'local',
         })
     }
     else if (options.storeMode == 'partial-last-updated') {
@@ -211,7 +219,7 @@ export function createStoreDefinition(options: UseStoreOptions): BTStoreDefiniti
 
         return createPartialLastUpdateStoreDefinition({
             ...options,
-            storeName: options.storeName ?? '',
+            storeName: storeName,
             dateProp: navItem?.pluWindowProp ?? 'lastEditedOn',
             bundlingDays: navItem?.pluDays
         })
@@ -219,7 +227,7 @@ export function createStoreDefinition(options: UseStoreOptions): BTStoreDefiniti
     else {
         return createSessionStoreDefinition({
             ...options,
-            storeName: options.storeName ?? ''
+            storeName: storeName,
         })
     }
 }
@@ -278,7 +286,7 @@ export function createBlobStoreDefinition(options: UseBlobStoreOptions): BTBlobS
     let navItem = options.navigation?.findItem(options.nav)
     options.storeMode ??= navItem?.storeMode ?? 'session'
     options.storageMode ??= navItem?.storageMode ?? 'local-cache'
-    options.storeName ??= `blob-${options.navigation?.findStoreName(navItem ?? options.nav) ?? options.nav}`
+    options.storeName ??= `blob-${options.navigation?.findStoreName(navItem ?? options.nav) ?? options.nav}${options.proxyID != null ? ('_' + options.proxyID) : ''}`
     options.getStorageKey ??= navItem?.getStorageKey
     
     if (options.demo?.isDemoing.value)
@@ -305,6 +313,7 @@ export function createBlobStoreDefinition(options: UseBlobStoreOptions): BTBlobS
             let getKeyOptions = {
                 credentials: options.auth?.credentials.value,
                 itemID: dOptions.id ?? dOptions.data?.id,
+                proxyID: dOptions.proxyID,
                 userID: options.auth?.credentials.value.userID,
                 storeName: options.storeName
             }
@@ -327,7 +336,7 @@ export function createBlobStoreDefinition(options: UseBlobStoreOptions): BTBlobS
                     .join('&')
             }
 
-            return `${strKey}${options.storeName ?? 'base'}_${options.auth?.credentials.value.userID ?? 'no-user-id'}_${dOptions.id ?? dOptions.data?.id ?? 'no-item-id'}_${paramStr ?? 'no-params'}_${dOptions.storeKey ?? 'original-key'}`
+            return `${strKey}${options.storeName ?? 'base'}_${options.auth?.credentials.value.userID ?? 'no-user-id'}_${dOptions.id ?? dOptions.data?.id ?? 'no-item-id'}_${paramStr ?? 'no-params'}_${dOptions.storeKey ?? 'original-key'}${dOptions.proxyID ?? ''}`
         }
 
         async function getBlob(dOptions: StorePathOptions): Promise<Blob | undefined> {
@@ -436,6 +445,7 @@ export function createSessionStoreDefinition(options: UseSessionStoreOptions): B
             let getKeyOptions = {
                 credentials: options.auth?.credentials.value,
                 itemID: dOptions.id ?? dOptions.data?.id,
+                proxyID: dOptions.proxyID,
                 userID: options.auth?.credentials.value.userID,
                 storeName: options.storeName
             }
@@ -458,7 +468,7 @@ export function createSessionStoreDefinition(options: UseSessionStoreOptions): B
                     .join('&')
             }
 
-            return `${strKey}${options.storeName ?? 'base'}_${options.auth?.credentials.value.userID ?? 'no-user-id'}_${dOptions.id ?? dOptions.data?.id ?? 'no-item-id'}_${paramStr ?? 'no-params'}_${dOptions.storeKey ?? 'original-key'}`
+            return `${strKey}${options.storeName ?? 'base'}_${options.auth?.credentials.value.userID ?? 'no-user-id'}_${dOptions.id ?? dOptions.data?.id ?? 'no-item-id'}_${paramStr ?? 'no-params'}_${dOptions.storeKey ?? 'original-key'}${dOptions.proxyID ?? ''}`
         }
 
         function $reset() {
@@ -883,7 +893,7 @@ export function createWholeLastUpdateStoreDefinition(options: UseWholeLastUpdate
             let getKeyOptions = {
                 credentials: options.auth?.credentials.value,
                 userID: options.auth?.credentials.value.userID,
-                storeName: options.storeName
+                storeName: options.storeName,
             }
 
             if (options.getStorageKey != null)
@@ -927,7 +937,8 @@ export function createWholeLastUpdateStoreDefinition(options: UseWholeLastUpdate
                     let res = await options.api?.getAll<StoreGetAllReturn<T>>({
                         additionalUrl: '/getAll',
                         nav: dOptions.nav,
-                        params
+                        params,
+                        proxyID: dOptions.proxyID
                     })
 
                     if (res == null) {
@@ -1333,7 +1344,7 @@ export function createPartialLastUpdateStoreDefinition(options: UsePartialLastUp
             let getKeyOptions = {
                 credentials: options.auth?.credentials.value,
                 userID: options.auth?.credentials.value.userID,
-                storeName: options.storeName
+                storeName: options.storeName,
             }
 
             // if (windowDirection != null)
@@ -1496,7 +1507,8 @@ export function createPartialLastUpdateStoreDefinition(options: UsePartialLastUp
                                 params: {
                                     dateFrom: currentLeft.dateFrom,
                                     dateTo: currentLeft.dateTo
-                                }
+                                },
+                                proxyID: dOptions.proxyID
                             })
                             
                             if (leftRes == null) {
@@ -1520,7 +1532,8 @@ export function createPartialLastUpdateStoreDefinition(options: UsePartialLastUp
                                 params: {
                                     dateFrom: currentRight.dateFrom,
                                     dateTo: currentRight.dateTo
-                                }
+                                },
+                                proxyID: dOptions.proxyID
                             })
 
                             if (rightRes == null) {
@@ -1543,7 +1556,8 @@ export function createPartialLastUpdateStoreDefinition(options: UsePartialLastUp
                                 dateFrom: meta.value.dateFrom,
                                 dateTo: meta.value.dateTo,
                                 lastUpdate: meta.value.lastUpdate ?? getMinDateString()
-                            }
+                            },
+                            proxyID: dOptions.proxyID
                         })
 
                         if (res == null) {

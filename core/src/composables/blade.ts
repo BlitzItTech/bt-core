@@ -32,6 +32,7 @@ export interface UseBladeOptions {
     onClose?: () => void
     // onOpen?: (data: BladeData) => void
     onUpdate?: (data: BladeData) => void
+    useResizing?: boolean
     variant?: BladeVariant
 }
 
@@ -188,8 +189,6 @@ export function useBlade<T, TReturn>(options?: UseBladeOptions): BTBlade<GetOpti
         bladeData: bladeData.value ?? {
             bladeName: '',
             bladeGroup: '',
-            // bladeStyle: '',
-            // bladeVariant: variant.value,
             data: {},
             show: false
         },

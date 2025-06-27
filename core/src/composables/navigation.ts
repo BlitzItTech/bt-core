@@ -6,23 +6,30 @@ import { type AuthItem } from './auth.ts'
 import type { GetStorageKeyOptions, StorageMode, StoreMode } from './stores.ts'
 import { RouteLocation, RouteLocationNormalized, useRouter } from 'vue-router'
 
-export interface ExternalParty {
-    party?: string
-    property?: string
+export interface ExternalConfig {
+    textProp: string,
+    parties?: ExternalParty[]
 }
 
-export interface ExternalNavigation {
-    canPull?: boolean
-    canPush?: boolean
-    convertFunc?: Function
-    name?: string
-    localNavigation?: string
-    localDisplayPath?: string
-    localComparePath?: string
-    syncComparePath?: string
-    syncDisplayPath?: string
-    syncIDPath?: string
+export interface ExternalParty {
+    externalIDProp?: string
+    externalTextProp?: string
+    localIDProp?: string
+    party?: string
 }
+
+// export interface ExternalNavigation {
+//     canPull?: boolean
+//     canPush?: boolean
+//     convertFunc?: Function
+//     name?: string
+//     localNavigation?: string
+//     localDisplayPath?: string
+//     localComparePath?: string
+//     syncComparePath?: string
+//     syncDisplayPath?: string
+//     syncIDPath?: string
+// }
 
 export interface NavigationItem extends AuthItem {
     /**aliases are other names that could use this navigation item's set of permissions, etc.*/
@@ -39,12 +46,14 @@ export interface NavigationItem extends AuthItem {
     deleteStrat?: 'soft' | undefined
     /**the name that will be displayed in the navigation menu */
     displayName?: string
-    /**where credentials can be found for external parties*/
-    externalPartyCredentialNavigation?: string
-    /**possible external parties to connect to and sync with */
-    externalParties?: ExternalParty[]
-    /**possible external party navigation items and how to connect/sync */
-    externalNavigations?: ExternalNavigation[]
+    /**the configuration for external parties */
+    externalConfig?: ExternalConfig
+    // /**where credentials can be found for external parties*/
+    // externalPartyCredentialNavigation?: string
+    // /**possible external parties to connect to and sync with */
+    // externalParties?: ExternalParty[]
+    // /**possible external party navigation items and how to connect/sync */
+    // externalNavigations?: ExternalNavigation[]
     /**custom override for getting the key to store */
     getStorageKey?: (dOptions: GetStorageKeyOptions) => string
     /**will hide app bar if set to true when the route opens this nav */
@@ -136,13 +145,19 @@ export function useNavBack() {
     const router = useRouter()
     const navigation = useNavigation()
 
-    function navBack() {
+    function navBack(refresh?: boolean) {
         if (navigation.navHistory.value.length > 1) {
             navigation.navHistory.value.pop()
             const n = navigation.navHistory.value[navigation.navHistory.value.length - 1]
             navigation.navHistory.value.pop()
-            if (n != null)
+            if (n != null) {
+                if (!!refresh) {
+                    n.query ??= {}
+                    n.query.refresh ??= 'true'
+                }
+                
                 router.push(n)
+            }
         }
         else {
             router.back()

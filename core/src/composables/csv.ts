@@ -30,6 +30,7 @@ declare global {
 }
 
 export interface ExportToCSVOptions {
+    delimiter: string,
     items: any[],
     headers?: TableColumn[],
     fileName?: string,
@@ -52,12 +53,13 @@ export function useCSV<T>(options?: UseCSVOptions<T>): UseCSVPropsReturn {
 
     function exportToCSV(options: ExportToCSVOptions) {
         const {
+            delimiter = ',',
             items,
             headers,
             fileName = 'data.csv',
             format = 'file'
         } = options
-        console.log(items)
+        
         if (!isLengthyArray(items)) {
             return;
         }
@@ -120,7 +122,7 @@ export function useCSV<T>(options?: UseCSVOptions<T>): UseCSVPropsReturn {
         var resArray = [];
 
         //print header row
-        resArray.push(dnaArray.map(x => x.header).toString())
+        resArray.push(dnaArray.map(x => x.header).join(delimiter))
 
         lineArray.forEach(obj => {
             let propArray: any[] = [];
@@ -129,7 +131,7 @@ export function useCSV<T>(options?: UseCSVOptions<T>): UseCSVPropsReturn {
                 propArray.push(v != null ? v : '');
             });
             
-            resArray.push(propArray.join(","));
+            resArray.push(propArray.join(delimiter));
         })
 
 

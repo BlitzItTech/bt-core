@@ -4,13 +4,22 @@
         :md="mMd"
         :sm="mSm"
         :cols="cols">
+        <v-list-item v-if="!cIsEditing && viewVariant == 'list-item'" density="compact" v-bind="$attrs">
+            <v-list-item-subtitle>{{ label }}</v-list-item-subtitle>
+            <v-list-item-title>
+                <span v-if="prefix != null || useCurrency" class="mr-1">{{ prefix ?? '$' }}</span>
+                {{ value }}
+            </v-list-item-title>
+        </v-list-item>
         <v-text-field
+            v-else
             v-bind="$attrs"
             :hide-details="cRules == null"
+            :label="label"
             :prefix="prefix ?? (useCurrency ? '$' : undefined)"
             :readonly="!cIsEditing"
             :rules="cRules"
-            :variant="cIsEditing ? editVariant : variant"
+            :variant="cIsEditing ? editVariant : viewVariant"
             v-model="value" />
     </v-col>
 </template>
@@ -29,6 +38,7 @@
         isEditing?: boolean
         isEmail?: boolean
         isMobile?: boolean
+        label?: string
         lg?: string | boolean
         md?: string | boolean
         modelValue: any
@@ -58,12 +68,13 @@
         }
     })
 
+
     const mIsEditing = inject('isEditing', () => ref(false), true)
 
     const cIsEditing = computed(() => props.isEditing ?? mIsEditing.value)
     const mIsMobile = inject('isMobile', () => ref(false), true)
-    const variant = inject('fieldVariant', 'underlined')
-    const editVariant = inject('fieldEditVariant', 'outlined')
+    const viewVariant = inject<any>('viewVariant', 'list-item')
+    const editVariant = inject('editVariant', 'outlined')
     const cRules = computed(() => {
         var r = [
             ...(props.rules ?? []),

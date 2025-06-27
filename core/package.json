@@ -1,6 +1,6 @@
 {
   "name": "bt-core-app",
-  "version": "1.4.756",
+  "version": "1.4.804",
   "description": "Core app tools for some basic features like navigation, authentication, server apis, and cosmetics",
   "homepage": "https://github.com/BlitzItTech/bt-core",
   "bugs": {
@@ -50,7 +50,7 @@
     "vuetify": "^3.7.7"
   },
   "peerDependencies": {
-    "@vueuse/core": "^10.4.1",
+    "@vueuse/core": "13.0.0",
     "pinia": "^2.1.7",
     "vue": "^3.4.27",
     "vue-router": "^4.0.0",

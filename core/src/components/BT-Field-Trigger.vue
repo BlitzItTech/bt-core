@@ -4,7 +4,7 @@
         :md="mMd"
         :sm="mSm"
         :cols="cols">
-        <v-list-item class="ma-0 pa-0">
+        <v-list-item density="compact">
             <v-list-item-subtitle>{{ label }}</v-list-item-subtitle>
             <v-list-item-title>
                 <v-row dense>
@@ -17,8 +17,8 @@
             </v-list-item-title>
             <template #append>
                 <v-row no-gutters>
-                    <v-col>
-                        <v-menu v-if="useAutomation || useAutomationDaily || useAutomationLarge">
+                    <v-col v-if="useAutomation || useAutomationDaily || useAutomationLarge">
+                        <v-menu>
                             <template #activator="{ props }">
                                 <v-btn v-bind="props" :disabled="!cIsEditing" :size="mSize" append-icon="$menu-down" title="Automation">{{ automation ?? 'select' }}</v-btn>
                             </template>
@@ -31,8 +31,8 @@
                         </v-menu>
                     </v-col>
                     
-                    <v-col>
-                        <v-menu v-if="useGuideList">
+                    <v-col v-if="useGuideList">
+                        <v-menu>
                             <template #activator="{ props }">
                                 <v-btn v-bind="props" :disabled="!cIsEditing" :size="mSize" append-icon="$menu-down" title="Guide">{{ guide ?? 'select' }}</v-btn>
                             </template>
@@ -45,9 +45,8 @@
                         </v-menu>
                     </v-col>
 
-                    <v-col>
+                    <v-col v-if="useGuide">
                         <v-btn-toggle
-                            v-if="useGuide"
                             v-bind="$attrs"
                             v-model="guideValue"
                             color="primary"
@@ -61,8 +60,8 @@
                         </v-btn-toggle>
                     </v-col>
 
-                    <v-col>
-                        <v-menu v-if="useTriggerList">
+                    <v-col v-if="useTriggerList">
+                        <v-menu>
                             <template #activator="{ props }">
                                 <v-btn v-bind="props" :disabled="!cIsEditing" append-icon="$menu-down" title="Trigger">{{ trigger ?? 'select' }}</v-btn>
                             </template>
@@ -75,9 +74,8 @@
                         </v-menu>
                     </v-col>
 
-                    <v-col>
+                    <v-col v-if="useTrigger">
                         <v-btn-toggle
-                            v-if="useTrigger"
                             v-bind="$attrs"
                             v-model="triggerValue"
                             color="primary"
@@ -92,8 +90,8 @@
                         </v-btn-toggle>
                     </v-col>
 
-                    <v-col>
-                        <v-menu v-if="useCustomList">
+                    <v-col v-if="useCustomList">
+                        <v-menu>
                             <template #activator="{ props }">
                                 <v-btn v-bind="props" :disabled="!cIsEditing" append-icon="$menu-down">{{ custom ?? 'select' }}</v-btn>
                             </template>
@@ -106,9 +104,8 @@
                         </v-menu>
                     </v-col>
 
-                    <v-col>
+                    <v-col v-if="useCustom">
                         <v-btn-toggle
-                            v-if="useCustom"
                             v-bind="$attrs"
                             v-model="customValue"
                             color="primary"
@@ -175,6 +172,16 @@
         lg: false,
         md: false,
         sm: '6',
+        useAutomation: false,
+        useAutomationDaily: false,
+        useAutomationLarge: false,
+        useCustom: false,
+        useCustomList: false,
+        useGuide: false,
+        useGuideList: false,
+        useScheduledTrigger: false,
+        useTrigger: false,
+        useTriggerList: false
     })
 
     const { xs } = useDisplay()
@@ -202,7 +209,7 @@
     let guideOptions: Ref<Option[]> = ref([])
     let triggerOptions: Ref<Option[]> = ref([])
     
-    if (props.useScheduledTrigger) {
+    if (!!props.useScheduledTrigger) {
         triggerOptions.value = [
             { text: 'Manual', value: 'Manual', icon: '$account' },
             { text: 'Auto', value: 'Auto', icon: '$robot' },
@@ -210,21 +217,21 @@
         ]
     }
 
-    if (props.useTrigger) {
+    if (!!props.useTrigger) {
         triggerOptions.value = [
             { text: 'Manual', value: 'Manual', icon: '$account' },
             { text: 'Auto', value: 'Auto', icon: '$robot' },
         ]
     }
 
-    if (props.useGuide) {
+    if (!!props.useGuide) {
         guideOptions.value = [
             { text: 'Global', value: 'Settings', icon: '$earth' }, 
             { text: 'Individual', value: 'Agreements', icon: '$account-circle-outline' }
         ]
     }
 
-    if (props.useAutomation) {
+    if (!!props.useAutomation) {
         automationOptions.value = [
             { text: 'Off', value: 'Off' },
             { text: 'Hourly', value: 'Hourly' },
@@ -235,14 +242,14 @@
         ]
     }
 
-    if (props.useAutomationDaily) {
+    if (!!props.useAutomationDaily) {
         automationOptions.value = [
             { text: 'Off', value: 'Off' },
             { text: 'Daily', value: 'Daily' }
         ]
     }
 
-    if (props.useAutomationLarge) {
+    if (!!props.useAutomationLarge) {
         automationOptions.value = [
             { text: 'Off', value: 'Off' },
             { text: 'Daily', value: 'Daily' },

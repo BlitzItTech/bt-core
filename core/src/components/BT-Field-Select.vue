@@ -4,19 +4,20 @@
         :md="mMd"
         :sm="mSm"
         :cols="cols">
-        <bt-select 
+        <bt-select
             v-bind="$attrs"
+            :label="label"
             :readonly="!cIsEditing"
-            :fieldVariant="cIsEditing ? editVariant : variant"
+            :fieldVariant="cIsEditing ? editVariant : vViewVariant"
             v-model="value">
-            <template #item="data"><slot name="item" v-bind="data" /></template>
-            <template #selection="data"><slot name="selection" v-bind="data" /></template>
+            <template #item="data"><slot name="item" v-bind="data"></slot></template>
+            <template #selection="data"><slot name="selection" v-bind="data"></slot></template>
         </bt-select>
     </v-col>
 </template>
 
 <script setup lang="ts">
-import { computed, inject, ref } from 'vue'
+    import { computed, inject, ref } from 'vue'
 
     defineOptions({
         inheritAttrs: false
@@ -24,11 +25,10 @@ import { computed, inject, ref } from 'vue'
 
     interface FieldProps {
         cols?: string | boolean
-        // density?: BladeDensity
         horizontal?: boolean
         isEditing?: boolean
         isMobile?: boolean
-        // label?: string
+        label?: string
         lg?: string | boolean
         md?: string | boolean
         modelValue?: any
@@ -60,8 +60,12 @@ import { computed, inject, ref } from 'vue'
 
     const cIsEditing = computed(() => props.isEditing ?? mIsEditing.value)
     const mIsMobile = inject('isMobile', () => ref(false), true)
-    const variant = inject('fieldVariant', 'underlined')
-    const editVariant = inject('fieldEditVariant', 'outlined')
+    const viewVariant = inject<any>('viewVariant', 'underlined')
+    const vViewVariant = ref<string>(viewVariant)
+    if (viewVariant.value == 'list-item')
+        vViewVariant.value = 'underlined'
+    
+    const editVariant = inject('editVariant', 'outlined')
 
     const mLg = computed(() => (props.isMobile ?? mIsMobile.value) ? false : props.lg)
     const mMd = computed(() => (props.isMobile ?? mIsMobile.value) ? false : props.md)

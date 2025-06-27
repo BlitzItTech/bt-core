@@ -152,11 +152,37 @@
                             <v-btn
                                 v-if="ui.filtersChanged.value"
                                 block
-                                @click="() => ui.refresh({ resetSearch: true })"
+                                @click="ui.applyFilters"
                                 :size="size">
                                 <v-icon start :size="size">$filter</v-icon>Apply
                             </v-btn>
                         </v-fade-transition>
+                    </v-list>
+                </v-menu>
+                <v-menu v-if="!mHideIntegrations && isLengthyArray(ui.externalParties.value)"
+                    :close-on-content-click="false"
+                    :density="density"
+                    location="bottom">
+                    <template #activator="{ props }">
+                        <v-btn icon="$cloud-sync" :size="size" v-bind="props" variant="text" />
+                    </template>
+                    <v-list 
+                        class="pa-0"
+                        :density="density"
+                        open-strategy="multiple"
+                        select-strategy="classic"
+                        v-model:selected="ui.selectedExternalParties.value">
+                        <template v-for="(ep, ind) in ui.externalParties.value" :key="ind">
+                            <slot name="external-party-list-item" :item="ep">
+                                <v-list-item :subtitle="capitalizeWords(ep.party)" :value="ind">
+                                    <template v-slot:prepend="{ isActive }">
+                                        <v-slide-x-transition>
+                                            <v-icon :size="size">{{ isActive ? '$check' : '' }}</v-icon>
+                                        </v-slide-x-transition>
+                                    </template>
+                                </v-list-item>
+                            </slot>
+                        </template>
                     </v-list>
                 </v-menu>
             </slot>
@@ -215,6 +241,7 @@
                             <div class="text-h6 ml-3">{{ mSingleLabel }}</div>
                             <v-spacer />
                             <v-btn v-if="canSkip" icon="$debug-step-over" @click="skip" variant="text" text="Skip" />
+                            <v-btn v-if="canSave" prepend-icon="$content-save" class="mr-2" @click="save" text="Save" />
                         </slot>
                     </div>
                 </v-slide-x-transition>
@@ -289,6 +316,22 @@
                                                     <v-row no-gutters :class="mFadingActions ? 'actionButtons' : null">
                                                         <slot name="itemActions" :item="fItem" :index="fInd" :items="ui.asyncItems.value" :size="mActionButtonSize" />
                                                         <v-slide-x-transition group hide-on-leave>
+                                                            <div v-if="canIntegrate && ui.isIntegratable.value(fItem)" key="0">
+                                                                <v-slide-y-reverse-transition hide-on-leave>
+                                                                    <v-btn v-if="ui.isIntegrated.value(fItem)"
+                                                                        class="text-success"
+                                                                        icon="$cloud-check"
+                                                                        key="a1"
+                                                                        :size="mActionButtonSize"
+                                                                        variant="text" />
+                                                                    <v-btn v-else
+                                                                        icon="$cloud-upload"
+                                                                        key="a2"
+                                                                        :size="mActionButtonSize"
+                                                                        variant="text" />
+                                                                </v-slide-y-reverse-transition>
+                                                            </div>
+                                                            
                                                             <v-icon v-if="fItem.errorMsg != null"
                                                                 color="warning"
                                                                 key="1"
@@ -351,7 +394,25 @@
                                                 <v-fade-transition hide-on-leave>
                                                     <v-row no-gutters :class="mFadingActions ? 'actionButtons' : null" class="flex-nowrap">
                                                         <v-spacer />
+                                                        
                                                         <slot name="itemActions" :item="tableRow" :allItems="ui.asyncItems.value" :items="ui.filteredItems.value" :size="mActionButtonSize" :density="density" />
+                                                        
+                                                        <div v-if="canIntegrate && ui.isIntegratable.value(tableRow)" key="0">
+                                                            <v-slide-y-reverse-transition hide-on-leave>
+                                                                <v-btn v-if="ui.isIntegrated.value(tableRow)"
+                                                                    class="text-success"
+                                                                    icon="$cloud-check"
+                                                                    key="a1"
+                                                                    :size="mActionButtonSize"
+                                                                    variant="text" />
+                                                                <v-btn v-else
+                                                                    icon="$cloud-upload"
+                                                                    key="a2"
+                                                                    :size="mActionButtonSize"
+                                                                    variant="text" />
+                                                            </v-slide-y-reverse-transition>
+                                                        </div>
+
                                                         <v-icon v-if="tableRow.errorMsg != null"
                                                             color="warning"
                                                             key="1"
@@ -454,7 +515,7 @@
 <script setup lang="ts">
     import { type BladeDensity } from '../composables/blade.ts'
     import type { ListProps, ListEvents } from '../composables/list.ts'
-    import { copyDeep, isLengthyArray, isNullOrEmpty } from '../composables/helpers.ts'
+    import { capitalizeWords, copyDeep, isLengthyArray, isNullOrEmpty } from '../composables/helpers.ts'
     import { useAuth } from '../composables/auth.ts'
     import { useList } from '../composables/list.ts'
     import { useNavigation } from '../composables/navigation.ts'
@@ -482,6 +543,7 @@
         canDelete?: boolean
         canEdit?: boolean
         canExportCSV?: boolean
+        canIntegrate?: boolean
         canRestore?: boolean
         canSearch?: boolean
         canShowInactive?: boolean
@@ -495,6 +557,7 @@
         hideColumns?: boolean
         hideFilters?: boolean
         hideFooter?: boolean
+        hideIntegrations?: boolean
         hideRefresh?: boolean
         hideSubtoolbar?: boolean
         hideSubtoolbarSettings?: boolean
@@ -533,6 +596,7 @@
         actionButtonSize: 'x-small',
         canAdd: true,
         canDelete: true,
+        canIntegrate: true,
         canSearch: true,
         canSelect: true,
         density: 'compact',
@@ -540,6 +604,7 @@
         eager: true,
         fadingActions: undefined,
         fixedHeader: true,
+        hideIntegrations: false,
         hideSubtoolbarSettings: false,
         itemsPerPage: 75,
         ripple: true,
@@ -677,6 +742,7 @@
     })
     const mHideColumns = computed(() => (presets.hideColumns as boolean ?? props.hideColumns))
     const mHideFilters = computed(() => (presets.hideFilters as boolean ?? props.hideFilters))
+    const mHideIntegrations = computed(() => (presets.hideIntegrations as boolean ?? props.hideIntegrations))
     const mHideRefresh = computed(() => (presets.hideRefresh as boolean ?? props.hideRefresh))
     const mHideSubtoolbarSettings = computed(() => (presets.hideSubToolbarSettings as boolean ?? props.hideSubtoolbarSettings))
     const mLabel = computed(() => {

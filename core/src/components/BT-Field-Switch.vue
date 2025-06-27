@@ -4,14 +4,15 @@
         :md="mMd"
         :sm="mSm"
         :cols="cols">
-        <v-list-item class="ma-0 pa-0">
+        <v-list-item density="compact">
             <v-list-item-subtitle>{{ label }}</v-list-item-subtitle>
-            <!-- <v-list-item-title>{{ modelValue }}</v-list-item-title> -->
             <template #append>
                 <v-switch
+                    hide-details
+                    inset
                     v-bind="$attrs"
                     :readonly="!cIsEditing"
-                    :variant="cIsEditing ? editVariant : variant"
+                    :variant="cIsEditing ? editVariant : viewVariant"
                     v-model="value" />
             </template>
         </v-list-item>
@@ -59,8 +60,8 @@ import { computed, inject, ref } from 'vue'
 
     const cIsEditing = computed(() => props.isEditing ?? mIsEditing.value)
     const mIsMobile = inject('isMobile', () => ref(false), true)
-    const variant = inject('fieldVariant', 'underlined')
-    const editVariant = inject('fieldEditVariant', 'outlined')
+    const viewVariant = inject<any>('viewVariant', 'underlined')
+    const editVariant = inject('editVariant', 'outlined')
 
     const mLg = computed(() => (props.isMobile ?? mIsMobile.value) ? false : props.lg)
     const mMd = computed(() => (props.isMobile ?? mIsMobile.value) ? false : props.md)

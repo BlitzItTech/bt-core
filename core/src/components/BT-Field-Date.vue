@@ -5,7 +5,7 @@
         :md="mMd"
         :sm="mSm"
         :cols="cols">
-        <v-list-item v-if="!cIsEditing" class="ma-0 pa-0" density="compact">
+        <v-list-item v-if="!cIsEditing && viewVariant == 'list-item'" density="compact">
             <v-list-item-subtitle>{{ label }}</v-list-item-subtitle>
             <v-list-item-title>{{ displayValue }}</v-list-item-title>
         </v-list-item>
@@ -17,7 +17,7 @@
                     :label="label"
                     readonly
                     :rules="cRules"
-                    :variant="cIsEditing ? editVariant : variant"
+                    :variant="cIsEditing ? editVariant : viewVariant"
                     v-model="displayValue" />
             </template>
             <VueDatePicker
@@ -65,6 +65,7 @@
         modelValue: any
         required?: boolean
         rules?: any
+        // showActions?: boolean
         sm?: string | boolean
         useTime?: boolean
     }
@@ -103,8 +104,8 @@
     const mIsEditing = inject('isEditing', () => ref(false), true)
     const cIsEditing = computed(() => props.isEditing ?? mIsEditing.value)
     const mIsMobile = inject('isMobile', () => ref(false), true)
-    const variant = inject('fieldVariant', 'underlined')
-    const editVariant = inject('fieldEditVariant', 'outlined')
+    const viewVariant = inject<any>('viewVariant', 'list-item')
+    const editVariant = inject('editVariant', 'outlined')
     const cRules = computed(() => {
         var r = [
             ...(props.rules ?? []),

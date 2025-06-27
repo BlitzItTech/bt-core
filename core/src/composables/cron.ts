@@ -3,31 +3,130 @@ import { appendUrl, isLengthyArray, isNullOrEmpty } from "./helpers.ts"
 import { computed, ref } from 'vue'
 import * as cronjsMatcher from '@datasert/cronjs-matcher'
 
+// export const hourOptions = [
+//   { text: '12:00 AM', value: '0' },
+//   { text: '1:00 AM', value: '1' },
+//   { text: '2:00 AM', value: '2' },
+//   { text: '3:00 AM', value: '3' },
+//   { text: '4:00 AM', value: '4' },
+//   { text: '5:00 AM', value: '5' },
+//   { text: '6:00 AM', value: '6' },
+//   { text: '7:00 AM', value: '7' },
+//   { text: '8:00 AM', value: '8' },
+//   { text: '9:00 AM', value: '9' },
+//   { text: '10:00 AM', value: '10' },
+//   { text: '11:00 AM', value: '11' },
+//   { text: '12:00 PM', value: '12' },
+//   { text: '1:00 PM', value: '13' },
+//   { text: '2:00 PM', value: '14' },
+//   { text: '3:00 PM', value: '15' },
+//   { text: '4:00 PM', value: '16' },
+//   { text: '5:00 PM', value: '17' },
+//   { text: '6:00 PM', value: '18' },
+//   { text: '7:00 PM', value: '19' },
+//   { text: '8:00 PM', value: '20' },
+//   { text: '9:00 PM', value: '21' },
+//   { text: '10:00 PM', value: '22' },
+//   { text: '11:00 PM', value: '23' }
+// ]
+
 export const hourOptions = [
-  { text: '12:00 AM', value: '0' },
-  { text: '1:00 AM', value: '1' },
-  { text: '2:00 AM', value: '2' },
-  { text: '3:00 AM', value: '3' },
-  { text: '4:00 AM', value: '4' },
-  { text: '5:00 AM', value: '5' },
-  { text: '6:00 AM', value: '6' },
-  { text: '7:00 AM', value: '7' },
-  { text: '8:00 AM', value: '8' },
-  { text: '9:00 AM', value: '9' },
-  { text: '10:00 AM', value: '10' },
-  { text: '11:00 AM', value: '11' },
-  { text: '12:00 PM', value: '12' },
-  { text: '1:00 PM', value: '13' },
-  { text: '2:00 PM', value: '14' },
-  { text: '3:00 PM', value: '15' },
-  { text: '4:00 PM', value: '16' },
-  { text: '5:00 PM', value: '17' },
-  { text: '6:00 PM', value: '18' },
-  { text: '7:00 PM', value: '19' },
-  { text: '8:00 PM', value: '20' },
-  { text: '9:00 PM', value: '21' },
-  { text: '10:00 PM', value: '22' },
-  { text: '11:00 PM', value: '23' }
+  { text: '12:00 AM', value: '0.0' },
+  { text: '12:15 AM', value: '0.15' },
+  { text: '12:30 AM', value: '0.30' },
+  { text: '12:45 AM', value: '0.45' },
+  { text: '1:00 AM', value: '1.0' },
+  { text: '1:15 AM', value: '1.15' },
+  { text: '1:30 AM', value: '1.30' },
+  { text: '1:45 AM', value: '1.45' },
+  { text: '2:00 AM', value: '2.0' },
+  { text: '2:15 AM', value: '2.15' },
+  { text: '2:30 AM', value: '2.30' },
+  { text: '2:45 AM', value: '2.45' },
+  { text: '3:00 AM', value: '3.0' },
+  { text: '3:15 AM', value: '3.15' },
+  { text: '3:30 AM', value: '3.30' },
+  { text: '3:45 AM', value: '3.45' },
+  { text: '4:00 AM', value: '4.0' },
+  { text: '4:15 AM', value: '4.15' },
+  { text: '4:30 AM', value: '4.30' },
+  { text: '4:45 AM', value: '4.45' },
+  { text: '5:00 AM', value: '5.0' },
+  { text: '5:15 AM', value: '5.15' },
+  { text: '5:30 AM', value: '5.30' },
+  { text: '5:45 AM', value: '5.45' },
+  { text: '6:00 AM', value: '6.0' },
+  { text: '6:15 AM', value: '6.15' },
+  { text: '6:30 AM', value: '6.30' },
+  { text: '6:45 AM', value: '6.45' },
+  { text: '7:00 AM', value: '7.0' },
+  { text: '7:15 AM', value: '7.15' },
+  { text: '7:30 AM', value: '7.30' },
+  { text: '7:45 AM', value: '7.45' },
+  { text: '8:00 AM', value: '8.0' },
+  { text: '8:15 AM', value: '8.15' },
+  { text: '8:30 AM', value: '8.30' },
+  { text: '8:45 AM', value: '8.45' },
+  { text: '9:00 AM', value: '9.0' },
+  { text: '9:15 AM', value: '9.15' },
+  { text: '9:30 AM', value: '9.30' },
+  { text: '9:45 AM', value: '9.45' },
+  { text: '10:00 AM', value: '10.0' },
+  { text: '10:15 AM', value: '10.15' },
+  { text: '10:30 AM', value: '10.30' },
+  { text: '10:45 AM', value: '10.45' },
+  { text: '11:00 AM', value: '11.0' },
+  { text: '11:15 AM', value: '11.15' },
+  { text: '11:30 AM', value: '11.30' },
+  { text: '11:45 AM', value: '11.45' },
+  { text: '12:00 PM', value: '12.0' },
+  { text: '12:15 PM', value: '12.15' },
+  { text: '12:30 PM', value: '12.30' },
+  { text: '12:45 PM', value: '12.45' },
+  { text: '1:00 PM', value: '13.0' },
+  { text: '1:15 PM', value: '13.15' },
+  { text: '1:30 PM', value: '13.30' },
+  { text: '1:45 PM', value: '13.45' },
+  { text: '2:00 PM', value: '14.0' },
+  { text: '2:15 PM', value: '14.15' },
+  { text: '2:30 PM', value: '14.30' },
+  { text: '2:45 PM', value: '14.45' },
+  { text: '3:00 PM', value: '15.0' },
+  { text: '3:15 PM', value: '15.15' },
+  { text: '3:30 PM', value: '15.30' },
+  { text: '3:45 PM', value: '15.45' },
+  { text: '4:00 PM', value: '16.0' },
+  { text: '4:15 PM', value: '16.15' },
+  { text: '4:30 PM', value: '16.30' },
+  { text: '4:45 PM', value: '16.45' },
+  { text: '5:00 PM', value: '17.0' },
+  { text: '5:15 PM', value: '17.15' },
+  { text: '5:30 PM', value: '17.30' },
+  { text: '5:45 PM', value: '17.45' },
+  { text: '6:00 PM', value: '18.0' },
+  { text: '6:15 PM', value: '18.15' },
+  { text: '6:30 PM', value: '18.30' },
+  { text: '6:45 PM', value: '18.45' },
+  { text: '7:00 PM', value: '19.0' },
+  { text: '7:15 PM', value: '19.15' },
+  { text: '7:30 PM', value: '19.30' },
+  { text: '7:45 PM', value: '19.45' },
+  { text: '8:00 PM', value: '20.0' },
+  { text: '8:15 PM', value: '20.15' },
+  { text: '8:30 PM', value: '20.30' },
+  { text: '8:45 PM', value: '20.45' },
+  { text: '9:00 PM', value: '21.0' },
+  { text: '9:15 PM', value: '21.15' },
+  { text: '9:30 PM', value: '21.30' },
+  { text: '9:45 PM', value: '21.45' },
+  { text: '10:00 PM', value: '22.0' },
+  { text: '10:15 PM', value: '22.15' },
+  { text: '10:30 PM', value: '22.30' },
+  { text: '10:45 PM', value: '22.45' },
+  { text: '11:00 PM', value: '23.0' },
+  { text: '11:15 PM', value: '23.15' },
+  { text: '11:30 PM', value: '23.30' },
+  { text: '11:45 PM', value: '23.45' }
 ]
 
 export const monthOptions = [
@@ -195,19 +294,52 @@ export function useCron(options: UseCronOptions) {
                 const cronSplit = getCronSplit()!
                 isCustom = false
 
+                //construct minute and hour value
+                var minHrStr = `${cronSplit[1]}.${cronSplit[0]}`
+
                 //unpack hours
-                const secondStr = cronSplit[1]
-                if (secondStr.includes(',') || secondStr.includes('-') || secondStr.includes('/')) {
+                // const hourStr = cronSplit[1]
+                if (minHrStr.includes(',') || minHrStr.includes('-') || minHrStr.includes('/')) {
                     isCustom = true
                 }
                 else {
-                    if (!hourOptions.some(x => x.value == secondStr)) {
+                    if (!hourOptions.some(x => x.value == minHrStr)) {
                         isCustom = true
                     }
                     else {
-                        hour.value = secondStr
+                        hour.value = minHrStr
                     }
                 }
+
+                // //unpack minutes
+                // const minuteStr = cronSplit[1]
+                // if (minuteStr.includes(',') || minuteStr.includes('-') || minuteStr.includes('/')) {
+                //     isCustom = true
+                // }
+                // else {
+                //     if (!hourOptions.some(x => x.value.split('.')[1] == minuteStr)) {
+                //         isCustom = true
+                //     }
+                //     // else {
+                //     //     hour.value = minuteStr
+                //     // }
+                // }
+
+                // //unpack hours
+                // const hourStr = cronSplit[1]
+                // if (hourStr.includes(',') || hourStr.includes('-') || hourStr.includes('/')) {
+                //     isCustom = true
+                // }
+                // else {
+                //     if (!hourOptions.some(x => x.value.split('.')[0] == hourStr)) {
+                //         isCustom = true
+                //     }
+                //     else {
+                //         hour.value = hourStr
+
+
+                //     }
+                // }
 
                 //unpack days
                 const dayStr = cronSplit[2]
@@ -325,9 +457,13 @@ export function useCron(options: UseCronOptions) {
         if (regularity.value == 'Custom')
             return cronExpression.value
 
-        let exp = '0'
+        //let exp = '0'
 
-        exp = appendUrl(exp, hour.value, ' ')
+        let exp = `${hour.value?.split('.')[1]} ${hour.value?.split('.')[0]}`
+
+        console.log(exp)
+
+        // exp = appendUrl(exp, hour.value, ' ')
 
         if (!isLengthyArray(weeks.value))
             exp = appendUrl(exp, '*', ' ')
